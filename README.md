@@ -17,14 +17,17 @@ It generates WASM wrapper Go code and TypeScript clients from your protobuf serv
 
 ### Installation
 
+**Option 1: Local Installation**
 ```bash
 go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@latest
 ```
 
+**Option 2: Use from buf.build (Recommended)**
+No installation required - use the remote plugin directly in your `buf.gen.yaml`.
+
 ### Basic Usage
 
-Add to your `buf.gen.yaml`:
-
+**With Local Plugin:**
 ```yaml
 plugins:
   # Generate standard Go protobuf types
@@ -37,13 +40,41 @@ plugins:
     out: ./gen/go
     opt: paths=source_relative
 
-  # Generate TypeScript types
-  - remote: buf.build/connectrpc/es
+  # Generate TypeScript protobuf types
+  - remote: buf.build/bufbuild/es
     out: ./gen/ts
     opt: target=ts
 
-  # Generate WASM wrapper and TypeScript client
+  # Generate WASM wrapper and TypeScript client (local)
   - local: protoc-gen-go-wasmjs
+    out: ./gen/wasm
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=./gen/ts
+      - js_structure=namespaced
+      - js_namespace=library
+```
+
+**With Remote Plugin from buf.build:**
+```yaml
+plugins:
+  # Generate standard Go protobuf types
+  - remote: buf.build/protocolbuffers/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate gRPC service interfaces  
+  - remote: buf.build/grpc/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate TypeScript protobuf types
+  - remote: buf.build/bufbuild/es
+    out: ./gen/ts
+    opt: target=ts
+
+  # Generate WASM wrapper and TypeScript client (remote)
+  - remote: buf.build/panyam/protoc-gen-go-wasmjs
     out: ./gen/wasm
     opt:
       - ts_generator=protoc-gen-es
@@ -269,6 +300,58 @@ const response = await client.method(request);
 // Falls back to JSON.stringify/parse
 const response = await client.method(request);
 ```
+
+## Installation & Usage Notes
+
+### Using the Local Plugin
+
+1. **Install the plugin:**
+   ```bash
+   go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@latest
+   ```
+
+2. **Ensure the plugin is in your PATH:**
+   ```bash
+   which protoc-gen-go-wasmjs
+   # Should output: /path/to/go/bin/protoc-gen-go-wasmjs
+   ```
+
+3. **Use `local:` in your buf.gen.yaml:**
+   ```yaml
+   - local: protoc-gen-go-wasmjs
+   ```
+
+### Using the Remote Plugin (buf.build)
+
+1. **No installation required** - buf automatically downloads and runs the plugin
+
+2. **Use `remote:` in your buf.gen.yaml:**
+   ```yaml
+   - remote: buf.build/panyam/protoc-gen-go-wasmjs
+   ```
+
+3. **Benefits of remote plugins:**
+   - No local installation required
+   - Always uses the latest version
+   - Consistent across team members
+   - Works in CI/CD without additional setup
+
+### Publishing to buf.build
+
+To publish this plugin to buf.build (for maintainers):
+
+1. **Create a buf.plugin.yaml:**
+   ```yaml
+   version: v1
+   name: buf.build/panyam/protoc-gen-go-wasmjs
+   plugin_version: v1.0.0
+   description: Generate WASM bindings and TypeScript clients for gRPC services
+   ```
+
+2. **Push to buf.build:**
+   ```bash
+   buf plugin push
+   ```
 
 ## Project Structure
 
