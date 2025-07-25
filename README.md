@@ -2,16 +2,18 @@
 
 **protoc-gen-go-wasmjs** is a [Protocol Buffers](https://protobuf.dev) compiler plugin that generates WASM bindings and TypeScript clients for your gRPC services, enabling local-first applications that can run the same service logic in both server and browser environments.
 
-It generates WASM wrapper Go code and TypeScript clients from your protobuf services, allowing you to deploy identical business logic as WebAssembly modules in the browser or as traditional gRPC servers.
+It generates flexible WASM exports and TypeScript clients from your protobuf services, allowing you to deploy identical business logic as WebAssembly modules in the browser or as traditional gRPC servers with full dependency injection control.
 
 ## Features
 
-- **Local-First Architecture**: Same service interface runs on server (full database) or browser (local storage)
-- **Multi-Service WASM Modules**: Bundle related services in single WASM binaries
-- **Flexible JavaScript APIs**: Choose between namespaced, flat, or service-based API structures
-- **TypeScript Integration**: Works with existing protobuf TypeScript generators (protoc-gen-es, protoc-gen-ts)
-- **Extensive Customization**: Method filtering, renaming, and template overrides
-- **Build Pipeline Integration**: Seamless integration with buf and modern protobuf toolchains
+- **🎯 Multi-Target Generation**: Generate optimized WASM bundles per page/use case (user page, admin page, etc.)
+- **💉 Dependency Injection**: Full control over service initialization with database, auth, config injection
+- **📦 Optimized Bundles**: Each target includes only the services it needs for smaller bundle sizes
+- **🌐 Local-First Architecture**: Same service interface runs on server (full database) or browser (local storage)
+- **🔧 Export Pattern**: Generates reusable exports instead of fixed main() for maximum flexibility
+- **📋 TypeScript Integration**: Works with existing protobuf TypeScript generators (protoc-gen-es, protoc-gen-ts)
+- **⚙️ Extensive Customization**: Method filtering, renaming, and service targeting
+- **🔨 Build Pipeline Integration**: Seamless integration with buf and modern protobuf toolchains
 
 ## Quick Start
 

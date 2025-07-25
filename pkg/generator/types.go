@@ -75,18 +75,25 @@ type MethodData struct {
 
 // FileGenerator handles generation for a single proto file
 type FileGenerator struct {
-	file   *protogen.File
-	plugin *protogen.Plugin
-	config *Config
+	file         *protogen.File
+	plugin       *protogen.Plugin
+	config       *Config
+	packageFiles []*protogen.File // All files in the same package
 }
 
 // NewFileGenerator creates a new file generator
 func NewFileGenerator(file *protogen.File, plugin *protogen.Plugin, config *Config) *FileGenerator {
 	return &FileGenerator{
-		file:   file,
-		plugin: plugin,
-		config: config,
+		file:         file,
+		plugin:       plugin,
+		config:       config,
+		packageFiles: []*protogen.File{file}, // Default to just this file
 	}
+}
+
+// SetPackageFiles sets all files that belong to the same package
+func (g *FileGenerator) SetPackageFiles(files []*protogen.File) {
+	g.packageFiles = files
 }
 
 // Generate generates WASM wrapper and TypeScript client for the proto file
@@ -96,8 +103,15 @@ func (g *FileGenerator) Generate() error {
 		return err
 	}
 
-	// Skip files with no services
-	if len(g.file.Services) == 0 {
+	// Skip packages with no services
+	hasServices := false
+	for _, file := range g.packageFiles {
+		if len(file.Services) > 0 {
+			hasServices = true
+			break
+		}
+	}
+	if !hasServices {
 		return nil
 	}
 
@@ -134,12 +148,14 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 	// Collect unique package imports
 	imports, packageMap := g.collectUniqueImports()
 
-	// Build service data
+	// Build service data from all files in the package
 	var services []ServiceData
-	for _, service := range g.file.Services {
-		serviceData := g.buildServiceData(service, packageMap)
-		if serviceData != nil {
-			services = append(services, *serviceData)
+	for _, file := range g.packageFiles {
+		for _, service := range file.Services {
+			serviceData := g.buildServiceDataForFile(file, service, packageMap)
+			if serviceData != nil {
+				services = append(services, *serviceData)
+			}
 		}
 	}
 
@@ -169,21 +185,23 @@ func (g *FileGenerator) collectUniqueImports() ([]ImportInfo, map[string]string)
 	packageMap := make(map[string]string)
 	var imports []ImportInfo
 
-	// Collect all unique package paths from services
-	for _, service := range g.file.Services {
-		if !g.config.ShouldGenerateService(string(service.Desc.Name())) {
-			continue
-		}
+	// Collect all unique package paths from services across all package files
+	for _, file := range g.packageFiles {
+		for _, service := range file.Services {
+			if !g.config.ShouldGenerateService(string(service.Desc.Name())) {
+				continue
+			}
 
-		packagePath := string(g.file.GoImportPath)
-		if !packagePaths[packagePath] {
-			packagePaths[packagePath] = true
-			alias := g.generatePackageAlias(packagePath)
-			imports = append(imports, ImportInfo{
-				Path:  packagePath,
-				Alias: alias,
-			})
-			packageMap[packagePath] = alias
+			packagePath := string(file.GoImportPath)
+			if !packagePaths[packagePath] {
+				packagePaths[packagePath] = true
+				alias := g.generatePackageAlias(packagePath)
+				imports = append(imports, ImportInfo{
+					Path:  packagePath,
+					Alias: alias,
+				})
+				packageMap[packagePath] = alias
+			}
 		}
 	}
 
@@ -208,8 +226,8 @@ func (g *FileGenerator) generatePackageAlias(packagePath string) string {
 	return strings.ReplaceAll(last, ".", "")
 }
 
-// buildServiceData constructs service data for a protobuf service
-func (g *FileGenerator) buildServiceData(service *protogen.Service, packageMap map[string]string) *ServiceData {
+// buildServiceDataForFile constructs service data for a protobuf service from a specific file
+func (g *FileGenerator) buildServiceDataForFile(file *protogen.File, service *protogen.Service, packageMap map[string]string) *ServiceData {
 	serviceName := string(service.Desc.Name())
 
 	// Check if this service should be generated
@@ -218,7 +236,7 @@ func (g *FileGenerator) buildServiceData(service *protogen.Service, packageMap m
 	}
 
 	// Get package alias for this service
-	packagePath := string(g.file.GoImportPath)
+	packagePath := string(file.GoImportPath)
 	packageAlias := packageMap[packagePath]
 
 	// Build method data

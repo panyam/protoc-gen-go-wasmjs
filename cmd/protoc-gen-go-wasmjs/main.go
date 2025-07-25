@@ -81,13 +81,31 @@ func main() {
 			GenerateBuildScript: *generateBuildScript,
 		}
 
-		// Generate files for each proto file
+		// Group files by package to generate one WASM module per package
+		packageFiles := make(map[string][]*protogen.File)
+		
+		// Group files by package
 		for _, f := range gen.Files {
 			if !f.Generate {
 				continue
 			}
-
-			fileGen := generator.NewFileGenerator(f, gen, config)
+			packageName := string(f.Desc.Package())
+			packageFiles[packageName] = append(packageFiles[packageName], f)
+		}
+		
+		// Generate one WASM module per package
+		for _, files := range packageFiles {
+			if len(files) == 0 {
+				continue
+			}
+			
+			// Use the first file as the primary file, but collect services from all files
+			primaryFile := files[0]
+			fileGen := generator.NewFileGenerator(primaryFile, gen, config)
+			
+			// Set the additional files for this package
+			fileGen.SetPackageFiles(files)
+			
 			if err := fileGen.Generate(); err != nil {
 				return err
 			}
