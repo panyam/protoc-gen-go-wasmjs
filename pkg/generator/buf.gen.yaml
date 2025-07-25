@@ -1,0 +1,13 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/panyam/protoc-gen-go-wasmjs/pkg/generator
+  disable:
+    - file_option: go_package
+      module: buf.build/googleapis/googleapis
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: .
+    opt: paths=source_relative

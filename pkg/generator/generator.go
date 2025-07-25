@@ -1,0 +1,101 @@
+// Copyright 2025 Sri Panyam
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package generator
+
+import (
+	"path/filepath"
+	"strings"
+	"text/template"
+)
+
+// Template helper functions
+var templateFuncMap = template.FuncMap{
+	"title": func(s string) string {
+		if len(s) == 0 {
+			return s
+		}
+		return strings.ToUpper(s[:1]) + s[1:]
+	},
+}
+
+const (
+	WasmGeneratedFilenameExtension = ".wasm.go"
+	TSGeneratedFilenameExtension   = ".client.ts"
+	BuildScriptFilename            = "build.sh"
+)
+
+// generateWasmWrapper generates the Go WASM wrapper file
+func (g *FileGenerator) generateWasmWrapper(data *TemplateData) error {
+	if data == nil {
+		return nil // No services to generate
+	}
+
+	// Determine output filename
+	// baseName := strings.TrimSuffix(filepath.Base(g.file.Desc.Path()), ".proto")
+	filename := filepath.Join(g.config.WasmExportPath, data.ModuleName+WasmGeneratedFilenameExtension)
+
+	// Create generated file
+	generatedFile := g.plugin.NewGeneratedFile(filename, "")
+
+	// Parse and execute template
+	tmpl, err := template.New("wasm").Funcs(templateFuncMap).Parse(wasmTemplate)
+	if err != nil {
+		return err
+	}
+
+	return tmpl.Execute(generatedFile, data)
+}
+
+// generateTypeScriptClient generates the TypeScript client file
+func (g *FileGenerator) generateTypeScriptClient(data *TemplateData) error {
+	if data == nil {
+		return nil // No services to generate
+	}
+
+	// Determine output filename
+	filename := filepath.Join(g.config.TSExportPath, data.ModuleName+"Client"+TSGeneratedFilenameExtension)
+
+	// Create generated file
+	generatedFile := g.plugin.NewGeneratedFile(filename, "")
+
+	// Parse and execute template
+	tmpl, err := template.New("typescript").Funcs(templateFuncMap).Parse(typescriptTemplate)
+	if err != nil {
+		return err
+	}
+
+	return tmpl.Execute(generatedFile, data)
+}
+
+// generateBuildScript generates a build script for compiling the WASM wrapper
+func (g *FileGenerator) generateBuildScript(data *TemplateData) error {
+	if data == nil {
+		return nil // No services to generate
+	}
+
+	// Create build script in WASM export directory
+	filename := filepath.Join(g.config.WasmExportPath, BuildScriptFilename)
+
+	// Create generated file
+	generatedFile := g.plugin.NewGeneratedFile(filename, "")
+
+	// Parse and execute template
+	tmpl, err := template.New("buildscript").Funcs(templateFuncMap).Parse(buildScriptTemplate)
+	if err != nil {
+		return err
+	}
+
+	return tmpl.Execute(generatedFile, data)
+}

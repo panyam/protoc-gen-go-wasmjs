@@ -1,0 +1,74 @@
+// Copyright 2025 Sri Panyam
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package wasmjs.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1";
+
+// wasm_method_name allows specifying a custom JavaScript method name for the WASM binding.
+// This annotation provides type-safe, compile-time validation of custom method names.
+//
+// Example usage:
+//   rpc FindBooks(FindBooksRequest) returns (FindBooksResponse) {
+//     option (wasmjs.v1.wasm_method_name) = "searchBooks";
+//   }
+//
+// The method name should follow these conventions:
+// - Use camelCase (JavaScript convention)
+// - Be descriptive and concise
+// - Avoid spaces or special characters
+// - Be unique within the service
+extend google.protobuf.MethodOptions {
+  string wasm_method_name = 50001;
+}
+
+// wasm_service_exclude excludes a service from WASM generation.
+// Use this to skip services that shouldn't be available in the browser.
+//
+// Example usage:
+//   service InternalService {
+//     option (wasmjs.v1.wasm_service_exclude) = true;
+//     rpc InternalMethod(Request) returns (Response);
+//   }
+extend google.protobuf.ServiceOptions {
+  bool wasm_service_exclude = 50002;
+}
+
+// wasm_method_exclude excludes a method from WASM generation.
+// Use this to skip methods that shouldn't be available in the browser.
+//
+// Example usage:
+//   rpc AdminMethod(Request) returns (Response) {
+//     option (wasmjs.v1.wasm_method_exclude) = true;
+//   }
+extend google.protobuf.MethodOptions {
+  bool wasm_method_exclude = 50003;
+}
+
+// wasm_service_name allows specifying a custom JavaScript service name.
+// This affects the namespaced API structure (e.g., namespace.customName.method).
+//
+// Example usage:
+//   service LibraryService {
+//     option (wasmjs.v1.wasm_service_name) = "books";
+//     rpc FindBooks(FindBooksRequest) returns (FindBooksResponse);
+//   }
+//   // Results in: namespace.books.findBooks() instead of namespace.libraryService.findBooks()
+extend google.protobuf.ServiceOptions {
+  string wasm_service_name = 50004;
+}
