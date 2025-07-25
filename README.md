@@ -27,9 +27,10 @@ go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@lates
 **Option 2: Use from buf.build (Recommended)**
 No installation required - use the remote plugin directly in your `buf.gen.yaml`.
 
-### Basic Usage
+### Multi-Target Usage (Recommended)
 
-**With Local Plugin:**
+Generate optimized WASM bundles per page/use case:
+
 ```yaml
 plugins:
   # Generate standard Go protobuf types
@@ -42,47 +43,60 @@ plugins:
     out: ./gen/go
     opt: paths=source_relative
 
-  # Generate TypeScript protobuf types
+  # Generate TypeScript protobuf types (shared)
   - remote: buf.build/bufbuild/es
-    out: ./gen/ts
+    out: ./web/frontend/gen
     opt: target=ts
 
-  # Generate WASM wrapper and TypeScript client (local)
+  # User page target (UsersService only)
+  - local: protoc-gen-go-wasmjs
+    out: ./gen/wasm/user-page
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=web/frontend/gen
+      - services=UsersService
+      - export_pattern=true
+      - module_name=user_page_services
+      - js_namespace=userPage
+
+  # Game page target (GamesService + WorldsService)
+  - local: protoc-gen-go-wasmjs
+    out: ./gen/wasm/game-page
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=web/frontend/gen
+      - services=GamesService,WorldsService
+      - export_pattern=true
+      - module_name=game_page_services
+      - js_namespace=gamePage
+
+  # Admin page target (all services)
+  - local: protoc-gen-go-wasmjs
+    out: ./gen/wasm/admin-page
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=web/frontend/gen
+      - export_pattern=true
+      - module_name=admin_services
+      - js_namespace=admin
+```
+
+### Single Target Usage (Simple)
+
+For simple projects with one WASM module:
+
+```yaml
+plugins:
+  # Standard protobuf generation...
+  
+  # Single WASM target
   - local: protoc-gen-go-wasmjs
     out: ./gen/wasm
     opt:
       - ts_generator=protoc-gen-es
       - ts_import_path=./gen/ts
       - js_structure=namespaced
-      - js_namespace=library
-```
-
-**With Remote Plugin from buf.build:**
-```yaml
-plugins:
-  # Generate standard Go protobuf types
-  - remote: buf.build/protocolbuffers/go
-    out: ./gen/go
-    opt: paths=source_relative
-
-  # Generate gRPC service interfaces  
-  - remote: buf.build/grpc/go
-    out: ./gen/go
-    opt: paths=source_relative
-
-  # Generate TypeScript protobuf types
-  - remote: buf.build/bufbuild/es
-    out: ./gen/ts
-    opt: target=ts
-
-  # Generate WASM wrapper and TypeScript client (remote)
-  - remote: buf.build/panyam/protoc-gen-go-wasmjs
-    out: ./gen/wasm
-    opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=./gen/ts
-      - js_structure=namespaced
-      - js_namespace=library
+      - js_namespace=myapp
 ```
 
 ### Example Service
