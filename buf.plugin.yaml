@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/panyam/protoc-gen-go-wasmjs
+plugin_version: v0.0.1
+description: Generate WASM bindings and TypeScript clients for gRPC services enabling local-first applications
+deps:
+  - buf.build/protocolbuffers/go
+  - buf.build/grpc/go
+  - buf.build/bufbuild/es
+source_url: https://github.com/panyam/protoc-gen-go-wasmjs
