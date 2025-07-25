@@ -26,8 +26,8 @@ func main() {
 	// Core integration options
 	tsGenerator := flagSet.String("ts_generator", "protoc-gen-es", "TypeScript generator used (protoc-gen-es, protoc-gen-ts, etc.)")
 	tsImportPath := flagSet.String("ts_import_path", "./gen/ts", "Path where TypeScript types are generated (for imports)")
-	tsExportPath := flagSet.String("ts_export_path", "./gen/wasmts", "Path where TypeScript client should be generated")
-	wasmExportPath := flagSet.String("wasm_export_path", "./gen/wasm", "Path where WASM wrapper should be generated")
+	tsOut := flagSet.String("ts_out", "", "Optional: Custom directory for TypeScript client (defaults to co-location)")
+	wasmExportPath := flagSet.String("wasm_export_path", ".", "Path where WASM wrapper should be generated")
 
 	// Service & method selection
 	services := flagSet.String("services", "", "Comma-separated list of services to generate (default: all)")
@@ -57,7 +57,7 @@ func main() {
 			// Core integration
 			TSGenerator:    *tsGenerator,
 			TSImportPath:   *tsImportPath,
-			TSExportPath:   *tsExportPath,
+			TSOut:          *tsOut,
 			WasmExportPath: *wasmExportPath,
 
 			// Service & method selection
@@ -83,7 +83,7 @@ func main() {
 
 		// Group files by package to generate one WASM module per package
 		packageFiles := make(map[string][]*protogen.File)
-		
+
 		// Group files by package
 		for _, f := range gen.Files {
 			if !f.Generate {
@@ -92,20 +92,20 @@ func main() {
 			packageName := string(f.Desc.Package())
 			packageFiles[packageName] = append(packageFiles[packageName], f)
 		}
-		
+
 		// Generate one WASM module per package
 		for _, files := range packageFiles {
 			if len(files) == 0 {
 				continue
 			}
-			
+
 			// Use the first file as the primary file, but collect services from all files
 			primaryFile := files[0]
 			fileGen := generator.NewFileGenerator(primaryFile, gen, config)
-			
+
 			// Set the additional files for this package
 			fileGen.SetPackageFiles(files)
-			
+
 			if err := fileGen.Generate(); err != nil {
 				return err
 			}

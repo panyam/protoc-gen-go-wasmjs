@@ -65,8 +65,20 @@ func (g *FileGenerator) generateTypeScriptClient(data *TemplateData) error {
 		return nil // No services to generate
 	}
 
-	// Determine output filename
-	filename := filepath.Join(g.config.TSExportPath, data.ModuleName+"Client"+TSGeneratedFilenameExtension)
+	// Determine output filename - use TSOut if specified, otherwise co-locate with WASM
+	var filename string
+	if g.config.TSOut != "" {
+		// TSOut should be relative to the buf.gen.yaml working directory, not the protoc out directory
+		// Calculate relative path from WasmExportPath (out directory) to TSOut
+		relativeToOut, err := filepath.Rel(g.config.WasmExportPath, g.config.TSOut)
+		if err != nil {
+			// Fallback to absolute path if calculation fails
+			relativeToOut = g.config.TSOut
+		}
+		filename = filepath.Join(relativeToOut, data.ModuleName+"Client"+TSGeneratedFilenameExtension)
+	} else {
+		filename = data.ModuleName + "Client" + TSGeneratedFilenameExtension
+	}
 
 	// Create generated file
 	generatedFile := g.plugin.NewGeneratedFile(filename, "")
