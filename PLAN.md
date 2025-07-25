@@ -107,10 +107,10 @@ Transform existing MCP generator into a WASM generator that produces browser-com
   - [x] TypeScript integration guide
   - [x] Configuration reference
 
-## Current Checkpoint: January 25, 2025
+## Current Checkpoint: July 25, 2025
 
 ### What We've Accomplished
-**Production-ready WASM generator with multi-target export pattern architecture**:
+**Production-ready WASM generator with dual-target architecture and multi-target export pattern**:
 
 1. **Core Architecture**: Successfully migrated from MCP tool generation to WASM binding generation
 2. **Template System**: Implemented robust `go:embed` template system with Go WASM, TypeScript client, and build script generation
@@ -125,6 +125,10 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 11. **Service Filtering**: Per-target service selection for optimized bundle sizes
 12. **Dependency Injection**: Export structs allow full control over service implementations
 13. **Main.go Examples**: Generated templates show proper usage patterns
+14. **Dual-Target Architecture**: WASM and TypeScript artifacts can be generated separately for flexible deployment
+15. **Independent Generation**: Generate just WASM, just TypeScript, or both using `generate_wasm` and `generate_typescript` flags
+16. **Flexible Placement**: TypeScript clients can be placed directly in frontend source directories
+17. **Correct Import Paths**: Automatic relative path calculation works perfectly across different output directories
 
 ### Key Learnings
 1. **Template Approach**: Using `go:embed` with separate template files is much cleaner than string constants
@@ -139,6 +143,9 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 10. **Import vs Copy**: Generated `.wasm.go` files should be imported like protobuf artifacts, not copied by users
 11. **Package Naming**: Generated packages must be importable, not `package main`
 12. **User Workflow**: `main.go.example` provides clear template for proper usage
+13. **Dual-Target Benefits**: Separate WASM and TypeScript generation eliminates complex cross-directory path calculations
+14. **Standard buf Patterns**: Each target using native protoc `out` directories is cleaner than custom path logic
+15. **Import Path Relativity**: `ts_import_path` should be relative to the target's `out` directory for correct TypeScript imports
 
 ### Technical Achievements
 - **Zero breaking changes** during transformation
@@ -153,6 +160,54 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 - **Export pattern architecture** enabling full dependency injection
 - **Optimized bundles** per page/use case with targeted service selection
 - **User-friendly templates** showing correct import and usage patterns
+- **Dual-target architecture** enabling separate WASM and TypeScript generation
+- **Perfect import paths** with automatic relative path calculation across different output directories
+
+## Latest Implementation: Dual-Target Architecture (July 25, 2025)
+
+### Problem Solved
+The original single-target approach with `ts_out` parameter caused complex path calculation issues when TypeScript clients needed to be placed in different directories than WASM artifacts. The path calculations became unwieldy and error-prone.
+
+### Solution: Dual-Target Architecture
+Instead of complex path calculations, we implemented a dual-target approach where WASM and TypeScript artifacts can be generated completely independently:
+
+**Previous Approach (Complex):**
+```yaml
+- local: protoc-gen-go-wasmjs
+  out: ./gen/wasm
+  opt:
+    - ts_out=./web/frontend/src/wasm-clients  # Complex path calculations
+```
+
+**New Dual-Target Approach (Clean):**
+```yaml
+# Target 1: WASM wrapper only
+- local: protoc-gen-go-wasmjs
+  out: ./gen/wasm/user-services
+  opt:
+    - generate_typescript=false
+    
+# Target 2: TypeScript client only
+- local: protoc-gen-go-wasmjs
+  out: ./web/frontend/src/wasm-clients
+  opt:
+    - ts_import_path=../../../gen/ts  # Simple relative path
+    - generate_wasm=false
+```
+
+### Benefits Achieved
+1. **No Complex Path Logic**: Each target uses standard protoc `out` directories
+2. **Perfect Import Paths**: TypeScript imports are calculated correctly relative to each target's output directory
+3. **Flexible Deployment**: TypeScript clients can go directly to frontend source directories
+4. **Independent Generation**: Generate just WASM, just TypeScript, or both as needed
+5. **Standard buf Patterns**: Follows established buf.build conventions for multi-target generation
+6. **Clean Configuration**: Each target has simple, clear configuration
+
+### Configuration Flags Added
+- `generate_wasm=true/false` (default: true) - Controls WASM wrapper generation
+- `generate_typescript=true/false` (default: true) - Controls TypeScript client generation
+
+When both are true (default), behaves like the original single-target approach with co-located artifacts.
 
 ## Next Steps
 

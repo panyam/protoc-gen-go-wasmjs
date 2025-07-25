@@ -121,26 +121,33 @@ func (g *FileGenerator) Generate() error {
 		return err
 	}
 
-	// Generate WASM wrapper
-	if err := g.generateWasmWrapper(templateData); err != nil {
-		return err
-	}
-
-	// Generate TypeScript client
-	if err := g.generateTypeScriptClient(templateData); err != nil {
-		return err
-	}
-
-	// Generate build script if requested
-	if g.config.GenerateBuildScript {
-		if err := g.generateBuildScript(templateData); err != nil {
+	// Generate WASM wrapper if enabled
+	if g.config.GenerateWasm {
+		if err := g.generateWasmWrapper(templateData); err != nil {
 			return err
 		}
 	}
 
-	// Generate example main.go file
-	if err := g.generateMainExample(templateData); err != nil {
-		return err
+	// Generate TypeScript client if enabled
+	if g.config.GenerateTypeScript {
+		if err := g.generateTypeScriptClient(templateData); err != nil {
+			return err
+		}
+	}
+
+	// Generate build script and main example only when generating WASM
+	if g.config.GenerateWasm {
+		// Generate build script if requested
+		if g.config.GenerateBuildScript {
+			if err := g.generateBuildScript(templateData); err != nil {
+				return err
+			}
+		}
+
+		// Generate example main.go file
+		if err := g.generateMainExample(templateData); err != nil {
+			return err
+		}
 	}
 
 	return nil

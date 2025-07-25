@@ -25,7 +25,8 @@ type Config struct {
 	// Core integration
 	TSGenerator  string // protoc-gen-es, protoc-gen-ts, etc.
 	TSImportPath string // Path where TypeScript types are generated (for imports)
-	TSOut        string // Optional: Custom directory for TypeScript client (defaults to co-location)
+	GenerateWasm       bool   // Generate WASM wrapper (default: true)
+	GenerateTypeScript bool   // Generate TypeScript client (default: true)
 	WasmExportPath string // Path where WASM wrapper should be generated
 	
 	// Service & method selection
@@ -75,8 +76,14 @@ func (c *Config) Validate() error {
 		c.TSImportPath = "./gen/ts"
 	}
 	
-	// TSOut is optional - when empty, TS client co-locates with other artifacts
-	// When specified, TS client goes to the custom directory
+	// Set defaults for generation flags
+	if c.GenerateWasm == false && c.GenerateTypeScript == false {
+		// If both are explicitly false, enable both (default behavior)
+		c.GenerateWasm = true
+		c.GenerateTypeScript = true
+	}
+	// If neither is explicitly set, default to generating both
+	// This will be handled by the flags parsing in main.go
 	
 	// Validate WASM export path (where we write WASM wrapper)
 	if c.WasmExportPath == "" {
@@ -246,25 +253,13 @@ func (c *Config) GetTSImportPathForProto(protoFile string) string {
 }
 
 // GetRelativeTSImportPathForProto returns the relative TypeScript import path for a given proto file
-// relative to where the TypeScript client is generated
+// relative to where the TypeScript client is generated (co-located with WASM artifacts)
 func (c *Config) GetRelativeTSImportPathForProto(protoFile string) string {
 	// Remove .proto extension and construct path based on TS generator
 	baseName := strings.TrimSuffix(protoFile, ".proto")
 	
-	// Calculate relative path from where TS client is generated to TSImportPath
-	var relativePath string
-	
-	if c.TSOut != "" {
-		// Custom TS output directory - calculate relative path from TSOut to TSImportPath
-		// Example: TSOut="gen/wasmts/output", TSImportPath="web/frontend/gen"
-		// Result: "../../../web/frontend/gen"
-		relativePath = c.calculateRelativePath(c.TSOut, c.TSImportPath)
-	} else {
-		// Co-located with WASM artifacts - use WasmExportPath as the base
-		// Example: WasmExportPath="./gen/wasm/target", TSImportPath="web/frontend/gen"  
-		// Calculate proper relative path without hardcoded assumptions
-		relativePath = c.calculateRelativePath(c.WasmExportPath, c.TSImportPath)
-	}
+	// Calculate relative path from WasmExportPath (where TS client is generated) to TSImportPath
+	relativePath := c.calculateRelativePath(c.WasmExportPath, c.TSImportPath)
 	
 	// Construct the full relative import path with proper filename
 	var filename string

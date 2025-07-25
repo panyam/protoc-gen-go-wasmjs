@@ -6,12 +6,14 @@ It generates flexible WASM exports and TypeScript clients from your protobuf ser
 
 ## Features
 
+- **Dual-Target Architecture**: Generate WASM and TypeScript artifacts separately for flexible deployment
 - **Multi-Target Generation**: Generate optimized WASM bundles per page/use case (user page, admin page, etc.)
 - **Dependency Injection**: Full control over service initialization with database, auth, config injection
 - **Optimized Bundles**: Each target includes only the services it needs for smaller bundle sizes
 - **Local-First Architecture**: Same service interface runs on server (full database) or browser (local storage)
 - **Export Pattern**: Generates reusable exports instead of fixed main() for maximum flexibility
 - **TypeScript Integration**: Works with existing protobuf TypeScript generators (protoc-gen-es, protoc-gen-ts)
+- **Flexible Deployment**: TypeScript clients can be placed directly in frontend source directories
 - **Extensive Customization**: Method filtering, renaming, and service targeting
 - **Build Pipeline Integration**: Seamless integration with buf and modern protobuf toolchains
 
@@ -27,7 +29,42 @@ go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@lates
 **Option 2: Use from buf.build (Recommended)**
 No installation required - use the remote plugin directly in your `buf.gen.yaml`.
 
-### Multi-Target Usage (Recommended)
+## Architecture Patterns
+
+### Dual-Target Architecture (Most Flexible)
+
+Generate WASM and TypeScript artifacts separately for maximum deployment flexibility:
+
+```yaml
+plugins:
+  # Standard protobuf generation...
+  
+  # WASM wrapper only - optimized for server-side deployment
+  - local: protoc-gen-go-wasmjs
+    out: ./gen/wasm/user-services
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=../../../gen/ts  # Relative to out directory
+      - services=UsersService
+      - generate_typescript=false  # Only generate WASM
+      
+  # TypeScript client only - deploy directly to frontend
+  - local: protoc-gen-go-wasmjs
+    out: ./web/frontend/src/wasm-clients
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=../../../gen/ts  # Relative to out directory
+      - services=UsersService
+      - generate_wasm=false  # Only generate TypeScript
+```
+
+**Benefits:**
+- **Flexible placement**: TypeScript clients can go directly into frontend source directories
+- **Clean separation**: WASM and TypeScript artifacts in completely different locations
+- **Independent generation**: Generate just WASM, just TypeScript, or both as needed
+- **Standard buf patterns**: Each target uses native protoc `out` directories
+
+### Multi-Target Usage (Co-located)
 
 Generate optimized WASM bundles per page/use case:
 
@@ -206,9 +243,10 @@ class LibraryServiceClientImpl {
 | Option | Description | Default |
 |--------|-------------|---------|
 | `ts_generator` | TypeScript generator used | `protoc-gen-es` |
-| `ts_import_path` | Path to generated TS types | `./gen/ts` |
-| `ts_export_path` | Where to generate TS client | `.` |
+| `ts_import_path` | Path to generated TS types (relative to out dir) | `./gen/ts` |
 | `wasm_export_path` | Where to generate WASM wrapper | `.` |
+| `generate_wasm` | Generate WASM wrapper | `true` |
+| `generate_typescript` | Generate TypeScript client | `true` |
 
 ### Service & Method Selection
 

@@ -29,29 +29,42 @@ plugins:
     out: ./gen/wasm/all-services
     opt:
       - ts_generator=protoc-gen-es
-      - ts_import_path=./gen/ts
+      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
       - js_namespace=library
       - module_name=library_all_services
 
-  # User management target - Only UserService (optimized for user pages)
+  # User management target (dual-target approach)
+  # Target 1: Generate WASM wrapper only for UserService
   - local: ../bin/protoc-gen-go-wasmjs
     out: ./gen/wasm/user-services
     opt:
       - ts_generator=protoc-gen-es
-      - ts_import_path=./gen/ts
+      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
-      - ts_out=../../gen/wasmts/user-services
       - js_namespace=userModule
       - module_name=user_services
       - services=UserService
+      - generate_typescript=false  # Only generate WASM
+
+  # Target 2: Generate TypeScript client only for UserService  
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasmts/user-services
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=../../../gen/ts  # Relative to out directory  
+      - js_structure=namespaced
+      - js_namespace=userModule
+      - module_name=user_services
+      - services=UserService
+      - generate_wasm=false  # Only generate TypeScript
 
   # Library target - Only LibraryService (optimized for book browsing)
   - local: ../bin/protoc-gen-go-wasmjs
     out: ./gen/wasm/library-services
     opt:
       - ts_generator=protoc-gen-es
-      - ts_import_path=./gen/ts
+      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
       - js_namespace=libraryModule
       - module_name=library_services
@@ -62,7 +75,7 @@ plugins:
     out: ./gen/wasm/admin-services
     opt:
       - ts_generator=protoc-gen-es
-      - ts_import_path=./gen/ts
+      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
       - js_namespace=admin
       - module_name=admin_services
