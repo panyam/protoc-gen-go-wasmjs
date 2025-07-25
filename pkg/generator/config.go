@@ -25,6 +25,7 @@ type Config struct {
 	// Core integration
 	TSGenerator  string // protoc-gen-es, protoc-gen-ts, etc.
 	TSImportPath string // Path where TypeScript types are generated (for imports)
+	TSImportExtension string // Extension for TypeScript imports (default: auto-detect from ts_generator)
 	GenerateWasm       bool   // Generate WASM wrapper (default: true)
 	GenerateTypeScript bool   // Generate TypeScript client (default: true)
 	WasmExportPath string // Path where WASM wrapper should be generated
@@ -263,13 +264,23 @@ func (c *Config) GetRelativeTSImportPathForProto(protoFile string) string {
 	
 	// Construct the full relative import path with proper filename
 	var filename string
-	switch c.TSGenerator {
-	case "protoc-gen-es":
-		filename = baseName + "_pb.js"
-	case "protoc-gen-ts":
-		filename = baseName + "_pb"
-	default:
-		filename = baseName + "_pb"
+	if c.TSImportExtension != "" {
+		// Use explicit extension setting
+		if c.TSImportExtension == "none" {
+			filename = baseName + "_pb"
+		} else {
+			filename = baseName + "_pb." + c.TSImportExtension
+		}
+	} else {
+		// Auto-detect based on ts_generator (backwards compatibility)
+		switch c.TSGenerator {
+		case "protoc-gen-es":
+			filename = baseName + "_pb.js"
+		case "protoc-gen-ts":
+			filename = baseName + "_pb"
+		default:
+			filename = baseName + "_pb"
+		}
 	}
 	
 	return relativePath + "/" + filename

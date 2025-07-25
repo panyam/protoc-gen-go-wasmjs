@@ -40,6 +40,7 @@ type TemplateData struct {
 
 	// TypeScript import management
 	TSRelativeImportPath string // Relative path from TS export to TS import
+	TSImports            []TSImportInfo // TypeScript imports with proper extensions
 
 	// Build info
 	GeneratedImports []string
@@ -50,6 +51,13 @@ type TemplateData struct {
 type ImportInfo struct {
 	Path  string // Full import path
 	Alias string // Package alias (e.g., "libraryv1")
+}
+
+// TSImportInfo represents a TypeScript import for the client
+type TSImportInfo struct {
+	ProtoFile string   // Original proto file (e.g., "games.proto")
+	ImportPath string  // Relative import path with proper extension
+	Types     []string // List of types to import from this file
 }
 
 // ServiceData represents a gRPC service for template generation
@@ -70,6 +78,8 @@ type MethodData struct {
 	ShouldGenerate bool   // Whether to generate this method based on filters
 	RequestType    string // Fully qualified Go request type
 	ResponseType   string // Fully qualified Go response type
+	RequestTSType  string // TypeScript request type name
+	ResponseTSType string // TypeScript response type name
 	Comment        string // Method comment from protobuf
 }
 
@@ -176,6 +186,9 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 		return nil, nil
 	}
 
+	// Build TypeScript imports from all methods in all services
+	tsImports := g.buildTypeScriptImports(services)
+
 	return &TemplateData{
 		PackageName:          packageName,
 		SourcePath:           g.file.Desc.Path(),
@@ -188,6 +201,7 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 		Imports:              imports,
 		PackageMap:           packageMap,
 		TSRelativeImportPath: g.config.GetRelativeTSImportPathForProto(g.file.Desc.Path()),
+		TSImports:            tsImports,
 	}, nil
 }
 
@@ -299,7 +313,124 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 		ShouldGenerate: true,
 		RequestType:    g.getQualifiedTypeName(method.Input, packageAlias),
 		ResponseType:   g.getQualifiedTypeName(method.Output, packageAlias),
+		RequestTSType:  string(method.Input.GoIdent.GoName),
+		ResponseTSType: string(method.Output.GoIdent.GoName),
 		Comment:        strings.TrimSpace(string(method.Comments.Leading)),
+	}
+}
+
+// buildTypeScriptImports builds TypeScript import statements by analyzing all request/response types
+func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImportInfo {
+	// Map from proto file to types used from that file
+	fileToTypes := make(map[string]map[string]bool)
+	
+	// We need to go back to the original protogen data to get proto file information
+	// Iterate through all files in the package to collect method types
+	for _, file := range g.packageFiles {
+		for _, service := range file.Services {
+			// Check if this service should be generated
+			if !g.config.ShouldGenerateService(string(service.Desc.Name())) {
+				continue
+			}
+			
+			for _, method := range service.Methods {
+				// Check if this method should be generated
+				if !g.config.ShouldGenerateMethod(string(method.Desc.Name())) {
+					continue
+				}
+				
+				// Skip streaming methods
+				if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
+					continue
+				}
+				
+				// Get the actual proto files for request and response types
+				requestProtoFile := string(method.Input.Desc.ParentFile().Path())
+				responseProtoFile := string(method.Output.Desc.ParentFile().Path())
+				
+				// Initialize maps for proto files if needed
+				if fileToTypes[requestProtoFile] == nil {
+					fileToTypes[requestProtoFile] = make(map[string]bool)
+				}
+				if fileToTypes[responseProtoFile] == nil {
+					fileToTypes[responseProtoFile] = make(map[string]bool)
+				}
+				
+				// Add request and response types to their respective proto files
+				requestTSType := string(method.Input.GoIdent.GoName)
+				responseTSType := string(method.Output.GoIdent.GoName)
+				fileToTypes[requestProtoFile][requestTSType] = true
+				fileToTypes[responseProtoFile][responseTSType] = true
+			}
+		}
+	}
+	
+	// Convert to TSImportInfo slice
+	var tsImports []TSImportInfo
+	for protoFile, typesMap := range fileToTypes {
+		// Convert map to slice
+		var types []string
+		for typeName := range typesMap {
+			types = append(types, typeName)
+		}
+		
+		// Generate import path for this proto file
+		importPath := g.buildTSImportPath(protoFile)
+		
+		tsImports = append(tsImports, TSImportInfo{
+			ProtoFile:  protoFile,
+			ImportPath: importPath,
+			Types:      types,
+		})
+	}
+	
+	return tsImports
+}
+
+// buildTSImportPath builds the TypeScript import path for a given proto file
+func (g *FileGenerator) buildTSImportPath(protoFile string) string {
+	// Remove .proto extension and build the path based on TS generator and detected extension
+	baseName := strings.TrimSuffix(protoFile, ".proto")
+	
+	// Calculate relative path from where TS client is generated to TSImportPath
+	relativePath := g.config.calculateRelativePath(g.config.WasmExportPath, g.config.TSImportPath)
+	
+	// Auto-detect file extension by checking what actually exists
+	extension := g.detectTSFileExtension(baseName)
+	
+	var filename string
+	if extension == "" {
+		filename = baseName + "_pb"
+	} else {
+		filename = baseName + "_pb." + extension
+	}
+	
+	return relativePath + "/" + filename
+}
+
+// detectTSFileExtension detects whether .ts or .js files exist for the given proto
+func (g *FileGenerator) detectTSFileExtension(baseName string) string {
+	// This is a simplified version - in a real implementation, we might want to
+	// check the actual filesystem or use configuration hints
+	// For now, we'll use the ts_import_extension if specified, otherwise fall back to heuristics
+	
+	if g.config.TSImportExtension != "" {
+		if g.config.TSImportExtension == "none" {
+			return ""
+		}
+		return g.config.TSImportExtension
+	}
+	
+	// Auto-detect based on ts_generator (backwards compatibility)
+	switch g.config.TSGenerator {
+	case "protoc-gen-es":
+		// protoc-gen-es typically generates .js files, but with target=ts it generates .ts
+		// For now, default to no extension for cleaner imports
+		return ""
+	case "protoc-gen-ts":
+		return ""
+	default:
+		return ""
 	}
 }
 

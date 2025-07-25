@@ -129,6 +129,8 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 15. **Independent Generation**: Generate just WASM, just TypeScript, or both using `generate_wasm` and `generate_typescript` flags
 16. **Flexible Placement**: TypeScript clients can be placed directly in frontend source directories
 17. **Correct Import Paths**: Automatic relative path calculation works perfectly across different output directories
+18. **Smart Import Detection**: Automatically analyzes proto files to determine which types come from which source files
+19. **Auto-Extension Detection**: Automatically detects `.ts` vs `.js` extensions based on protoc-gen-es configuration
 
 ### Key Learnings
 1. **Template Approach**: Using `go:embed` with separate template files is much cleaner than string constants
@@ -146,6 +148,9 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 13. **Dual-Target Benefits**: Separate WASM and TypeScript generation eliminates complex cross-directory path calculations
 14. **Standard buf Patterns**: Each target using native protoc `out` directories is cleaner than custom path logic
 15. **Import Path Relativity**: `ts_import_path` should be relative to the target's `out` directory for correct TypeScript imports
+16. **Proto File Analysis**: Each protobuf message knows its source file via `method.Input.Desc.ParentFile().Path()`
+17. **Smart Imports**: Instead of hardcoding imports, analyze actual proto file sources to generate accurate TypeScript imports
+18. **Extension Detection**: Auto-detecting `.ts` vs `.js` files eliminates manual configuration for TypeScript imports
 
 ### Technical Achievements
 - **Zero breaking changes** during transformation
@@ -162,8 +167,50 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 - **User-friendly templates** showing correct import and usage patterns
 - **Dual-target architecture** enabling separate WASM and TypeScript generation
 - **Perfect import paths** with automatic relative path calculation across different output directories
+- **Smart import detection** analyzing proto file sources to eliminate hardcoded assumptions
+- **Auto-extension detection** for TypeScript imports based on protoc-gen-es configuration
 
-## Latest Implementation: Dual-Target Architecture (July 25, 2025)
+## Latest Implementation: Smart Import Detection (July 25, 2025)
+
+### Problem Solved
+The plugin was making two incorrect assumptions about TypeScript imports:
+1. **Hardcoded imports**: All types were assumed to come from `models_pb` regardless of their actual source
+2. **Wrong extensions**: Imports used `.js` extensions even when protoc-gen-es generated `.ts` files
+
+### Solution: Proto File Analysis
+We implemented smart import detection that analyzes the actual proto file sources for each type:
+
+**Before (Hardcoded)**:
+```typescript
+// Everything imported from models_pb regardless of actual source
+import { CreateGameRequest, CreateUserRequest, CreateWorldRequest } from './models_pb';
+```
+
+**After (Smart Detection)**:
+```typescript  
+// Types imported from their actual proto file sources
+import { CreateGameRequest, UpdateGameRequest } from './games_pb';
+import { CreateUserRequest, UpdateUserRequest } from './users_pb';
+import { CreateWorldRequest, UpdateWorldRequest } from './worlds_pb';
+```
+
+### Technical Implementation
+1. **Proto File Analysis**: For each gRPC method, analyze `method.Input.Desc.ParentFile().Path()` to determine source proto file
+2. **Type Grouping**: Group types by their source proto file for clean, organized imports
+3. **Extension Detection**: Auto-detect whether protoc-gen-es generated `.ts` or `.js` files
+4. **Zero Configuration**: Works with any proto file structure without manual configuration
+
+### Configuration Added
+- `ts_import_extension` - Manual override for import extensions (`js`, `ts`, `none`, or empty for auto-detect)
+
+### Benefits Achieved
+1. **Accurate Imports**: Types imported from their actual source files, not hardcoded assumptions
+2. **Clean Organization**: Related types grouped together in logical import statements
+3. **Auto-Detection**: Automatically handles `.ts` vs `.js` extensions based on protoc-gen-es configuration
+4. **Zero Configuration**: Works out of the box with any proto file structure
+5. **Future-Proof**: Adapts to changes in proto file organization automatically
+
+## Previous Implementation: Dual-Target Architecture (July 25, 2025)
 
 ### Problem Solved
 The original single-target approach with `ts_out` parameter caused complex path calculation issues when TypeScript clients needed to be placed in different directories than WASM artifacts. The path calculations became unwieldy and error-prone.

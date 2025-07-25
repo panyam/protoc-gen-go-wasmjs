@@ -7,6 +7,8 @@ It generates flexible WASM exports and TypeScript clients from your protobuf ser
 ## Features
 
 - **Dual-Target Architecture**: Generate WASM and TypeScript artifacts separately for flexible deployment
+- **Smart Import Detection**: Automatically analyzes proto files to generate accurate TypeScript imports
+- **Auto-Extension Detection**: Automatically detects `.ts` vs `.js` extensions based on protoc-gen-es configuration
 - **Multi-Target Generation**: Generate optimized WASM bundles per page/use case (user page, admin page, etc.)
 - **Dependency Injection**: Full control over service initialization with database, auth, config injection
 - **Optimized Bundles**: Each target includes only the services it needs for smaller bundle sizes
@@ -244,6 +246,7 @@ class LibraryServiceClientImpl {
 |--------|-------------|---------|
 | `ts_generator` | TypeScript generator used | `protoc-gen-es` |
 | `ts_import_path` | Path to generated TS types (relative to out dir) | `./gen/ts` |
+| `ts_import_extension` | Extension for TS imports (`js`, `ts`, `none`, or empty for auto-detect) | auto-detect |
 | `wasm_export_path` | Where to generate WASM wrapper | `.` |
 | `generate_wasm` | Generate WASM wrapper | `true` |
 | `generate_typescript` | Generate TypeScript client | `true` |
@@ -387,12 +390,31 @@ Integration in web applications:
 
 ## TypeScript Generator Compatibility
 
-Works with popular TypeScript protobuf generators:
+Works with popular TypeScript protobuf generators and automatically detects optimal import settings:
 
 **protoc-gen-es** (Recommended):
+```yaml
+# buf.gen.yaml - TypeScript generation
+- remote: buf.build/bufbuild/es
+  out: ./gen/ts
+  opt: target=ts  # Generates .ts files
+
+# WASM client generation
+- local: protoc-gen-go-wasmjs
+  out: ./web/frontend/src/clients
+  opt:
+    - ts_generator=protoc-gen-es
+    - ts_import_path=../../../gen/ts
+    # ts_import_extension auto-detected as "none" for .ts files
+```
+
 ```typescript
+// Generated client with smart imports:
+import { CreateGameRequest, CreateGameResponse } from './games_pb';
+import { CreateUserRequest, CreateUserResponse } from './users_pb';
+
 // Auto-detects .toJson() and .fromJson() methods
-const response = await client.method(request);
+const response = await client.gamesService.createGame(request);
 ```
 
 **protoc-gen-ts**:
@@ -401,11 +423,39 @@ const response = await client.method(request);
 const response = await client.method(request);
 ```
 
-**Generic Fallback**:
-```typescript
-// Falls back to JSON.stringify/parse
-const response = await client.method(request);
+**Manual Extension Control**:
+```yaml
+# Force specific extension behavior
+- local: protoc-gen-go-wasmjs
+  opt:
+    - ts_import_extension=js    # Force .js imports
+    - ts_import_extension=ts    # Force .ts imports  
+    - ts_import_extension=none  # No extension (TypeScript default)
 ```
+
+## Smart Import Detection
+
+The plugin automatically analyzes your proto files to generate accurate TypeScript imports:
+
+**Before (Hardcoded)**:
+```typescript
+// Everything imported from models_pb regardless of actual source
+import { CreateGameRequest, CreateUserRequest, CreateWorldRequest } from './models_pb';
+```
+
+**After (Smart Detection)**:
+```typescript  
+// Types imported from their actual proto file sources
+import { CreateGameRequest, UpdateGameRequest } from './games_pb';
+import { CreateUserRequest, UpdateUserRequest } from './users_pb';
+import { CreateWorldRequest, UpdateWorldRequest } from './worlds_pb';
+```
+
+**How it works:**
+1. **Proto File Analysis**: For each gRPC method, analyzes `method.Input.Desc.ParentFile().Path()` to determine which `.proto` file defines each type
+2. **Automatic Grouping**: Groups types by source proto file for clean, organized imports
+3. **Extension Detection**: Automatically detects whether protoc-gen-es generated `.ts` or `.js` files and adjusts import paths accordingly
+4. **Zero Configuration**: Works out of the box with any proto file structure - no manual configuration needed
 
 ## Installation & Usage Notes
 

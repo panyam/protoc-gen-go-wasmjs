@@ -26,6 +26,7 @@ func main() {
 	// Core integration options
 	tsGenerator := flagSet.String("ts_generator", "protoc-gen-es", "TypeScript generator used (protoc-gen-es, protoc-gen-ts, etc.)")
 	tsImportPath := flagSet.String("ts_import_path", "./gen/ts", "Path where TypeScript types are generated (for imports)")
+	tsImportExtension := flagSet.String("ts_import_extension", "", "Extension for TypeScript imports (js, ts, none, or empty for auto-detect)")
 	generateWasm := flagSet.Bool("generate_wasm", true, "Generate WASM wrapper (default: true)")
 	generateTypeScript := flagSet.Bool("generate_typescript", true, "Generate TypeScript client (default: true)")
 	wasmExportPath := flagSet.String("wasm_export_path", ".", "Path where WASM wrapper should be generated")
@@ -56,8 +57,9 @@ func main() {
 		// Create configuration from parsed flags
 		config := &generator.Config{
 			// Core integration
-			TSGenerator:    *tsGenerator,
-			TSImportPath:   *tsImportPath,
+			TSGenerator:       *tsGenerator,
+			TSImportPath:      *tsImportPath,
+			TSImportExtension: *tsImportExtension,
 			GenerateWasm:       *generateWasm,
 			GenerateTypeScript: *generateTypeScript,
 			WasmExportPath: *wasmExportPath,
