@@ -138,6 +138,11 @@ func (g *FileGenerator) Generate() error {
 		}
 	}
 
+	// Generate example main.go file
+	if err := g.generateMainExample(templateData); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -167,7 +172,7 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 	return &TemplateData{
 		PackageName:          packageName,
 		SourcePath:           g.file.Desc.Path(),
-		GoPackage:            string(g.file.GoPackageName),
+		GoPackage:            string(g.file.GoImportPath),
 		Services:             services,
 		Config:               g.config,
 		JSNamespace:          g.config.GetDefaultJSNamespace(packageName),

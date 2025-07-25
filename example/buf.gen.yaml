@@ -20,11 +20,48 @@ plugins:
     out: ./gen/ts
     opt: target=ts
 
-  # Generate WASM wrapper and TypeScript client
+  # =================================================================
+  # Multi-Target WASM Generation Examples (Export Pattern)
+  # =================================================================
+  
+  # Default target - All services (backwards compatibility)
   - local: ../bin/protoc-gen-go-wasmjs
-    out: ./gen/wasm
+    out: ./gen/wasm/all-services
     opt:
       - ts_generator=protoc-gen-es
       - ts_import_path=./gen/ts
       - js_structure=namespaced
       - js_namespace=library
+      - module_name=library_all_services
+
+  # User management target - Only UserService (optimized for user pages)
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/user-services
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=./gen/ts
+      - js_structure=namespaced
+      - js_namespace=userModule
+      - module_name=user_services
+      - services=UserService
+
+  # Library target - Only LibraryService (optimized for book browsing)
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/library-services
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=./gen/ts
+      - js_structure=namespaced
+      - js_namespace=libraryModule
+      - module_name=library_services
+      - services=LibraryService
+
+  # Admin target - All services with different namespace (admin dashboard)
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/admin-services
+    opt:
+      - ts_generator=protoc-gen-es
+      - ts_import_path=./gen/ts
+      - js_structure=namespaced
+      - js_namespace=admin
+      - module_name=admin_services

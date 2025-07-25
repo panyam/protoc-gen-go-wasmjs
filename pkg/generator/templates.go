@@ -27,3 +27,6 @@ var typescriptTemplate string
 
 //go:embed templates/build.sh.tmpl
 var buildScriptTemplate string
+
+//go:embed templates/main.go.tmpl
+var mainExampleTemplate string

@@ -110,7 +110,7 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 ## Current Checkpoint: January 25, 2025
 
 ### What We've Accomplished
-**Complete, production-ready WASM generator** with advanced multi-target capabilities:
+**Production-ready WASM generator with multi-target export pattern architecture**:
 
 1. **Core Architecture**: Successfully migrated from MCP tool generation to WASM binding generation
 2. **Template System**: Implemented robust `go:embed` template system with Go WASM, TypeScript client, and build script generation
@@ -121,6 +121,10 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 7. **Multi-File Package Support**: Correctly handles packages with multiple proto files, avoiding duplicate generation
 8. **Relative Path Resolution**: Proper TypeScript import path calculation across complex directory structures
 9. **Real-World Testing**: Successfully generates WASM modules for complex projects with multiple services
+10. **Multi-Target Export Pattern**: Complete implementation with dependency injection support
+11. **Service Filtering**: Per-target service selection for optimized bundle sizes
+12. **Dependency Injection**: Export structs allow full control over service implementations
+13. **Main.go Examples**: Generated templates show proper usage patterns
 
 ### Key Learnings
 1. **Template Approach**: Using `go:embed` with separate template files is much cleaner than string constants
@@ -132,6 +136,9 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 7. **Service Detection**: Early return logic must check all files in a package, not just the primary file
 8. **Multi-Target Need**: Different pages/use cases need different service combinations for optimal bundle sizes
 9. **Dependency Injection**: Generated `main()` functions prevent dependency injection - export pattern is more flexible
+10. **Import vs Copy**: Generated `.wasm.go` files should be imported like protobuf artifacts, not copied by users
+11. **Package Naming**: Generated packages must be importable, not `package main`
+12. **User Workflow**: `main.go.example` provides clear template for proper usage
 
 ### Technical Achievements
 - **Zero breaking changes** during transformation
@@ -142,6 +149,10 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 - **Duplicate file prevention** via package-based generation
 - **Correct relative imports** across complex directory structures
 - **Working end-to-end** with real proto definitions and multiple services
+- **Multi-target generation** with service filtering and custom naming
+- **Export pattern architecture** enabling full dependency injection
+- **Optimized bundles** per page/use case with targeted service selection
+- **User-friendly templates** showing correct import and usage patterns
 
 ## Next Steps
 
@@ -150,9 +161,9 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 - [x] **WASM Compilation**: Verify generated Go code compiles to WASM successfully
 - [x] **TypeScript Integration**: Test with real protoc-gen-es generated types
 - [x] **Multi-Package Support**: Fix duplicate file generation and service detection
-- [ ] **Multi-Target Implementation**: Add support for multiple targets per project
-- [ ] **Export Pattern**: Replace main() generation with flexible Export pattern
-- [ ] **Documentation Update**: Update README for new multi-target workflow
+- [x] **Multi-Target Implementation**: Add support for multiple targets per project
+- [x] **Export Pattern**: Replace main() generation with flexible Export pattern
+- [x] **Documentation Update**: Update README for new multi-target workflow
 
 ### Short Term (Next Month)
 - [ ] **Advanced Multi-Target**: Support complex service combinations and custom naming
@@ -173,47 +184,53 @@ Transform existing MCP generator into a WASM generator that produces browser-com
 - [ ] **Enterprise Features**: Advanced security, authentication, and authorization patterns
 - [ ] **Ecosystem Integration**: Integration with popular frameworks (React, Vue, Angular)
 
-## Upcoming Architecture: Multi-Target + Export Pattern
+## Implemented Architecture: Multi-Target + Export Pattern
 
-### The Problem We're Solving
-Current single-module approach generates one WASM binary with all services, but real applications need:
-- **Page-specific bundles**: User page only needs UsersService, Game page needs GamesService + WorldsService
-- **Dependency injection**: Service implementations need database connections, config, auth clients
-- **Custom initialization**: Each target may need different middleware, endpoints, logging
+### Architecture Overview
+The multi-target export pattern has been successfully implemented and provides:
 
-### The Solution: Multi-Target Export Pattern
+**Multi-Target Generation**: Different WASM bundles per use case with service filtering
 ```yaml
-# Multiple targets in buf.gen.yaml
+# Example: 4 targets from the same proto files
 plugins:
-  # User page target (minimal bundle)
   - local: protoc-gen-go-wasmjs
-    out: ./gen/wasm/user-page
-    opt: [services=UsersService, export_pattern=true]
+    out: ./gen/wasm/user-services
+    opt: [services=UserService, module_name=user_services]
     
-  # Game page target (optimized bundle)  
   - local: protoc-gen-go-wasmjs
-    out: ./gen/wasm/game-page
-    opt: [services=GamesService,WorldsService, export_pattern=true]
+    out: ./gen/wasm/library-services
+    opt: [services=LibraryService, module_name=library_services]
 ```
 
-Generated exports allow full dependency injection:
+**Export Pattern for Dependency Injection**: Generated packages can be imported and customized
 ```go
-// User creates cmd/user-page-wasm/main.go
-exports := &UserPageServicesExports{
-    UsersService: &services.UsersService{
-        DB: postgresDB,
-        Auth: authService,
+// Import generated package
+import "your-project/gen/wasm/user-services"
+
+// Full dependency injection control
+exports := &user_services.User_servicesServicesExports{
+    UserService: &myUserService{
+        db: database,
+        auth: authService,
+        config: appConfig,
     },
 }
 exports.RegisterAPI()
 ```
 
-### Benefits
-- **🎯 Targeted bundles**: Each page gets exactly what it needs
-- **💉 Full DI control**: Inject any dependencies (DB, auth, config)
-- **📦 Smaller bundles**: No unused services in production
-- **🔧 Customizable**: Add middleware, custom endpoints, logging
-- **🧪 Testable**: Easy to mock services for testing
+**Generated Artifacts Per Target**:
+- `{module_name}.wasm.go` - Importable package with exports struct
+- `main.go.example` - Template showing proper usage
+- `{module_name}Client.client.ts` - TypeScript client
+- `build.sh` - Compilation script with wasm_exec.js handling
+
+### Benefits Achieved
+- **Targeted bundles**: Each page gets exactly what it needs
+- **Full DI control**: Inject any dependencies (DB, auth, config)
+- **Smaller bundles**: No unused services in production
+- **Customizable**: Add middleware, custom endpoints, logging
+- **Testable**: Easy to mock services for testing
+- **User-friendly**: Clear templates and import patterns
 
 ## Success Metrics
 - [x] **Generator compiles successfully** without errors
@@ -221,8 +238,8 @@ exports.RegisterAPI()
 - [x] **TypeScript client works with generated types**
 - [x] **Real-world multi-service project works**
 - [x] **Multi-file packages handled correctly**
-- [ ] **Multi-target generation implemented**
-- [ ] **Export pattern with dependency injection**
+- [x] **Multi-target generation implemented**
+- [x] **Export pattern with dependency injection**
 - [ ] **Browser demo demonstrates local-first capability**
 - [ ] **Performance comparable to manual WASM implementation**
 

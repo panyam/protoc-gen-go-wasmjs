@@ -6,14 +6,14 @@ It generates flexible WASM exports and TypeScript clients from your protobuf ser
 
 ## Features
 
-- **🎯 Multi-Target Generation**: Generate optimized WASM bundles per page/use case (user page, admin page, etc.)
-- **💉 Dependency Injection**: Full control over service initialization with database, auth, config injection
-- **📦 Optimized Bundles**: Each target includes only the services it needs for smaller bundle sizes
-- **🌐 Local-First Architecture**: Same service interface runs on server (full database) or browser (local storage)
-- **🔧 Export Pattern**: Generates reusable exports instead of fixed main() for maximum flexibility
-- **📋 TypeScript Integration**: Works with existing protobuf TypeScript generators (protoc-gen-es, protoc-gen-ts)
-- **⚙️ Extensive Customization**: Method filtering, renaming, and service targeting
-- **🔨 Build Pipeline Integration**: Seamless integration with buf and modern protobuf toolchains
+- **Multi-Target Generation**: Generate optimized WASM bundles per page/use case (user page, admin page, etc.)
+- **Dependency Injection**: Full control over service initialization with database, auth, config injection
+- **Optimized Bundles**: Each target includes only the services it needs for smaller bundle sizes
+- **Local-First Architecture**: Same service interface runs on server (full database) or browser (local storage)
+- **Export Pattern**: Generates reusable exports instead of fixed main() for maximum flexibility
+- **TypeScript Integration**: Works with existing protobuf TypeScript generators (protoc-gen-es, protoc-gen-ts)
+- **Extensive Customization**: Method filtering, renaming, and service targeting
+- **Build Pipeline Integration**: Seamless integration with buf and modern protobuf toolchains
 
 ## Quick Start
 
@@ -55,7 +55,6 @@ plugins:
       - ts_generator=protoc-gen-es
       - ts_import_path=web/frontend/gen
       - services=UsersService
-      - export_pattern=true
       - module_name=user_page_services
       - js_namespace=userPage
 
@@ -66,7 +65,6 @@ plugins:
       - ts_generator=protoc-gen-es
       - ts_import_path=web/frontend/gen
       - services=GamesService,WorldsService
-      - export_pattern=true
       - module_name=game_page_services
       - js_namespace=gamePage
 
@@ -76,7 +74,6 @@ plugins:
     opt:
       - ts_generator=protoc-gen-es
       - ts_import_path=web/frontend/gen
-      - export_pattern=true
       - module_name=admin_services
       - js_namespace=admin
 ```
@@ -97,6 +94,61 @@ plugins:
       - ts_import_path=./gen/ts
       - js_structure=namespaced
       - js_namespace=myapp
+```
+
+### Using Generated Exports (Dependency Injection)
+
+After running `buf generate`, each target generates:
+- `{module_name}.wasm.go` - Importable WASM package with export struct
+- `main.go.example` - Template showing how to use the exports
+- `{module_name}Client.client.ts` - TypeScript client
+
+**Step 1**: Copy and customize the `main.go.example`:
+
+```go
+// cmd/user-page-wasm/main.go
+package main
+
+import (
+    "your-project/gen/wasm/user-page/user_page_services"
+    libraryv1 "your-project/gen/go/library/v1"
+)
+
+func main() {
+    // Initialize with your service implementations
+    exports := &user_page_services.User_page_servicesServicesExports{
+        UsersService: &myUserService{
+            db: database,
+            auth: authService,
+            cache: redis,
+        },
+    }
+    
+    // Register JavaScript API
+    exports.RegisterAPI()
+    
+    // Keep WASM running
+    select {}
+}
+```
+
+**Step 2**: Build the WASM binary:
+
+```bash
+cd cmd/user-page-wasm
+GOOS=js GOARCH=wasm go build -o user_page.wasm
+```
+
+**Step 3**: Use in browser with TypeScript client:
+
+```typescript
+import { User_page_servicesClient } from './gen/wasm/user-page/user_page_servicesClient';
+
+const client = new User_page_servicesClient();
+await client.loadWasm('./user_page.wasm');
+
+// Clean API - only UsersService methods available
+const user = await client.usersService.getUser({ id: "123" });
 ```
 
 ### Example Service

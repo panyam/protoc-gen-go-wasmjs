@@ -34,6 +34,7 @@ const (
 	WasmGeneratedFilenameExtension = ".wasm.go"
 	TSGeneratedFilenameExtension   = ".client.ts"
 	BuildScriptFilename            = "build.sh"
+	MainExampleFilename            = "main.go.example"
 )
 
 // generateWasmWrapper generates the Go WASM wrapper file
@@ -93,6 +94,27 @@ func (g *FileGenerator) generateBuildScript(data *TemplateData) error {
 
 	// Parse and execute template
 	tmpl, err := template.New("buildscript").Funcs(templateFuncMap).Parse(buildScriptTemplate)
+	if err != nil {
+		return err
+	}
+
+	return tmpl.Execute(generatedFile, data)
+}
+
+// generateMainExample generates an example main.go file that users can copy and customize
+func (g *FileGenerator) generateMainExample(data *TemplateData) error {
+	if data == nil {
+		return nil // No services to generate
+	}
+
+	// Create main example in WASM export directory
+	filename := filepath.Join(g.config.WasmExportPath, MainExampleFilename)
+
+	// Create generated file
+	generatedFile := g.plugin.NewGeneratedFile(filename, "")
+
+	// Parse and execute template
+	tmpl, err := template.New("mainexample").Funcs(templateFuncMap).Parse(mainExampleTemplate)
 	if err != nil {
 		return err
 	}
