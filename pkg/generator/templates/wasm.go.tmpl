@@ -103,8 +103,9 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 	}
 
 	// Parse request
-	var req {{ .RequestType }}
-	if err := protojson.Unmarshal([]byte(requestJSON), req); err != nil {
+  req := & {{ .RequestType }} {}
+  opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := opts.Unmarshal([]byte(requestJSON), req); err != nil {
 		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
 

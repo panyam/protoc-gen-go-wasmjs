@@ -35,11 +35,11 @@ type TemplateData struct {
 	APIStructure string // namespaced|flat|service_based
 
 	// Import management
-	Imports     []ImportInfo // Unique package imports with aliases
-	PackageMap  map[string]string // Maps full package path to alias
+	Imports    []ImportInfo      // Unique package imports with aliases
+	PackageMap map[string]string // Maps full package path to alias
 
 	// TypeScript import management
-	TSRelativeImportPath string // Relative path from TS export to TS import
+	TSRelativeImportPath string         // Relative path from TS export to TS import
 	TSImports            []TSImportInfo // TypeScript imports with proper extensions
 
 	// Build info
@@ -55,9 +55,9 @@ type ImportInfo struct {
 
 // TSImportInfo represents a TypeScript import for the client
 type TSImportInfo struct {
-	ProtoFile string   // Original proto file (e.g., "games.proto")
-	ImportPath string  // Relative import path with proper extension
-	Types     []string // List of types to import from this file
+	ProtoFile  string   // Original proto file (e.g., "games.proto")
+	ImportPath string   // Relative import path with proper extension
+	Types      []string // List of types to import from this file
 }
 
 // ServiceData represents a gRPC service for template generation
@@ -323,7 +323,7 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImportInfo {
 	// Map from proto file to types used from that file
 	fileToTypes := make(map[string]map[string]bool)
-	
+
 	// We need to go back to the original protogen data to get proto file information
 	// Iterate through all files in the package to collect method types
 	for _, file := range g.packageFiles {
@@ -332,22 +332,22 @@ func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImpor
 			if !g.config.ShouldGenerateService(string(service.Desc.Name())) {
 				continue
 			}
-			
+
 			for _, method := range service.Methods {
 				// Check if this method should be generated
 				if !g.config.ShouldGenerateMethod(string(method.Desc.Name())) {
 					continue
 				}
-				
+
 				// Skip streaming methods
 				if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
 					continue
 				}
-				
+
 				// Get the actual proto files for request and response types
 				requestProtoFile := string(method.Input.Desc.ParentFile().Path())
 				responseProtoFile := string(method.Output.Desc.ParentFile().Path())
-				
+
 				// Initialize maps for proto files if needed
 				if fileToTypes[requestProtoFile] == nil {
 					fileToTypes[requestProtoFile] = make(map[string]bool)
@@ -355,7 +355,7 @@ func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImpor
 				if fileToTypes[responseProtoFile] == nil {
 					fileToTypes[responseProtoFile] = make(map[string]bool)
 				}
-				
+
 				// Add request and response types to their respective proto files
 				requestTSType := string(method.Input.GoIdent.GoName)
 				responseTSType := string(method.Output.GoIdent.GoName)
@@ -364,7 +364,7 @@ func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImpor
 			}
 		}
 	}
-	
+
 	// Convert to TSImportInfo slice
 	var tsImports []TSImportInfo
 	for protoFile, typesMap := range fileToTypes {
@@ -373,17 +373,17 @@ func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImpor
 		for typeName := range typesMap {
 			types = append(types, typeName)
 		}
-		
+
 		// Generate import path for this proto file
 		importPath := g.buildTSImportPath(protoFile)
-		
+
 		tsImports = append(tsImports, TSImportInfo{
 			ProtoFile:  protoFile,
 			ImportPath: importPath,
 			Types:      types,
 		})
 	}
-	
+
 	return tsImports
 }
 
@@ -391,20 +391,20 @@ func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImpor
 func (g *FileGenerator) buildTSImportPath(protoFile string) string {
 	// Remove .proto extension and build the path based on TS generator and detected extension
 	baseName := strings.TrimSuffix(protoFile, ".proto")
-	
+
 	// Calculate relative path from where TS client is generated to TSImportPath
 	relativePath := g.config.calculateRelativePath(g.config.WasmExportPath, g.config.TSImportPath)
-	
+
 	// Auto-detect file extension by checking what actually exists
 	extension := g.detectTSFileExtension(baseName)
-	
+
 	var filename string
 	if extension == "" {
 		filename = baseName + "_pb"
 	} else {
 		filename = baseName + "_pb." + extension
 	}
-	
+
 	return relativePath + "/" + filename
 }
 
@@ -413,14 +413,14 @@ func (g *FileGenerator) detectTSFileExtension(baseName string) string {
 	// This is a simplified version - in a real implementation, we might want to
 	// check the actual filesystem or use configuration hints
 	// For now, we'll use the ts_import_extension if specified, otherwise fall back to heuristics
-	
+
 	if g.config.TSImportExtension != "" {
 		if g.config.TSImportExtension == "none" {
 			return ""
 		}
 		return g.config.TSImportExtension
 	}
-	
+
 	// Auto-detect based on ts_generator (backwards compatibility)
 	switch g.config.TSGenerator {
 	case "protoc-gen-es":
@@ -437,5 +437,5 @@ func (g *FileGenerator) detectTSFileExtension(baseName string) string {
 // getQualifiedTypeName returns the fully qualified Go type name for a message
 func (g *FileGenerator) getQualifiedTypeName(message *protogen.Message, packageAlias string) string {
 	// Return the qualified type name with package alias
-	return "*" + packageAlias + "." + string(message.GoIdent.GoName)
+	return packageAlias + "." + string(message.GoIdent.GoName)
 }
