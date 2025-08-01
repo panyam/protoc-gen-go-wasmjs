@@ -31,6 +31,33 @@ export class WasmError extends Error {
     }
 }
 
+/**
+ * Conversion options for proto to JSON transformation
+ */
+export interface ConversionOptions {
+    /**
+     * Custom handling for oneof fields
+     * If true, attempts to flatten oneof objects for Go compatibility
+     */
+    handleOneofs?: boolean;
+    
+    /**
+     * Custom field name transformer
+     * Can be used to convert between camelCase and snake_case
+     */
+    fieldTransformer?: (fieldName: string) => string;
+    
+    /**
+     * Whether to emit default values for fields
+     */
+    emitDefaults?: boolean;
+    
+    /**
+     * Custom BigInt serialization
+     */
+    bigIntHandler?: (value: bigint) => string | number;
+}
+
 {{- range .Services }}
 /**
  * {{ .Name }} service client interface
@@ -51,13 +78,21 @@ export interface {{ .Name }}Methods {
 export class {{ .ModuleName | title }}Client {
     private wasm: any;
     private wasmLoadPromise: Promise<void> | null = null;
+    private conversionOptions: ConversionOptions = {
+        handleOneofs: true,
+        emitDefaults: false,
+        bigIntHandler: (value: bigint) => value.toString()
+    };
 
     // Service-specific clients
 {{- range .Services }}
     public readonly {{ .JSName }}: {{ .Name }}ClientImpl;
 {{- end }}
 
-    constructor() {
+    constructor(options?: Partial<ConversionOptions>) {
+        if (options) {
+            this.conversionOptions = { ...this.conversionOptions, ...options };
+        }
 {{- range .Services }}
         this.{{ .JSName }} = new {{ .Name }}ClientImpl(this);
 {{- end }}
@@ -93,6 +128,13 @@ export class {{ .ModuleName | title }}Client {
     }
 
     /**
+     * Configure conversion options at runtime
+     */
+    public setConversionOptions(options: Partial<ConversionOptions>): void {
+        this.conversionOptions = { ...this.conversionOptions, ...options };
+    }
+
+    /**
      * Internal method to call WASM functions with type conversion
      */
     public callMethod<TRequest, TResponse>(
@@ -101,19 +143,27 @@ export class {{ .ModuleName | title }}Client {
     ): Promise<TResponse> {
         this.ensureWASMLoaded();
 
-        // Auto-detect conversion methods based on TS generator
-        const toJson = this.detectToJson(request);
-        const fromJson = this.detectFromJson((request as any).constructor);
+        try {
+            // Convert request to JSON with custom handling
+            const jsonReq = this.convertToJson(request);
+            const wasmMethod = this.getWasmMethod(methodPath);
+            const wasmResponse = wasmMethod(JSON.stringify(jsonReq));
 
-        const jsonReq = toJson(request);
-        const wasmMethod = this.getWasmMethod(methodPath);
-        const wasmResponse = wasmMethod(JSON.stringify(jsonReq));
+            if (!wasmResponse.success) {
+                throw new WasmError(wasmResponse.message, methodPath);
+            }
 
-        if (!wasmResponse.success) {
-            throw new WasmError(wasmResponse.message, methodPath);
+            // Convert response from JSON with custom handling
+            return this.convertFromJson(wasmResponse.data, (request as any).constructor);
+        } catch (error) {
+            if (error instanceof WasmError) {
+                throw error;
+            }
+            throw new WasmError(
+                `Proto conversion error: ${error instanceof Error ? error.message : String(error)}`,
+                methodPath
+            );
         }
-
-        return fromJson(wasmResponse.data);
     }
 
     /**
@@ -237,37 +287,174 @@ export class {{ .ModuleName | title }}Client {
     }
 
     /**
+     * Convert request to JSON with custom handling
+     */
+    private convertToJson(request: any): any {
+        // First try native toJson/toJSON methods
+        const nativeMethod = this.detectToJson(request);
+        if (nativeMethod !== this.fallbackToJson) {
+            const result = nativeMethod(request);
+            return this.applyCustomConversions(result, 'request');
+        }
+        
+        // Use fallback with custom conversions
+        return this.applyCustomConversions(
+            this.fallbackToJson(request),
+            'request'
+        );
+    }
+
+    /**
+     * Convert response from JSON with custom handling
+     */
+    private convertFromJson(json: any, constructor: any): any {
+        // Apply custom conversions before native parsing
+        const processedJson = this.applyCustomConversions(json, 'response');
+        
+        // Try native fromJson/fromJSON methods
+        const nativeMethod = this.detectFromJson(constructor);
+        if (nativeMethod !== this.fallbackFromJson) {
+            return nativeMethod(processedJson);
+        }
+        
+        // Use fallback
+        return this.fallbackFromJson(processedJson);
+    }
+
+    /**
+     * Apply custom conversions for better Go compatibility
+     */
+    private applyCustomConversions(obj: any, direction: 'request' | 'response'): any {
+        if (!obj || typeof obj !== 'object') {
+            return obj;
+        }
+
+        const result: any = Array.isArray(obj) ? [] : {};
+
+        for (const [key, value] of Object.entries(obj)) {
+            let processedKey = key;
+            let processedValue = value;
+
+            // Apply field name transformation if configured
+            if (this.conversionOptions.fieldTransformer) {
+                processedKey = this.conversionOptions.fieldTransformer(key);
+            }
+
+            // Handle oneof fields
+            if (this.conversionOptions.handleOneofs && this.isOneofField(obj, key)) {
+                // For oneofs, we might need to flatten the structure
+                if (direction === 'request' && value && typeof value === 'object') {
+                    // Flatten oneof for Go: { oneofField: { actualField: value } } -> { actualField: value }
+                    const oneofEntries = Object.entries(value);
+                    if (oneofEntries.length === 1) {
+                        const [innerKey, innerValue] = oneofEntries[0];
+                        processedKey = innerKey;
+                        processedValue = this.applyCustomConversions(innerValue, direction);
+                    }
+                }
+            } else if (value !== null && typeof value === 'object') {
+                // Recursively process nested objects
+                processedValue = this.applyCustomConversions(value, direction);
+            } else if (typeof value === 'bigint' && direction === 'request') {
+                // Handle BigInt serialization
+                processedValue = this.conversionOptions.bigIntHandler
+                    ? this.conversionOptions.bigIntHandler(value)
+                    : value.toString();
+            } else if (typeof value === 'string' && /^\d+$/.test(value) && direction === 'response') {
+                // Potentially handle BigInt deserialization based on field context
+                // This would need more sophisticated field type tracking
+                processedValue = value;
+            }
+
+            // Handle default values
+            if (!this.conversionOptions.emitDefaults && 
+                direction === 'request' && 
+                this.isDefaultValue(processedValue)) {
+                continue;
+            }
+
+            result[processedKey] = processedValue;
+        }
+
+        return result;
+    }
+
+    /**
+     * Check if a field might be a oneof
+     * This is a heuristic - ideally we'd have type information
+     */
+    private isOneofField(parent: any, fieldName: string): boolean {
+        // Common patterns for oneof fields in protobuf-es:
+        // 1. Field name pattern (e.g., ends with 'Case' or starts with 'oneof')
+        // 2. Object with single property that's not a common type
+        const value = parent[fieldName];
+        
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return false;
+        }
+        
+        const keys = Object.keys(value);
+        // Oneof typically has exactly one field set
+        if (keys.length === 1) {
+            // Additional heuristics could be added here
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if a value is a default value that should be omitted
+     */
+    private isDefaultValue(value: any): boolean {
+        return value === null || 
+               value === undefined || 
+               value === '' || 
+               value === 0 || 
+               value === false ||
+               (Array.isArray(value) && value.length === 0) ||
+               (typeof value === 'object' && Object.keys(value).length === 0);
+    }
+
+    /**
+     * Fallback toJson implementation
+     */
+    private fallbackToJson(obj: any): any {
+        return JSON.parse(JSON.stringify(obj, (key, value) => {
+            if (typeof value === 'bigint') {
+                return this.conversionOptions.bigIntHandler
+                    ? this.conversionOptions.bigIntHandler(value)
+                    : value.toString();
+            }
+            return value;
+        }));
+    }
+
+    /**
+     * Fallback fromJson implementation
+     */
+    private fallbackFromJson(json: any): any {
+        // Simple pass-through for objects that don't have fromJson
+        return json;
+    }
+
+    /**
      * Auto-detect toJson conversion method
      */
     private detectToJson(request: any): (req: any) => any {
 {{- if eq .Config.TSGenerator "protoc-gen-es" }}
         return (request as any).toJson || 
                (request as any).toJSON || 
-               ((r: any) => {
-                 // Handle BigInt serialization for protobuf-es objects
-                 return JSON.parse(JSON.stringify(r, (key, value) => {
-                     return typeof value === 'bigint' ? value.toString() : value;
-                 }));
-             });
+               this.fallbackToJson.bind(this);
 {{- else if eq .Config.TSGenerator "protoc-gen-ts" }}
         return (request as any).toJSON || 
                (request as any).toJson || 
-               ((r: any) => {
-                 // Handle BigInt serialization for protobuf-es objects
-                 return JSON.parse(JSON.stringify(r, (key, value) => {
-                     return typeof value === 'bigint' ? value.toString() : value;
-                 }));
-             });
+               this.fallbackToJson.bind(this);
 {{- else }}
         // Generic fallback
         return (request as any).toJson || 
                (request as any).toJSON || 
-               ((r: any) => {
-                 // Handle BigInt serialization for protobuf-es objects
-                 return JSON.parse(JSON.stringify(r, (key, value) => {
-                     return typeof value === 'bigint' ? value.toString() : value;
-                 }));
-             });
+               this.fallbackToJson.bind(this);
 {{- end }}
     }
 
@@ -278,47 +465,16 @@ export class {{ .ModuleName | title }}Client {
 {{- if eq .Config.TSGenerator "protoc-gen-es" }}
         return constructor.fromJson || 
                constructor.fromJSON || 
-               ((j: any) => {
-                 // Handle BigInt deserialization
-                 if (j && typeof j === 'object') {
-                     const result = { ...j };
-                     if (typeof result.sequenceNum === 'string' && /^\d+$/.test(result.sequenceNum)) {
-                         result.sequenceNum = BigInt(result.sequenceNum);
-                     }
-                     return result;
-                 }
-                 return j;
-             });
+               this.fallbackFromJson.bind(this);
 {{- else if eq .Config.TSGenerator "protoc-gen-ts" }}
         return constructor.fromJSON || 
                constructor.fromJson || 
-               ((j: any) => {
-                 // Handle BigInt deserialization
-                 if (j && typeof j === 'object') {
-                     const result = { ...j };
-                     if (typeof result.sequenceNum === 'string' && /^\d+$/.test(result.sequenceNum)) {
-                         result.sequenceNum = BigInt(result.sequenceNum);
-                     }
-                     return result;
-                 }
-                 return j;
-             });
+               this.fallbackFromJson.bind(this);
 {{- else }}
         // Generic fallback
         return constructor.fromJson || 
                constructor.fromJSON || 
-               ((j: any) => {
-                 // Handle BigInt deserialization
-                 if (j && typeof j === 'object') {
-                     const result = { ...j };
-                     if (typeof result.sequenceNum === 'string' && /^\d+$/.test(result.sequenceNum)) {
-                         result.sequenceNum = BigInt(result.sequenceNum);
-                     }
-                     return result;
-                 }
-                 return j;
-             });
-
+               this.fallbackFromJson.bind(this);
 {{- end }}
     }
 }

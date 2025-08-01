@@ -103,8 +103,11 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 	}
 
 	// Parse request
-  req := & {{ .RequestType }} {}
-  opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	req := &{{ .RequestType }}{}
+	opts := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+		AllowPartial:   true, // Allow partial messages for better compatibility
+	}
 	if err := opts.Unmarshal([]byte(requestJSON), req); err != nil {
 		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
@@ -119,8 +122,13 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 		return createJSResponse(false, fmt.Sprintf("Service call failed: %v", err), nil)
 	}
 
-	// Marshal response
-	responseJSON, err := protojson.Marshal(resp)
+	// Marshal response with options for better TypeScript compatibility
+	marshalOpts := protojson.MarshalOptions{
+		UseProtoNames:   false, // Use JSON names (camelCase) instead of proto names
+		EmitUnpopulated: false, // Don't emit zero values
+		UseEnumNumbers:  false, // Use enum string values
+	}
+	responseJSON, err := marshalOpts.Marshal(resp)
 	if err != nil {
 		return createJSResponse(false, fmt.Sprintf("Failed to marshal response: %v", err), nil)
 	}

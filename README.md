@@ -238,6 +238,23 @@ class LibraryServiceClientImpl {
 }
 ```
 
+## Proto to JSON Conversion
+
+The plugin includes a flexible proto to JSON conversion system to handle differences between Go's protojson and TypeScript protobuf libraries. See [PROTO_CONVERSION.md](PROTO_CONVERSION.md) for detailed documentation.
+
+### Quick Example
+```typescript
+// Create client with custom conversion options
+const client = new MyServicesClient({
+    handleOneofs: true,      // Flatten oneof fields for Go compatibility
+    emitDefaults: false,     // Don't send default values
+    fieldTransformer: (field) => {
+        // Convert camelCase to snake_case if needed
+        return field.replace(/([A-Z])/g, '_$1').toLowerCase();
+    }
+});
+```
+
 ## Configuration Options
 
 ### Core Integration
