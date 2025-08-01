@@ -31,14 +31,62 @@ The enhanced conversion system provides flexible options to handle common compat
 ### Basic Usage
 
 ```typescript
-// Create client with default conversion options
+// Create client with default conversion options (auto mode)
 const client = new MyServicesClient();
 
-// Or customize conversion options
+// Or customize with specific converters
 const client = new MyServicesClient({
-    handleOneofs: true,
+    oneofToJson: 'auto',  // Automatic oneof flattening
+    oneofFromJson: 'auto',
     emitDefaults: false,
     bigIntHandler: (value) => value.toString()
+});
+```
+
+### Custom Oneof Converters
+
+```typescript
+// Custom oneof conversion with full control
+const client = new MyServicesClient({
+    oneofToJson: (oneofValue, context) => {
+        // For protobuf-es style: { case: "fieldName", value: {...} }
+        if (oneofValue.case && oneofValue.value !== undefined) {
+            // Return flattened object for Go
+            return { [oneofValue.case]: oneofValue.value };
+        }
+        return oneofValue;
+    },
+    oneofFromJson: (jsonValue, context) => {
+        // Convert Go's flattened format back to protobuf-es style
+        // This would need the schema to know which field was set
+        return jsonValue; // Complex without schema
+    }
+});
+```
+
+### Schema-Based Conversion
+
+```typescript
+// Provide schema information for better conversion
+const schemas: Map<string, MessageSchema> = new Map([
+    ['GameMove', {
+        name: 'GameMove',
+        fields: {
+            player: { name: 'player', type: 'scalar' },
+            sequenceNum: { name: 'sequenceNum', type: 'scalar' },
+            moveType: { 
+                name: 'moveType', 
+                type: 'oneof',
+                oneofFields: ['moveUnit', 'attackUnit', 'buildBase', 'captureBase']
+            }
+        }
+    }]
+]);
+
+const client = new MyServicesClient({
+    schemaProvider: (messageName) => schemas.get(messageName),
+    oneofToJson: 'auto',  // Will use schema information
+    oneofFromJson: 'auto'
 });
 ```
 
@@ -47,7 +95,6 @@ const client = new MyServicesClient({
 ```typescript
 // Change conversion options at runtime
 client.setConversionOptions({
-    handleOneofs: false,
     fieldTransformer: (field) => {
         // Convert camelCase to snake_case
         return field.replace(/([A-Z])/g, '_$1').toLowerCase();
@@ -57,23 +104,30 @@ client.setConversionOptions({
 
 ## Conversion Options
 
-### `handleOneofs` (boolean)
-When `true`, the system attempts to flatten oneof structures for better Go compatibility.
+### `oneofToJson` (function | 'auto')
+Converter for oneof fields when sending to WASM. Set to `'auto'` for automatic detection and conversion.
 
-**Example:**
+**Auto mode example:**
 ```typescript
-// TypeScript representation
+// Input: protobuf-es style
 const request = {
-    searchCriteria: {  // oneof wrapper
-        userId: "123"   // actual field
+    moveType: {
+        case: "moveUnit",
+        value: { fromQ: -1, fromR: -2, toQ: -1, toR: -1 }
     }
 };
 
-// With handleOneofs: true, converts to:
+// Output: flattened for Go
 {
-    userId: "123"  // flattened
+    moveUnit: { fromQ: -1, fromR: -2, toQ: -1, toR: -1 }
 }
 ```
+
+### `oneofFromJson` (function | 'auto')
+Converter for oneof fields when receiving from WASM. Set to `'auto'` for automatic handling.
+
+### `schemaProvider` (function)
+Optional function that provides message schemas for better conversion accuracy. Returns `MessageSchema` objects with field type information.
 
 ### `fieldTransformer` (function)
 Custom function to transform field names between TypeScript and Go conventions.
@@ -138,8 +192,23 @@ protojson.MarshalOptions{
 If you're getting errors with oneof fields:
 
 ```typescript
-// Enable oneof handling
-client.setConversionOptions({ handleOneofs: true });
+// Check your oneof structure
+console.log('Request:', JSON.stringify(request, null, 2));
+
+// Ensure auto mode is enabled (default)
+client.setConversionOptions({ 
+    oneofToJson: 'auto',
+    oneofFromJson: 'auto'
+});
+
+// Or provide custom converter for complex cases
+client.setConversionOptions({
+    oneofToJson: (oneofValue, context) => {
+        console.log('Converting oneof:', context.fieldName, oneofValue);
+        // Custom logic here
+        return { [oneofValue.case]: oneofValue.value };
+    }
+});
 ```
 
 ### 2. Field Name Mismatches

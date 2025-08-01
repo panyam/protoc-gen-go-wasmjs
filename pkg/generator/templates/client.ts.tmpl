@@ -32,14 +32,65 @@ export class WasmError extends Error {
 }
 
 /**
+ * Protobuf-es style oneof representation
+ */
+export interface OneofValue<T = any> {
+    case: string;
+    value: T;
+}
+
+/**
+ * Field metadata for conversion
+ */
+export interface FieldSchema {
+    name: string;
+    type: 'oneof' | 'message' | 'scalar' | 'repeated';
+    oneofFields?: string[]; // For oneof: list of possible field names
+}
+
+/**
+ * Message schema for conversion
+ */
+export interface MessageSchema {
+    name: string;
+    fields: Record<string, FieldSchema>;
+}
+
+/**
+ * Conversion context passed to converters
+ */
+export interface ConversionContext {
+    fieldName: string;
+    fieldSchema?: FieldSchema;
+    messageSchema?: MessageSchema;
+    path: string[]; // Path to current field for debugging
+}
+
+/**
  * Conversion options for proto to JSON transformation
  */
 export interface ConversionOptions {
     /**
-     * Custom handling for oneof fields
-     * If true, attempts to flatten oneof objects for Go compatibility
+     * Custom converter for oneof fields when sending to WASM (request direction)
+     * Input: { case: string, value: any } or similar
+     * Output: Flattened representation for Go
+     * Set to 'auto' for automatic detection and conversion
      */
-    handleOneofs?: boolean;
+    oneofToJson?: ((oneofValue: any, context: ConversionContext) => any) | 'auto';
+    
+    /**
+     * Custom converter for oneof fields when receiving from WASM (response direction)
+     * Input: Flattened Go representation
+     * Output: { case: string, value: any } or similar for TypeScript
+     * Set to 'auto' for automatic detection and conversion
+     */
+    oneofFromJson?: ((jsonValue: any, context: ConversionContext) => any) | 'auto';
+    
+    /**
+     * Schema provider for messages
+     * Can be used to provide type information for better conversion
+     */
+    schemaProvider?: (messageName: string) => MessageSchema | undefined;
     
     /**
      * Custom field name transformer
@@ -79,7 +130,8 @@ export class {{ .ModuleName | title }}Client {
     private wasm: any;
     private wasmLoadPromise: Promise<void> | null = null;
     private conversionOptions: ConversionOptions = {
-        handleOneofs: true,
+        oneofToJson: 'auto',
+        oneofFromJson: 'auto',
         emitDefaults: false,
         bigIntHandler: (value: bigint) => value.toString()
     };
@@ -139,13 +191,20 @@ export class {{ .ModuleName | title }}Client {
      */
     public callMethod<TRequest, TResponse>(
         methodPath: string,
-        request: TRequest
+        request: TRequest,
+        requestMessageName?: string,
+        responseMessageName?: string
     ): Promise<TResponse> {
         this.ensureWASMLoaded();
 
         try {
+            // Get schema if available
+            const requestSchema = requestMessageName && this.conversionOptions.schemaProvider
+                ? this.conversionOptions.schemaProvider(requestMessageName)
+                : undefined;
+            
             // Convert request to JSON with custom handling
-            const jsonReq = this.convertToJson(request);
+            const jsonReq = this.convertToJson(request, requestSchema);
             const wasmMethod = this.getWasmMethod(methodPath);
             const wasmResponse = wasmMethod(JSON.stringify(jsonReq));
 
@@ -153,8 +212,13 @@ export class {{ .ModuleName | title }}Client {
                 throw new WasmError(wasmResponse.message, methodPath);
             }
 
+            // Get response schema if available
+            const responseSchema = responseMessageName && this.conversionOptions.schemaProvider
+                ? this.conversionOptions.schemaProvider(responseMessageName)
+                : undefined;
+
             // Convert response from JSON with custom handling
-            return this.convertFromJson(wasmResponse.data, (request as any).constructor);
+            return this.convertFromJson(wasmResponse.data, (request as any).constructor, responseSchema);
         } catch (error) {
             if (error instanceof WasmError) {
                 throw error;
@@ -289,27 +353,28 @@ export class {{ .ModuleName | title }}Client {
     /**
      * Convert request to JSON with custom handling
      */
-    private convertToJson(request: any): any {
+    private convertToJson(request: any, schema?: MessageSchema): any {
         // First try native toJson/toJSON methods
         const nativeMethod = this.detectToJson(request);
         if (nativeMethod !== this.fallbackToJson) {
             const result = nativeMethod(request);
-            return this.applyCustomConversions(result, 'request');
+            return this.applyCustomConversions(result, 'request', schema);
         }
         
         // Use fallback with custom conversions
         return this.applyCustomConversions(
             this.fallbackToJson(request),
-            'request'
+            'request',
+            schema
         );
     }
 
     /**
      * Convert response from JSON with custom handling
      */
-    private convertFromJson(json: any, constructor: any): any {
+    private convertFromJson(json: any, constructor: any, schema?: MessageSchema): any {
         // Apply custom conversions before native parsing
-        const processedJson = this.applyCustomConversions(json, 'response');
+        const processedJson = this.applyCustomConversions(json, 'response', schema);
         
         // Try native fromJson/fromJSON methods
         const nativeMethod = this.detectFromJson(constructor);
@@ -324,7 +389,12 @@ export class {{ .ModuleName | title }}Client {
     /**
      * Apply custom conversions for better Go compatibility
      */
-    private applyCustomConversions(obj: any, direction: 'request' | 'response'): any {
+    private applyCustomConversions(
+        obj: any, 
+        direction: 'request' | 'response', 
+        schema?: MessageSchema,
+        path: string[] = []
+    ): any {
         if (!obj || typeof obj !== 'object') {
             return obj;
         }
@@ -334,6 +404,10 @@ export class {{ .ModuleName | title }}Client {
         for (const [key, value] of Object.entries(obj)) {
             let processedKey = key;
             let processedValue = value;
+            const currentPath = [...path, key];
+
+            // Get field schema if available
+            const fieldSchema = schema?.fields[key];
 
             // Apply field name transformation if configured
             if (this.conversionOptions.fieldTransformer) {
@@ -341,20 +415,56 @@ export class {{ .ModuleName | title }}Client {
             }
 
             // Handle oneof fields
-            if (this.conversionOptions.handleOneofs && this.isOneofField(obj, key)) {
-                // For oneofs, we might need to flatten the structure
-                if (direction === 'request' && value && typeof value === 'object') {
-                    // Flatten oneof for Go: { oneofField: { actualField: value } } -> { actualField: value }
-                    const oneofEntries = Object.entries(value);
-                    if (oneofEntries.length === 1) {
-                        const [innerKey, innerValue] = oneofEntries[0];
-                        processedKey = innerKey;
-                        processedValue = this.applyCustomConversions(innerValue, direction);
+            if (fieldSchema?.type === 'oneof' || (!fieldSchema && this.isOneofField(obj, key))) {
+                const context: ConversionContext = {
+                    fieldName: key,
+                    fieldSchema,
+                    messageSchema: schema,
+                    path: currentPath
+                };
+
+                if (direction === 'request' && this.conversionOptions.oneofToJson) {
+                    if (this.conversionOptions.oneofToJson === 'auto') {
+                        // Auto conversion: flatten { case: "fieldName", value: {...} } to { fieldName: {...} }
+                        if (this.isOneofValue(value)) {
+                            processedKey = value.case;
+                            processedValue = this.applyCustomConversions(value.value, direction, undefined, currentPath);
+                        } else if (value && typeof value === 'object' && Object.keys(value).length === 1) {
+                            // Already flattened or simple oneof
+                            const [innerKey, innerValue] = Object.entries(value)[0];
+                            processedKey = innerKey;
+                            processedValue = this.applyCustomConversions(innerValue, direction, undefined, currentPath);
+                        }
+                    } else {
+                        // Custom converter
+                        const converted = this.conversionOptions.oneofToJson(value, context);
+                        if (converted && typeof converted === 'object' && !Array.isArray(converted)) {
+                            // If converter returns an object with multiple fields, merge it
+                            for (const [convKey, convValue] of Object.entries(converted)) {
+                                result[convKey] = this.applyCustomConversions(convValue, direction, undefined, [...path, convKey]);
+                            }
+                            continue; // Skip normal assignment
+                        } else {
+                            processedValue = converted;
+                        }
+                    }
+                } else if (direction === 'response' && this.conversionOptions.oneofFromJson) {
+                    if (this.conversionOptions.oneofFromJson === 'auto') {
+                        // Auto conversion for response is tricky without knowing which field is set
+                        // For now, pass through and let the TypeScript protobuf library handle it
+                        processedValue = this.applyCustomConversions(value, direction, undefined, currentPath);
+                    } else {
+                        // Custom converter
+                        processedValue = this.conversionOptions.oneofFromJson(value, context);
                     }
                 }
             } else if (value !== null && typeof value === 'object') {
                 // Recursively process nested objects
-                processedValue = this.applyCustomConversions(value, direction);
+                // For nested messages, we might have schema info
+                const nestedSchema = fieldSchema?.type === 'message' && this.conversionOptions.schemaProvider
+                    ? this.conversionOptions.schemaProvider(fieldSchema.name)
+                    : undefined;
+                processedValue = this.applyCustomConversions(value, direction, nestedSchema, currentPath);
             } else if (typeof value === 'bigint' && direction === 'request') {
                 // Handle BigInt serialization
                 processedValue = this.conversionOptions.bigIntHandler
@@ -380,23 +490,40 @@ export class {{ .ModuleName | title }}Client {
     }
 
     /**
+     * Type guard for protobuf-es oneof values
+     */
+    private isOneofValue(value: any): value is OneofValue {
+        return value && 
+               typeof value === 'object' && 
+               !Array.isArray(value) &&
+               'case' in value && 
+               'value' in value &&
+               typeof value.case === 'string';
+    }
+
+    /**
      * Check if a field might be a oneof
      * This is a heuristic - ideally we'd have type information
      */
     private isOneofField(parent: any, fieldName: string): boolean {
         // Common patterns for oneof fields in protobuf-es:
-        // 1. Field name pattern (e.g., ends with 'Case' or starts with 'oneof')
-        // 2. Object with single property that's not a common type
+        // 1. Has 'case' and 'value' properties (protobuf-es pattern)
+        // 2. Field name pattern (e.g., ends with 'Case' or starts with 'oneof')
         const value = parent[fieldName];
         
         if (!value || typeof value !== 'object' || Array.isArray(value)) {
             return false;
         }
         
+        // Check for protobuf-es oneof pattern using type guard
+        if (this.isOneofValue(value)) {
+            return true;
+        }
+        
+        // Legacy check: object with single property (older pattern or already flattened)
         const keys = Object.keys(value);
-        // Oneof typically has exactly one field set
         if (keys.length === 1) {
-            // Additional heuristics could be added here
+            // This might be a simple oneof with just the active field
             return true;
         }
         
@@ -490,13 +617,13 @@ class {{ .Name }}ClientImpl implements {{ .Name }}Methods {
 
 	{{- range .Methods }}
 		{{- if .ShouldGenerate }}
-    async {{ .JSName }}(request: {{ .Name }}Request): Promise<{{ .Name }}Response> {
+    async {{ .JSName }}(request: {{ .RequestTSType }}): Promise<{{ .ResponseTSType }}> {
 		{{- if eq $.APIStructure "namespaced" }}
-        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
+        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request, '{{ .RequestTSType }}', '{{ .ResponseTSType }}');
 		{{- else if eq $.APIStructure "flat" }}
-        return this.parent.callMethod('{{ $.JSNamespace }}{{ .Name }}', request);
+        return this.parent.callMethod('{{ $.JSNamespace }}{{ .Name }}', request, '{{ .RequestTSType }}', '{{ .ResponseTSType }}');
 		{{- else if eq $.APIStructure "service_based" }}
-        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
+        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request, '{{ .RequestTSType }}', '{{ .ResponseTSType }}');
 		{{- end }}
     }
 		{{- end }}
