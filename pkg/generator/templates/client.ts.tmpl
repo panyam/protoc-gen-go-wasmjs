@@ -243,16 +243,31 @@ export class {{ .ModuleName | title }}Client {
 {{- if eq .Config.TSGenerator "protoc-gen-es" }}
         return (request as any).toJson || 
                (request as any).toJSON || 
-               ((r: any) => JSON.parse(JSON.stringify(r)));
+               ((r: any) => {
+                 // Handle BigInt serialization for protobuf-es objects
+                 return JSON.parse(JSON.stringify(r, (key, value) => {
+                     return typeof value === 'bigint' ? value.toString() : value;
+                 }));
+             });
 {{- else if eq .Config.TSGenerator "protoc-gen-ts" }}
         return (request as any).toJSON || 
                (request as any).toJson || 
-               ((r: any) => JSON.parse(JSON.stringify(r)));
+               ((r: any) => {
+                 // Handle BigInt serialization for protobuf-es objects
+                 return JSON.parse(JSON.stringify(r, (key, value) => {
+                     return typeof value === 'bigint' ? value.toString() : value;
+                 }));
+             });
 {{- else }}
         // Generic fallback
         return (request as any).toJson || 
                (request as any).toJSON || 
-               ((r: any) => JSON.parse(JSON.stringify(r)));
+               ((r: any) => {
+                 // Handle BigInt serialization for protobuf-es objects
+                 return JSON.parse(JSON.stringify(r, (key, value) => {
+                     return typeof value === 'bigint' ? value.toString() : value;
+                 }));
+             });
 {{- end }}
     }
 
@@ -263,16 +278,47 @@ export class {{ .ModuleName | title }}Client {
 {{- if eq .Config.TSGenerator "protoc-gen-es" }}
         return constructor.fromJson || 
                constructor.fromJSON || 
-               ((j: any) => j);
+               ((j: any) => {
+                 // Handle BigInt deserialization
+                 if (j && typeof j === 'object') {
+                     const result = { ...j };
+                     if (typeof result.sequenceNum === 'string' && /^\d+$/.test(result.sequenceNum)) {
+                         result.sequenceNum = BigInt(result.sequenceNum);
+                     }
+                     return result;
+                 }
+                 return j;
+             });
 {{- else if eq .Config.TSGenerator "protoc-gen-ts" }}
         return constructor.fromJSON || 
                constructor.fromJson || 
-               ((j: any) => j);
+               ((j: any) => {
+                 // Handle BigInt deserialization
+                 if (j && typeof j === 'object') {
+                     const result = { ...j };
+                     if (typeof result.sequenceNum === 'string' && /^\d+$/.test(result.sequenceNum)) {
+                         result.sequenceNum = BigInt(result.sequenceNum);
+                     }
+                     return result;
+                 }
+                 return j;
+             });
 {{- else }}
         // Generic fallback
         return constructor.fromJson || 
                constructor.fromJSON || 
-               ((j: any) => j);
+               ((j: any) => {
+                 // Handle BigInt deserialization
+                 if (j && typeof j === 'object') {
+                     const result = { ...j };
+                     if (typeof result.sequenceNum === 'string' && /^\d+$/.test(result.sequenceNum)) {
+                         result.sequenceNum = BigInt(result.sequenceNum);
+                     }
+                     return result;
+                 }
+                 return j;
+             });
+
 {{- end }}
     }
 }
