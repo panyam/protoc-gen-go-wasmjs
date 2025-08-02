@@ -5,139 +5,314 @@ import { Book as BookInterface, User as UserInterface, FindBooksRequest as FindB
 import { Book as ConcreteBook, User as ConcreteUser, FindBooksRequest as ConcreteFindBooksRequest, FindBooksResponse as ConcreteFindBooksResponse, CheckoutBookRequest as ConcreteCheckoutBookRequest, CheckoutBookResponse as ConcreteCheckoutBookResponse, ReturnBookRequest as ConcreteReturnBookRequest, ReturnBookResponse as ConcreteReturnBookResponse, GetUserBooksRequest as ConcreteGetUserBooksRequest, GetUserBooksResponse as ConcreteGetUserBooksResponse, GetUserRequest as ConcreteGetUserRequest, GetUserResponse as ConcreteGetUserResponse, CreateUserRequest as ConcreteCreateUserRequest, CreateUserResponse as ConcreteCreateUserResponse } from "./library_models";
 
 
+/**
+ * Factory result interface for enhanced factory methods
+ */
+export interface FactoryResult<T> {
+  instance: T;
+  fullyLoaded: boolean;
+}
+
+/**
+ * Enhanced factory with context-aware object construction
+ */
 export class LibraryV1Factory {
-  newBook = (data?: any): BookInterface => {
+
+  /**
+   * Enhanced factory method for Book
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newBook = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<BookInterface> => {
     const out = new ConcreteBook();
-    if (data) {
-      out.id = data.id ?? "";
-      out.title = data.title ?? "";
-      out.author = data.author ?? "";
-      out.isbn = data.isbn ?? "";
-      out.year = data.year ?? 0;
-      out.genre = data.genre ?? "";
-      out.available = data.available ?? false;
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newUser = (data?: any): UserInterface => {
+  /**
+   * Enhanced factory method for User
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newUser = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<UserInterface> => {
     const out = new ConcreteUser();
-    if (data) {
-      out.id = data.id ?? "";
-      out.name = data.name ?? "";
-      out.email = data.email ?? "";
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newFindBooksRequest = (data?: any): FindBooksRequestInterface => {
+  /**
+   * Enhanced factory method for FindBooksRequest
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newFindBooksRequest = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<FindBooksRequestInterface> => {
     const out = new ConcreteFindBooksRequest();
-    if (data) {
-      out.query = data.query ?? "";
-      out.genre = data.genre ?? "";
-      out.limit = data.limit ?? 0;
-      out.availableOnly = data.availableOnly ?? false;
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newFindBooksResponse = (data?: any): FindBooksResponseInterface => {
+  /**
+   * Enhanced factory method for FindBooksResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newFindBooksResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<FindBooksResponseInterface> => {
     const out = new ConcreteFindBooksResponse();
-    if (data) {
-      if (data.books && Array.isArray(data.books)) {
-        out.books = data.books.map((item: any) => this.newBook(item));
-      }
-      out.totalCount = data.totalCount ?? 0;
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newCheckoutBookRequest = (data?: any): CheckoutBookRequestInterface => {
+  /**
+   * Enhanced factory method for CheckoutBookRequest
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newCheckoutBookRequest = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<CheckoutBookRequestInterface> => {
     const out = new ConcreteCheckoutBookRequest();
-    if (data) {
-      out.bookId = data.bookId ?? "";
-      out.userId = data.userId ?? "";
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newCheckoutBookResponse = (data?: any): CheckoutBookResponseInterface => {
+  /**
+   * Enhanced factory method for CheckoutBookResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newCheckoutBookResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<CheckoutBookResponseInterface> => {
     const out = new ConcreteCheckoutBookResponse();
-    if (data) {
-      out.success = data.success ?? false;
-      out.message = data.message ?? "";
-      out.dueDate = data.dueDate ?? "";
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newReturnBookRequest = (data?: any): ReturnBookRequestInterface => {
+  /**
+   * Enhanced factory method for ReturnBookRequest
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newReturnBookRequest = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<ReturnBookRequestInterface> => {
     const out = new ConcreteReturnBookRequest();
-    if (data) {
-      out.bookId = data.bookId ?? "";
-      out.userId = data.userId ?? "";
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newReturnBookResponse = (data?: any): ReturnBookResponseInterface => {
+  /**
+   * Enhanced factory method for ReturnBookResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newReturnBookResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<ReturnBookResponseInterface> => {
     const out = new ConcreteReturnBookResponse();
-    if (data) {
-      out.success = data.success ?? false;
-      out.message = data.message ?? "";
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newGetUserBooksRequest = (data?: any): GetUserBooksRequestInterface => {
+  /**
+   * Enhanced factory method for GetUserBooksRequest
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newGetUserBooksRequest = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<GetUserBooksRequestInterface> => {
     const out = new ConcreteGetUserBooksRequest();
-    if (data) {
-      out.userId = data.userId ?? "";
-    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-  newGetUserBooksResponse = (data?: any): GetUserBooksResponseInterface => {
+  /**
+   * Enhanced factory method for GetUserBooksResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newGetUserBooksResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<GetUserBooksResponseInterface> => {
     const out = new ConcreteGetUserBooksResponse();
-    if (data) {
-      if (data.books && Array.isArray(data.books)) {
-        out.books = data.books.map((item: any) => this.newBook(item));
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+  /**
+   * Enhanced factory method for GetUserRequest
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newGetUserRequest = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<GetUserRequestInterface> => {
+    const out = new ConcreteGetUserRequest();
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+  /**
+   * Enhanced factory method for GetUserResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newGetUserResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<GetUserResponseInterface> => {
+    const out = new ConcreteGetUserResponse();
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+  /**
+   * Enhanced factory method for CreateUserRequest
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newCreateUserRequest = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<CreateUserRequestInterface> => {
+    const out = new ConcreteCreateUserRequest();
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+  /**
+   * Enhanced factory method for CreateUserResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newCreateUserResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<CreateUserResponseInterface> => {
+    const out = new ConcreteCreateUserResponse();
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+
+
+
+
+  /**
+   * Generic object deserializer that respects factory decisions
+   */
+  protected deserializeObject(instance: any, data: any): any {
+    if (!data || typeof data !== 'object') return instance;
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== null && value !== undefined) {
+        instance[key] = value;
       }
     }
-    return out;
+    return instance;
   }
-
-  newGetUserRequest = (data?: any): GetUserRequestInterface => {
-    const out = new ConcreteGetUserRequest();
-    if (data) {
-      out.userId = data.userId ?? "";
-    }
-    return out;
-  }
-
-  newGetUserResponse = (data?: any): GetUserResponseInterface => {
-    const out = new ConcreteGetUserResponse();
-    if (data) {
-      if (data.user) out.user = this.newUser(data.user);
-    }
-    return out;
-  }
-
-  newCreateUserRequest = (data?: any): CreateUserRequestInterface => {
-    const out = new ConcreteCreateUserRequest();
-    if (data) {
-      out.name = data.name ?? "";
-      out.email = data.email ?? "";
-    }
-    return out;
-  }
-
-  newCreateUserResponse = (data?: any): CreateUserResponseInterface => {
-    const out = new ConcreteCreateUserResponse();
-    if (data) {
-      if (data.user) out.user = this.newUser(data.user);
-    }
-    return out;
-  }
-
 }

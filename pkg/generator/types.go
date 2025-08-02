@@ -341,6 +341,7 @@ type MessageInfo struct {
 	IsNested     bool        // Whether this is a nested message
 	Comment      string      // Leading comment from proto
 	MethodName   string      // Factory method name (e.g., "newBook") - for template use
+	OneofGroups  []string    // List of oneof group names in this message
 }
 
 // FieldInfo represents a proto field for TypeScript generation
@@ -355,9 +356,11 @@ type FieldInfo struct {
 	IsOptional   bool      // Whether this is an optional field
 	IsOneof      bool      // Whether this field is part of a oneof
 	OneofName    string    // Name of the oneof group (if applicable)
+	OneofGroup   string    // Alias for OneofName (for template compatibility)
 	MessageType  string    // For message fields, the message type name
 	DefaultValue string    // Default value for the field
 	Comment      string    // Field comment from proto
+	ProtoFieldID int32     // Proto field number (e.g., text_query = 1)
 }
 
 // collectAllMessages collects all message definitions from package files
@@ -390,6 +393,17 @@ func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protog
 		fields = append(fields, fieldInfo)
 	}
 	
+	// Collect oneof groups
+	var oneofGroups []string
+	oneofMap := make(map[string]bool)
+	for _, oneof := range message.Oneofs {
+		oneofName := string(oneof.Desc.Name())
+		if !oneofMap[oneofName] {
+			oneofGroups = append(oneofGroups, oneofName)
+			oneofMap[oneofName] = true
+		}
+	}
+	
 	return MessageInfo{
 		Name:        messageName,
 		GoName:      string(message.GoIdent.GoName),
@@ -399,6 +413,7 @@ func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protog
 		ProtoFile:   file.Desc.Path(),
 		IsNested:    isNested,
 		Comment:     strings.TrimSpace(string(message.Comments.Leading)),
+		OneofGroups: oneofGroups,
 	}
 }
 
@@ -435,11 +450,21 @@ func (g *FileGenerator) buildFieldInfo(field *protogen.Field) FieldInfo {
 		oneofName = string(field.Oneof.Desc.Name())
 	}
 	
-	// For message types, get the message type name
+	// For message types, get the fully qualified message type name
 	messageType := ""
 	if field.Message != nil {
-		messageType = string(field.Message.Desc.Name())
+		// Get the full package name + message name
+		packageName := string(field.Message.Desc.ParentFile().Package())
+		messageName := string(field.Message.Desc.Name())
+		if packageName != "" {
+			messageType = packageName + "." + messageName
+		} else {
+			messageType = messageName
+		}
 	}
+	
+	// Get proto field number
+	protoFieldID := int32(field.Desc.Number())
 	
 	return FieldInfo{
 		Name:         fieldName,
@@ -452,9 +477,11 @@ func (g *FileGenerator) buildFieldInfo(field *protogen.Field) FieldInfo {
 		IsOptional:   field.Desc.HasOptionalKeyword(),
 		IsOneof:      isOneof,
 		OneofName:    oneofName,
+		OneofGroup:   oneofName, // Alias for template compatibility
 		MessageType:  messageType,
 		DefaultValue: g.getDefaultValue(field),
 		Comment:      strings.TrimSpace(string(field.Comments.Leading)),
+		ProtoFieldID: protoFieldID,
 	}
 }
 

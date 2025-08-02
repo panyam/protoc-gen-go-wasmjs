@@ -54,7 +54,7 @@ func NewTSGenerator(fileGen *FileGenerator) *TSGenerator {
 	return &TSGenerator{fileGen: fileGen}
 }
 
-// GenerateAll generates all TypeScript artifacts (interfaces, models, factory)
+// GenerateAll generates all TypeScript artifacts (interfaces, models, factory, schemas)
 func (ts *TSGenerator) GenerateAll(messages []MessageInfo, packagePath string) error {
 	if len(messages) == 0 {
 		return nil
@@ -72,6 +72,11 @@ func (ts *TSGenerator) GenerateAll(messages []MessageInfo, packagePath string) e
 	
 	// Generate factory
 	if err := ts.generateFactory(messages, packagePath); err != nil {
+		return err
+	}
+	
+	// Generate schemas
+	if err := ts.generateSchemas(messages, packagePath); err != nil {
 		return err
 	}
 	
@@ -109,6 +114,20 @@ func (ts *TSGenerator) generateModels(messages []MessageInfo, packagePath string
 // generateFactory generates a factory file for creating message instances
 func (ts *TSGenerator) generateFactory(messages []MessageInfo, packagePath string) error {
 	return ts.generateFactoryFile(messages, packagePath)
+}
+
+// generateSchemas generates schema files for runtime type information
+func (ts *TSGenerator) generateSchemas(messages []MessageInfo, packagePath string) error {
+	// Group messages by proto file
+	fileMessages := ts.groupMessagesByProtoFile(messages)
+	
+	for protoFile, msgs := range fileMessages {
+		if err := ts.generateSchemaFile(protoFile, msgs, packagePath); err != nil {
+			return err
+		}
+	}
+	
+	return nil
 }
 
 // groupMessagesByProtoFile groups messages by their source proto file
@@ -170,6 +189,25 @@ func (ts *TSGenerator) generateFactoryFile(messages []MessageInfo, packagePath s
 	
 	// Generate factory content
 	content, err := ts.generateFactoryContent(messages)
+	if err != nil {
+		return err
+	}
+	
+	_, err = generatedFile.Write([]byte(content))
+	return err
+}
+
+// generateSchemaFile generates a TypeScript schema file for messages from one proto file
+func (ts *TSGenerator) generateSchemaFile(protoFile string, messages []MessageInfo, packagePath string) error {
+	// Create filename: proto/path/file.proto -> proto_path_file_schemas.ts
+	baseName := ts.getBaseFileName(protoFile)
+	filename := filepath.Join(packagePath, baseName+"_schemas.ts")
+	
+	// Create generated file
+	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
+	
+	// Generate TypeScript schemas
+	content, err := ts.generateSchemaContent(messages, baseName)
 	if err != nil {
 		return err
 	}
@@ -276,6 +314,46 @@ func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo) (string, e
 	return result.String(), nil
 }
 
+// SchemaTemplateData holds data for schema template generation
+type SchemaTemplateData struct {
+	Messages        []MessageInfo
+	BaseName        string
+	PackageName     string
+	RegistryName    string
+}
+
+// generateSchemaContent generates the TypeScript schema file content using templates
+func (ts *TSGenerator) generateSchemaContent(messages []MessageInfo, baseName string) (string, error) {
+	// Get package name from first message (all messages in a file share the same package)
+	packageName := ""
+	if len(messages) > 0 {
+		packageName = messages[0].PackageName
+	}
+	
+	// Generate registry name from package (e.g., "library.v1" -> "LibraryV1SchemaRegistry")
+	registryName := ts.buildSchemaRegistryName(packageName)
+	
+	data := SchemaTemplateData{
+		Messages:     messages,
+		BaseName:     baseName,
+		PackageName:  packageName,
+		RegistryName: registryName,
+	}
+	
+	tmpl, err := template.New("schemas").Funcs(templateFuncMap).Parse(schemasTemplate)
+	if err != nil {
+		return "", err
+	}
+	
+	var result strings.Builder
+	err = tmpl.Execute(&result, data)
+	if err != nil {
+		return "", err
+	}
+	
+	return result.String(), nil
+}
+
 // buildFactoryName converts package name to factory class name
 func (ts *TSGenerator) buildFactoryName(packageName string) string {
 	parts := strings.Split(packageName, ".")
@@ -283,4 +361,13 @@ func (ts *TSGenerator) buildFactoryName(packageName string) string {
 		parts[i] = strings.Title(part)
 	}
 	return strings.Join(parts, "") + "Factory"
+}
+
+// buildSchemaRegistryName converts package name to schema registry name
+func (ts *TSGenerator) buildSchemaRegistryName(packageName string) string {
+	parts := strings.Split(packageName, ".")
+	for i, part := range parts {
+		parts[i] = strings.Title(part)
+	}
+	return strings.Join(parts, "") + "SchemaRegistry"
 }

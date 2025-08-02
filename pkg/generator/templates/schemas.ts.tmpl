@@ -1,0 +1,108 @@
+{{/* Schema template for TypeScript schema generation */}}
+// Generated TypeScript schemas from proto file
+// DO NOT EDIT - This file is auto-generated
+
+/**
+ * Field type enumeration for proto field types
+ */
+export enum FieldType {
+  STRING = "string",
+  NUMBER = "number", 
+  BOOLEAN = "boolean",
+  MESSAGE = "message",
+  REPEATED = "repeated",
+  MAP = "map",
+  ONEOF = "oneof"
+}
+
+/**
+ * Schema interface for field definitions
+ */
+export interface FieldSchema {
+  name: string;
+  type: FieldType;
+  id: number; // Proto field number (e.g., text_query = 1)
+  messageType?: string; // For MESSAGE type fields
+  repeated?: boolean; // For array fields
+  mapKeyType?: FieldType; // For MAP type fields
+  mapValueType?: FieldType | string; // For MAP type fields
+  oneofGroup?: string; // For ONEOF fields
+  optional?: boolean;
+}
+
+/**
+ * Message schema interface
+ */
+export interface MessageSchema {
+  name: string;
+  fields: FieldSchema[];
+  oneofGroups?: string[]; // List of oneof group names
+}
+
+{{range .Messages}}
+/**
+ * Schema for {{.TSName}} message
+ */
+export const {{.TSName}}Schema: MessageSchema = {
+  name: "{{.TSName}}",
+  fields: [
+{{range .Fields}}    {
+      name: "{{.TSName}}",
+      type: {{if .MessageType}}FieldType.MESSAGE{{else if .IsRepeated}}FieldType.REPEATED{{else if eq .TSType "string"}}FieldType.STRING{{else if eq .TSType "number"}}FieldType.NUMBER{{else if eq .TSType "boolean"}}FieldType.BOOLEAN{{else}}FieldType.STRING{{end}},
+      id: {{if .ProtoFieldID}}{{.ProtoFieldID}}{{else}}-1{{end}},
+{{if .MessageType}}      messageType: "{{.MessageType}}",
+{{end}}{{if .IsRepeated}}      repeated: true,
+{{end}}{{if .OneofGroup}}      oneofGroup: "{{.OneofGroup}}",
+{{end}}{{if .IsOptional}}      optional: true,
+{{end}}    },
+{{end}}  ],
+{{if .OneofGroups}}  oneofGroups: [{{range $i, $group := .OneofGroups}}{{if $i}}, {{end}}"{{$group}}"{{end}}],
+{{end}}};
+
+{{end}}
+
+/**
+ * Package-scoped schema registry for {{.PackageName}}
+ */
+export const {{.RegistryName}}: Record<string, MessageSchema> = {
+{{range .Messages}}  "{{.PackageName}}.{{.TSName}}": {{.TSName}}Schema,
+{{end}}};
+
+/**
+ * Get schema for a message type from {{.PackageName}} package
+ */
+export function getSchema(messageType: string): MessageSchema | undefined {
+  return {{.RegistryName}}[messageType];
+}
+
+/**
+ * Get field schema by name from {{.PackageName}} package
+ */
+export function getFieldSchema(messageType: string, fieldName: string): FieldSchema | undefined {
+  const schema = getSchema(messageType);
+  return schema?.fields.find(field => field.name === fieldName);
+}
+
+/**
+ * Get field schema by proto field ID from {{.PackageName}} package
+ */
+export function getFieldSchemaById(messageType: string, fieldId: number): FieldSchema | undefined {
+  const schema = getSchema(messageType);
+  return schema?.fields.find(field => field.id === fieldId);
+}
+
+/**
+ * Check if field is part of a oneof group in {{.PackageName}} package
+ */
+export function isOneofField(messageType: string, fieldName: string): boolean {
+  const fieldSchema = getFieldSchema(messageType, fieldName);
+  return fieldSchema?.oneofGroup !== undefined;
+}
+
+/**
+ * Get all fields in a oneof group from {{.PackageName}} package
+ */
+export function getOneofFields(messageType: string, oneofGroup: string): FieldSchema[] {
+  const schema = getSchema(messageType);
+  return schema?.fields.filter(field => field.oneofGroup === oneofGroup) || [];
+}

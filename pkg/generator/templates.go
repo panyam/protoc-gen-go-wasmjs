@@ -40,3 +40,6 @@ var modelsTemplate string
 
 //go:embed templates/factory.ts.tmpl
 var factoryTemplate string
+
+//go:embed templates/schemas.ts.tmpl
+var schemasTemplate string

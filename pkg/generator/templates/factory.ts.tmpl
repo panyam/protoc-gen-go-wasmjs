@@ -5,15 +5,61 @@
 {{range $file, $models := .ModelImportsByFile}}import { {{range $i, $model := $models}}{{if $i}}, {{end}}{{$model}}{{end}} } from "./{{$file}}_models";
 {{end}}
 
+/**
+ * Factory result interface for enhanced factory methods
+ */
+export interface FactoryResult<T> {
+  instance: T;
+  fullyLoaded: boolean;
+}
+
+/**
+ * Enhanced factory with context-aware object construction
+ */
 export class {{.FactoryName}} {
-{{range .Messages}}  {{.MethodName}} = (data?: any): {{.TSName}}Interface => {
+
+{{range .Messages}}  /**
+   * Enhanced factory method for {{.TSName}}
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  {{.MethodName}} = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<{{.TSName}}Interface> => {
     const out = new Concrete{{.TSName}}();
-    if (data) {
-{{range .Fields}}      {{if and .IsRepeated .MessageType}}if (data.{{.TSName}} && Array.isArray(data.{{.TSName}})) {
-        out.{{.TSName}} = data.{{.TSName}}.map((item: any) => this.new{{.MessageType}}(item));
-      }{{else if .MessageType}}if (data.{{.TSName}}) out.{{.TSName}} = this.new{{.MessageType}}(data.{{.TSName}});{{else}}out.{{.TSName}} = data.{{.TSName}} ?? {{.DefaultValue}};{{end}}
-{{end}}    }
-    return out;
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
   }
 
-{{end}}}
+{{end}}
+
+{{/* Legacy factory methods for backward compatibility - currently disabled
+{{range .Messages}}  {{.MethodName}}Legacy = (data?: any): {{.TSName}}Interface => {
+    const result = this.{{.MethodName}}(undefined, undefined, undefined, data);
+    return result.fullyLoaded ? result.instance : this.deserializeObject(result.instance, data);
+  }
+
+{{end}}
+*/}}
+
+  /**
+   * Generic object deserializer that respects factory decisions
+   */
+  protected deserializeObject(instance: any, data: any): any {
+    if (!data || typeof data !== 'object') return instance;
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== null && value !== undefined) {
+        instance[key] = value;
+      }
+    }
+    return instance;
+  }
+}
