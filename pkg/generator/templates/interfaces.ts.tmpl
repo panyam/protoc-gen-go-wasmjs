@@ -1,0 +1,13 @@
+// Generated TypeScript interfaces from proto file
+// DO NOT EDIT - This file is auto-generated
+
+{{range .Messages}}
+{{if .Comment}}/**
+ * {{.Comment}}
+ */{{end}}
+export interface {{.TSName}} {
+{{range .Fields}}  {{if .Comment}}/** {{.Comment}} */
+  {{end}}{{if .IsOneof}}{{.TSName}}?: {{.TSType}};{{else if .MessageType}}{{.TSName}}?: {{.TSType}};{{else}}{{.TSName}}: {{.TSType}};{{end}}
+{{end}}}
+
+{{end}}

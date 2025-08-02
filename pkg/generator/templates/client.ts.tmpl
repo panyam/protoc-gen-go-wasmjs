@@ -71,17 +71,17 @@ export interface ConversionContext {
  */
 export interface ConversionOptions {
     /**
-     * Custom converter for oneof fields when sending to WASM (request direction)
-     * Input: { case: string, value: any } or similar
-     * Output: Flattened representation for Go
+     * Custom converter for oneof fields when receiving from WASM (response direction)
+     * Input: Flattened Go representation
+     * Output: { case: string, value: any } or similar for TypeScript
      * Set to 'auto' for automatic detection and conversion
      */
     oneofToJson?: ((oneofValue: any, context: ConversionContext) => any) | 'auto';
     
     /**
-     * Custom converter for oneof fields when receiving from WASM (response direction)
-     * Input: Flattened Go representation
-     * Output: { case: string, value: any } or similar for TypeScript
+     * Custom converter for oneof fields when sending to WASM (request direction)
+     * Input: { case: string, value: any } or similar
+     * Output: Flattened representation for Go
      * Set to 'auto' for automatic detection and conversion
      */
     oneofFromJson?: ((jsonValue: any, context: ConversionContext) => any) | 'auto';
@@ -423,8 +423,8 @@ export class {{ .ModuleName | title }}Client {
                     path: currentPath
                 };
 
-                if (direction === 'request' && this.conversionOptions.oneofToJson) {
-                    if (this.conversionOptions.oneofToJson === 'auto') {
+                if (direction === 'request' && this.conversionOptions.oneofFromJson) {
+                    if (this.conversionOptions.oneofFromJson === 'auto') {
                         // Auto conversion: flatten { case: "fieldName", value: {...} } to { fieldName: {...} }
                         if (this.isOneofValue(value)) {
                             processedKey = value.case;
@@ -437,7 +437,7 @@ export class {{ .ModuleName | title }}Client {
                         }
                     } else {
                         // Custom converter
-                        const converted = this.conversionOptions.oneofToJson(value, context);
+                        const converted = this.conversionOptions.oneofFromJson(value, context);
                         if (converted && typeof converted === 'object' && !Array.isArray(converted)) {
                             // If converter returns an object with multiple fields, merge it
                             for (const [convKey, convValue] of Object.entries(converted)) {
@@ -448,14 +448,14 @@ export class {{ .ModuleName | title }}Client {
                             processedValue = converted;
                         }
                     }
-                } else if (direction === 'response' && this.conversionOptions.oneofFromJson) {
-                    if (this.conversionOptions.oneofFromJson === 'auto') {
+                } else if (direction === 'response' && this.conversionOptions.oneofToJson) {
+                    if (this.conversionOptions.oneofToJson === 'auto') {
                         // Auto conversion for response is tricky without knowing which field is set
                         // For now, pass through and let the TypeScript protobuf library handle it
                         processedValue = this.applyCustomConversions(value, direction, undefined, currentPath);
                     } else {
                         // Custom converter
-                        processedValue = this.conversionOptions.oneofFromJson(value, context);
+                        processedValue = this.conversionOptions.oneofToJson(value, context);
                     }
                 }
             } else if (value !== null && typeof value === 'object') {

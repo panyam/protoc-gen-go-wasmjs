@@ -37,45 +37,77 @@ The main orchestrator that:
 ### 3. Configuration System (`pkg/generator/config.go`)
 Comprehensive configuration parsing:
 ```go
-type GeneratorConfig struct {
-    // TypeScript Integration
-    TSGenerator      string   // protoc-gen-es, protoc-gen-ts
-    TSImportPath     string   // Where to import TS types from
-    TSImportExtension string  // js, ts, none, or auto-detect
+type Config struct {
+    // Generation Control
+    GenerateWasm       bool   // Generate WASM wrapper (default: true)
+    GenerateTypeScript bool   // Generate TypeScript client (default: true)
+    WasmExportPath     string // Path where WASM wrapper should be generated
+    TSExportPath       string // Path where TypeScript files should be generated
     
     // Service Selection
     Services         []string // Specific services to generate
     MethodInclude    []string // Glob patterns to include
     MethodExclude    []string // Glob patterns to exclude
+    MethodRenames    map[string]string // Method name transformations
     
     // JavaScript API
     JSStructure      string   // namespaced, flat, service_based
     JSNamespace      string   // Global namespace name
     ModuleName       string   // WASM module name
     
-    // Generation Control
-    GenerateWASM     bool     // Generate Go WASM wrapper
-    GenerateTypeScript bool   // Generate TS client
+    // Build Integration
+    WasmPackageSuffix   string // Package suffix for WASM wrapper
+    GenerateBuildScript bool   // Generate build script for WASM compilation
 }
 ```
 
 ### 4. Template System (`pkg/generator/templates/`)
 Embedded templates using Go's `embed` package:
 - `wasm.go.tmpl` - Go WASM wrapper generation
-- `client.ts.tmpl` - TypeScript client generation
+- `client_simple.ts.tmpl` - Simplified TypeScript client generation
+- `interfaces.ts.tmpl` - TypeScript interface generation
+- `models.ts.tmpl` - TypeScript model class generation
+- `factory.ts.tmpl` - TypeScript factory generation
 - `build.sh.tmpl` - Build script generation
 - `main.go.tmpl` - Example usage generation
 
-### 5. Type System (`pkg/generator/types.go`)
-Data structures passed to templates:
+### 5. TypeScript Generation (`pkg/generator/tsgenerator.go`)
+Dedicated TypeScript generation logic:
+- Proto message analysis and field type conversion
+- Interface and model class generation
+- Factory pattern implementation
+- Package-based nested directory structure
+
+### 6. Type System (`pkg/generator/types.go`)
+Data structures passed to templates and message analysis:
 ```go
 type TemplateData struct {
     Services    []ServiceData
-    Config      GeneratorConfig
+    Config      *Config
     JSNamespace string
     ModuleName  string
     APIStructure string
-    TSImports   []TSImportGroup  // Smart import grouping
+    Imports     []ImportInfo      // Unique package imports with aliases
+    PackageMap  map[string]string // Maps full package path to alias
+}
+
+type MessageInfo struct {
+    Name         string      // Message name (e.g., "Book")
+    TSName       string      // TypeScript interface name (e.g., "Book")
+    Fields       []FieldInfo // All fields in the message
+    PackageName  string      // Proto package name
+    IsNested     bool        // Whether this is a nested message
+    Comment      string      // Leading comment from proto
+}
+
+type FieldInfo struct {
+    Name         string    // Original proto field name
+    JSONName     string    // JSON field name (camelCase)
+    TSType       string    // TypeScript type
+    IsRepeated   bool      // Whether this is a repeated field
+    IsOptional   bool      // Whether this is an optional field
+    MessageType  string    // For message fields, the message type name
+    DefaultValue string    // Default value for the field
 }
 ```
 
@@ -96,65 +128,80 @@ func (exports *ServicesExports) RegisterAPI() {
 
 This allows users to inject their own implementations with full control over dependencies.
 
-### 2. Smart Import Detection
-Analyzes proto file sources to generate accurate TypeScript imports:
-```go
-// For each method, determine source proto file
-sourceFile := method.Input.Desc.ParentFile().Path()
-// Group imports by source file
-imports[sourceFile] = append(imports[sourceFile], typeName)
+### 2. Self-Generated TypeScript Architecture
+Generates complete TypeScript structure directly from proto definitions:
+
+```
+For each proto package (e.g., library.v1):
+├── library_v1_library_interfaces.ts  // TypeScript interfaces
+├── library_v1_library_models.ts      // Concrete class implementations
+└── factory.ts                        // Type-safe factories
 ```
 
-### 3. Proto to JSON Conversion System
+#### Generated TypeScript Structure
+```typescript
+// Interfaces for flexibility
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  available: boolean;
+}
 
-#### Client-Side Architecture
-The TypeScript client implements a sophisticated conversion pipeline:
+// Concrete implementations with proper defaults
+export class Book implements BookInterface {
+  id: string = "";
+  title: string = "";
+  author: string = "";
+  available: boolean = false;
+}
+
+// Factories for object creation
+export class LibraryV1Factory {
+  newBook = (data?: any): BookInterface => {
+    const out = new ConcreteBook();
+    if (data) {
+      out.id = data.id ?? "";
+      out.title = data.title ?? "";
+      // ... other fields
+    }
+    return out;
+  }
+}
+```
+
+### 3. Simplified Client Architecture
+
+#### Direct JSON Communication
+The TypeScript client uses direct JSON serialization without conversion layers:
 
 ```typescript
 class Client {
-    private conversionOptions: ConversionOptions = {
-        handleOneofs: true,
-        emitDefaults: false,
-        fieldTransformer?: (field: string) => string,
-        bigIntHandler?: (value: bigint) => string
-    };
-    
-    callMethod(method: string, request: any): Promise<any> {
-        // 1. Convert request to JSON with custom handling
-        const json = this.convertToJson(request);
-        
-        // 2. Call WASM method
-        const response = wasmMethod(JSON.stringify(json));
-        
-        // 3. Convert response from JSON
-        return this.convertFromJson(response.data);
+    callMethod<TRequest, TResponse>(
+        methodPath: string,
+        request: TRequest
+    ): Promise<TResponse> {
+        // Direct JSON serialization - no conversions needed
+        const jsonReq = JSON.parse(JSON.stringify(request));
+        const wasmMethod = this.getWasmMethod(methodPath);
+        const wasmResponse = wasmMethod(JSON.stringify(jsonReq));
+
+        if (!wasmResponse.success) {
+            throw new WasmError(wasmResponse.message, methodPath);
+        }
+
+        // Direct response return - TypeScript classes match Go protojson format
+        return wasmResponse.data;
     }
 }
 ```
 
-#### Conversion Pipeline
-1. **Native Method Detection**: Check for toJson/toJSON methods
-2. **Custom Conversions**: Apply field transformations
-3. **Oneof Handling**: Flatten oneof structures if configured
-4. **BigInt Serialization**: Handle BigInt values properly
-5. **Default Value Management**: Control emission of defaults
-
-#### WASM-Side Configuration
-Go WASM wrapper uses protojson with specific options:
-```go
-// Unmarshal with flexibility
-protojson.UnmarshalOptions{
-    DiscardUnknown: true,
-    AllowPartial:   true,
-}
-
-// Marshal for TypeScript compatibility
-protojson.MarshalOptions{
-    UseProtoNames:   false,  // Use JSON names
-    EmitUnpopulated: false,  // Skip defaults
-    UseEnumNumbers:  false,  // Use strings
-}
-```
+#### Benefits of New Architecture
+1. **No conversion complexity**: Eliminates oneof conversion, schema providers, direction-based logic
+2. **Perfect Go compatibility**: TypeScript classes use Go's protojson format natively
+3. **Self-contained**: No dependencies on external TS generators
+4. **Type safety**: Full TypeScript support with proper optional field handling
+5. **Performance**: Minimal overhead with direct JSON serialization
 
 ### 4. Multi-Target Generation
 Supports generating different combinations of services for different use cases:
@@ -178,10 +225,10 @@ WASM and TypeScript artifacts can be generated independently:
   out: ./gen/wasm
   opt: [generate_typescript=false]
 
-# Generate only TypeScript
+# Generate only TypeScript (with self-generated classes)
 - local: protoc-gen-go-wasmjs  
   out: ./frontend/src/clients
-  opt: [generate_wasm=false]
+  opt: [generate_wasm=false, ts_export_path=./frontend/src/types]
 ```
 
 ## Data Flow

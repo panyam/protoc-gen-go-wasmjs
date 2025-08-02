@@ -1,0 +1,19 @@
+{{/* Import all interfaces */}}
+{{range $file, $messages := .ImportsByFile}}import { {{range $i, $iface := $messages}}{{if $i}}, {{end}}{{$iface}}{{end}} } from "./{{$file}}_interfaces";
+{{end}}
+{{/* Import all models */}}
+{{range $file, $models := .ModelImportsByFile}}import { {{range $i, $model := $models}}{{if $i}}, {{end}}{{$model}}{{end}} } from "./{{$file}}_models";
+{{end}}
+
+export class {{.FactoryName}} {
+{{range .Messages}}  {{.MethodName}} = (data?: any): {{.TSName}}Interface => {
+    const out = new Concrete{{.TSName}}();
+    if (data) {
+{{range .Fields}}      {{if and .IsRepeated .MessageType}}if (data.{{.TSName}} && Array.isArray(data.{{.TSName}})) {
+        out.{{.TSName}} = data.{{.TSName}}.map((item: any) => this.new{{.MessageType}}(item));
+      }{{else if .MessageType}}if (data.{{.TSName}}) out.{{.TSName}} = this.new{{.MessageType}}(data.{{.TSName}});{{else}}out.{{.TSName}} = data.{{.TSName}} ?? {{.DefaultValue}};{{end}}
+{{end}}    }
+    return out;
+  }
+
+{{end}}}

@@ -1,0 +1,12 @@
+import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}} } from "./{{.BaseName}}_interfaces";
+
+{{range .Messages}}
+{{if .Comment}}/**
+ * {{.Comment}}
+ */{{end}}
+export class {{.TSName}} implements {{.TSName}}Interface {
+{{range .Fields}}  {{if .Comment}}/** {{.Comment}} */
+  {{end}}{{if .IsOneof}}{{.TSName}}?: {{.TSType}};{{else if eq .DefaultValue "undefined"}}{{.TSName}}?: {{.TSType}};{{else}}{{.TSName}}: {{.TSType}} = {{.DefaultValue}};{{end}}
+{{end}}}
+
+{{end}}

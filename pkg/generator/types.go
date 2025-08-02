@@ -38,10 +38,6 @@ type TemplateData struct {
 	Imports    []ImportInfo      // Unique package imports with aliases
 	PackageMap map[string]string // Maps full package path to alias
 
-	// TypeScript import management
-	TSRelativeImportPath string         // Relative path from TS export to TS import
-	TSImports            []TSImportInfo // TypeScript imports with proper extensions
-
 	// Build info
 	GeneratedImports []string
 	BuildScript      string
@@ -51,13 +47,6 @@ type TemplateData struct {
 type ImportInfo struct {
 	Path  string // Full import path
 	Alias string // Package alias (e.g., "libraryv1")
-}
-
-// TSImportInfo represents a TypeScript import for the client
-type TSImportInfo struct {
-	ProtoFile  string   // Original proto file (e.g., "games.proto")
-	ImportPath string   // Relative import path with proper extension
-	Types      []string // List of types to import from this file
 }
 
 // ServiceData represents a gRPC service for template generation
@@ -138,10 +127,24 @@ func (g *FileGenerator) Generate() error {
 		}
 	}
 
-	// Generate TypeScript client if enabled
+	// Generate TypeScript artifacts if enabled
 	if g.config.GenerateTypeScript {
+		// Generate old-style TypeScript client (for now, during transition)
 		if err := g.generateTypeScriptClient(templateData); err != nil {
 			return err
+		}
+		
+		// Generate new TypeScript interfaces, models, and factory
+		messages := g.collectAllMessages()
+		if len(messages) > 0 {
+			// Create package directory structure
+			packagePath := g.buildPackagePath(templateData.PackageName)
+			
+			// Generate TypeScript artifacts
+			tsGen := NewTSGenerator(g)
+			if err := tsGen.GenerateAll(messages, packagePath); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -186,22 +189,17 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 		return nil, nil
 	}
 
-	// Build TypeScript imports from all methods in all services
-	tsImports := g.buildTypeScriptImports(services)
-
 	return &TemplateData{
-		PackageName:          packageName,
-		SourcePath:           g.file.Desc.Path(),
-		GoPackage:            string(g.file.GoImportPath),
-		Services:             services,
-		Config:               g.config,
-		JSNamespace:          g.config.GetDefaultJSNamespace(packageName),
-		ModuleName:           g.config.GetDefaultModuleName(packageName),
-		APIStructure:         g.config.JSStructure,
-		Imports:              imports,
-		PackageMap:           packageMap,
-		TSRelativeImportPath: g.config.GetRelativeTSImportPathForProto(g.file.Desc.Path()),
-		TSImports:            tsImports,
+		PackageName:      packageName,
+		SourcePath:       g.file.Desc.Path(),
+		GoPackage:        string(g.file.GoImportPath),
+		Services:         services,
+		Config:           g.config,
+		JSNamespace:      g.config.GetDefaultJSNamespace(packageName),
+		ModuleName:       g.config.GetDefaultModuleName(packageName),
+		APIStructure:     g.config.JSStructure,
+		Imports:          imports,
+		PackageMap:       packageMap,
 	}, nil
 }
 
@@ -319,123 +317,279 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 	}
 }
 
-// buildTypeScriptImports builds TypeScript import statements by analyzing all request/response types
-func (g *FileGenerator) buildTypeScriptImports(services []ServiceData) []TSImportInfo {
-	// Map from proto file to types used from that file
-	fileToTypes := make(map[string]map[string]bool)
 
-	// We need to go back to the original protogen data to get proto file information
-	// Iterate through all files in the package to collect method types
-	for _, file := range g.packageFiles {
-		for _, service := range file.Services {
-			// Check if this service should be generated
-			if !g.config.ShouldGenerateService(string(service.Desc.Name())) {
-				continue
-			}
 
-			for _, method := range service.Methods {
-				// Check if this method should be generated
-				if !g.config.ShouldGenerateMethod(string(method.Desc.Name())) {
-					continue
-				}
-
-				// Skip streaming methods
-				if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
-					continue
-				}
-
-				// Get the actual proto files for request and response types
-				requestProtoFile := string(method.Input.Desc.ParentFile().Path())
-				responseProtoFile := string(method.Output.Desc.ParentFile().Path())
-
-				// Initialize maps for proto files if needed
-				if fileToTypes[requestProtoFile] == nil {
-					fileToTypes[requestProtoFile] = make(map[string]bool)
-				}
-				if fileToTypes[responseProtoFile] == nil {
-					fileToTypes[responseProtoFile] = make(map[string]bool)
-				}
-
-				// Add request and response types to their respective proto files
-				requestTSType := string(method.Input.GoIdent.GoName)
-				responseTSType := string(method.Output.GoIdent.GoName)
-				fileToTypes[requestProtoFile][requestTSType] = true
-				fileToTypes[responseProtoFile][responseTSType] = true
-			}
-		}
-	}
-
-	// Convert to TSImportInfo slice
-	var tsImports []TSImportInfo
-	for protoFile, typesMap := range fileToTypes {
-		// Convert map to slice
-		var types []string
-		for typeName := range typesMap {
-			types = append(types, typeName)
-		}
-
-		// Generate import path for this proto file
-		importPath := g.buildTSImportPath(protoFile)
-
-		tsImports = append(tsImports, TSImportInfo{
-			ProtoFile:  protoFile,
-			ImportPath: importPath,
-			Types:      types,
-		})
-	}
-
-	return tsImports
-}
-
-// buildTSImportPath builds the TypeScript import path for a given proto file
-func (g *FileGenerator) buildTSImportPath(protoFile string) string {
-	// Remove .proto extension and build the path based on TS generator and detected extension
-	baseName := strings.TrimSuffix(protoFile, ".proto")
-
-	// Calculate relative path from where TS client is generated to TSImportPath
-	relativePath := g.config.calculateRelativePath(g.config.WasmExportPath, g.config.TSImportPath)
-
-	// Auto-detect file extension by checking what actually exists
-	extension := g.detectTSFileExtension(baseName)
-
-	var filename string
-	if extension == "" {
-		filename = baseName + "_pb"
-	} else {
-		filename = baseName + "_pb." + extension
-	}
-
-	return relativePath + "/" + filename
-}
-
-// detectTSFileExtension detects whether .ts or .js files exist for the given proto
-func (g *FileGenerator) detectTSFileExtension(baseName string) string {
-	// This is a simplified version - in a real implementation, we might want to
-	// check the actual filesystem or use configuration hints
-	// For now, we'll use the ts_import_extension if specified, otherwise fall back to heuristics
-
-	if g.config.TSImportExtension != "" {
-		if g.config.TSImportExtension == "none" {
-			return ""
-		}
-		return g.config.TSImportExtension
-	}
-
-	// Auto-detect based on ts_generator (backwards compatibility)
-	switch g.config.TSGenerator {
-	case "protoc-gen-es":
-		// protoc-gen-es typically generates .js files, but with target=ts it generates .ts
-		// For now, default to no extension for cleaner imports
-		return ""
-	case "protoc-gen-ts":
-		return ""
-	default:
-		return ""
-	}
-}
 
 // getQualifiedTypeName returns the fully qualified Go type name for a message
 func (g *FileGenerator) getQualifiedTypeName(message *protogen.Message, packageAlias string) string {
 	// Return the qualified type name with package alias
 	return packageAlias + "." + string(message.GoIdent.GoName)
+}
+
+// ====================================================================================
+// New TypeScript Generation Functions
+// ====================================================================================
+
+// MessageInfo represents a proto message for TypeScript generation
+type MessageInfo struct {
+	Name         string      // Message name (e.g., "Book")
+	GoName       string      // Go struct name (e.g., "Book")
+	TSName       string      // TypeScript interface name (e.g., "Book")
+	Fields       []FieldInfo // All fields in the message
+	PackageName  string      // Proto package name
+	ProtoFile    string      // Source proto file path
+	IsNested     bool        // Whether this is a nested message
+	Comment      string      // Leading comment from proto
+	MethodName   string      // Factory method name (e.g., "newBook") - for template use
+}
+
+// FieldInfo represents a proto field for TypeScript generation
+type FieldInfo struct {
+	Name         string    // Original proto field name (e.g., "user_id")
+	JSONName     string    // JSON field name (e.g., "userId")
+	TSName       string    // TypeScript property name (e.g., "userId")
+	ProtoType    string    // Original proto type (e.g., "string", "int32")
+	TSType       string    // TypeScript type (e.g., "string", "number")
+	GoType       string    // Go type for reference
+	IsRepeated   bool      // Whether this is a repeated field
+	IsOptional   bool      // Whether this is an optional field
+	IsOneof      bool      // Whether this field is part of a oneof
+	OneofName    string    // Name of the oneof group (if applicable)
+	MessageType  string    // For message fields, the message type name
+	DefaultValue string    // Default value for the field
+	Comment      string    // Field comment from proto
+}
+
+// collectAllMessages collects all message definitions from package files
+func (g *FileGenerator) collectAllMessages() []MessageInfo {
+	var messages []MessageInfo
+	
+	for _, file := range g.packageFiles {
+		// Collect top-level messages
+		for _, message := range file.Messages {
+			messageInfo := g.buildMessageInfo(message, file, false)
+			messages = append(messages, messageInfo)
+			
+			// Collect nested messages recursively
+			nestedMessages := g.collectNestedMessages(message, file)
+			messages = append(messages, nestedMessages...)
+		}
+	}
+	
+	return messages
+}
+
+// buildMessageInfo constructs MessageInfo from a protogen.Message
+func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protogen.File, isNested bool) MessageInfo {
+	messageName := string(message.Desc.Name())
+	
+	// Build field information
+	var fields []FieldInfo
+	for _, field := range message.Fields {
+		fieldInfo := g.buildFieldInfo(field)
+		fields = append(fields, fieldInfo)
+	}
+	
+	return MessageInfo{
+		Name:        messageName,
+		GoName:      string(message.GoIdent.GoName),
+		TSName:      messageName, // Same as proto name for interfaces
+		Fields:      fields,
+		PackageName: string(file.Desc.Package()),
+		ProtoFile:   file.Desc.Path(),
+		IsNested:    isNested,
+		Comment:     strings.TrimSpace(string(message.Comments.Leading)),
+	}
+}
+
+// collectNestedMessages recursively collects nested message definitions
+func (g *FileGenerator) collectNestedMessages(message *protogen.Message, file *protogen.File) []MessageInfo {
+	var nestedMessages []MessageInfo
+	
+	for _, nested := range message.Messages {
+		nestedInfo := g.buildMessageInfo(nested, file, true)
+		nestedMessages = append(nestedMessages, nestedInfo)
+		
+		// Recursively collect deeply nested messages
+		deeplyNested := g.collectNestedMessages(nested, file)
+		nestedMessages = append(nestedMessages, deeplyNested...)
+	}
+	
+	return nestedMessages
+}
+
+// buildFieldInfo constructs FieldInfo from a protogen.Field
+func (g *FileGenerator) buildFieldInfo(field *protogen.Field) FieldInfo {
+	fieldName := string(field.Desc.Name())
+	jsonName := field.Desc.JSONName() // Proto provides JSON name conversion
+	
+	// Convert proto type to TypeScript type
+	protoType := g.getProtoFieldType(field)
+	tsType := g.convertProtoTypeToTS(protoType, field)
+	goType := g.getGoFieldType(field)
+	
+	// Check if field is part of a oneof
+	isOneof := field.Oneof != nil
+	oneofName := ""
+	if isOneof {
+		oneofName = string(field.Oneof.Desc.Name())
+	}
+	
+	// For message types, get the message type name
+	messageType := ""
+	if field.Message != nil {
+		messageType = string(field.Message.Desc.Name())
+	}
+	
+	return FieldInfo{
+		Name:         fieldName,
+		JSONName:     jsonName,
+		TSName:       g.convertToTSPropertyName(jsonName),
+		ProtoType:    protoType,
+		TSType:       tsType,
+		GoType:       goType,
+		IsRepeated:   field.Desc.IsList(),
+		IsOptional:   field.Desc.HasOptionalKeyword(),
+		IsOneof:      isOneof,
+		OneofName:    oneofName,
+		MessageType:  messageType,
+		DefaultValue: g.getDefaultValue(field),
+		Comment:      strings.TrimSpace(string(field.Comments.Leading)),
+	}
+}
+
+// getProtoFieldType returns the proto field type as a string
+func (g *FileGenerator) getProtoFieldType(field *protogen.Field) string {
+	kind := field.Desc.Kind()
+	switch kind.String() {
+	case "double", "float", "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "sfixed32", "sfixed64":
+		return kind.String()
+	case "bool":
+		return "bool"
+	case "string":
+		return "string"
+	case "bytes":
+		return "bytes"
+	case "message":
+		return string(field.Message.Desc.Name())
+	case "enum":
+		return string(field.Enum.Desc.Name())
+	default:
+		return kind.String()
+	}
+}
+
+// convertProtoTypeToTS converts proto types to TypeScript types
+func (g *FileGenerator) convertProtoTypeToTS(protoType string, field *protogen.Field) string {
+	// Handle repeated fields
+	baseType := g.getBaseTSType(protoType, field)
+	
+	if field.Desc.IsList() {
+		return baseType + "[]"
+	}
+	
+	return baseType
+}
+
+// getBaseTSType returns the base TypeScript type (without array notation)
+func (g *FileGenerator) getBaseTSType(protoType string, field *protogen.Field) string {
+	switch protoType {
+	case "double", "float", "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "sfixed32", "sfixed64":
+		return "number"
+	case "bool":
+		return "boolean"
+	case "string":
+		return "string"
+	case "bytes":
+		return "Uint8Array"
+	default:
+		// For message types, use the message name as interface reference
+		if field.Message != nil {
+			return string(field.Message.Desc.Name())
+		}
+		// For enum types
+		if field.Enum != nil {
+			return string(field.Enum.Desc.Name())
+		}
+		// Fallback
+		return "any"
+	}
+}
+
+// getGoFieldType returns the Go field type for reference
+func (g *FileGenerator) getGoFieldType(field *protogen.Field) string {
+	if field.Message != nil {
+		return string(field.Message.GoIdent.GoName)
+	}
+	if field.Enum != nil {
+		return string(field.Enum.GoIdent.GoName)
+	}
+	
+	// For primitive types, return the Go equivalent
+	kind := field.Desc.Kind()
+	switch kind.String() {
+	case "double":
+		return "float64"
+	case "float":
+		return "float32"
+	case "int32", "sint32", "sfixed32":
+		return "int32"
+	case "int64", "sint64", "sfixed64":
+		return "int64"
+	case "uint32", "fixed32":
+		return "uint32"
+	case "uint64", "fixed64":
+		return "uint64"
+	case "bool":
+		return "bool"
+	case "string":
+		return "string"
+	case "bytes":
+		return "[]byte"
+	default:
+		return "interface{}"
+	}
+}
+
+// convertToTSPropertyName converts JSON names to TypeScript property names
+func (g *FileGenerator) convertToTSPropertyName(jsonName string) string {
+	// JSON names from proto are already in camelCase, so we can use them directly
+	return jsonName
+}
+
+// getDefaultValue returns the default value for a field
+func (g *FileGenerator) getDefaultValue(field *protogen.Field) string {
+	// Handle repeated fields first
+	if field.Desc.IsList() {
+		return "[]"
+	}
+	
+	kind := field.Desc.Kind()
+	switch kind.String() {
+	case "double", "float", "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "sfixed32", "sfixed64":
+		return "0"
+	case "bool":
+		return "false"
+	case "string":
+		return "\"\""
+	case "bytes":
+		return "new Uint8Array()"
+	default:
+		if field.Message != nil {
+			// For message types, use undefined as default - instances created via factory
+			return "undefined"
+		}
+		if field.Enum != nil {
+			// For enums, use the first value (typically 0)
+			return "0"
+		}
+		return "undefined"
+	}
+}
+
+// buildPackagePath creates the nested directory structure from proto package name
+func (g *FileGenerator) buildPackagePath(packageName string) string {
+	// Convert "library.v1" to "library/v1" structure
+	packagePath := strings.ReplaceAll(packageName, ".", "/")
+	return packagePath
 }

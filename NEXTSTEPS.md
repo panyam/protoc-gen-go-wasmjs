@@ -1,28 +1,33 @@
 # Next Steps
 
-## Recently Completed (August 2025)
-- ✅ **Proto to JSON Conversion System**: Implemented flexible conversion options to handle differences between Go protojson and TypeScript protobuf libraries
-  - Added `ConversionOptions` interface with `handleOneofs`, `fieldTransformer`, `emitDefaults`, and `bigIntHandler`
-  - Enhanced error handling with better context
-  - Added runtime configuration via `setConversionOptions()`
-  - Updated WASM-side with better protojson marshal/unmarshal options
-  - Created comprehensive documentation in `PROTO_CONVERSION.md`
+## Recently Completed (January 2025)
+- ✅ **Major Architecture Simplification**: Successfully completed TypeScript architecture transformation
+  - **Self-Contained TypeScript Generation**: Eliminated dependencies on external TypeScript generators (protoc-gen-es, protoc-gen-ts)
+  - **Simplified Client Architecture**: Replaced complex conversion system with direct JSON serialization
+  - **Template-Based Generation**: Implemented interfaces, models, and factory generation using Go templates
+  - **Configuration Cleanup**: Removed obsolete fields and streamlined configuration options
+  - **Default Value Handling**: Fixed array and message type defaults with proper optional field support
+  - **End-to-End Testing**: Validated complete architecture with working examples
+  - **Performance Improvement**: Eliminated ~200 lines of complex conversion logic
 
 ## Immediate Tasks
-- [ ] **Browser Demo**: Create a complete browser demo showcasing the proto conversion features
-  - Demonstrate oneof field handling
-  - Show field name transformation in action
-  - Include BigInt serialization examples
+- [ ] **Comprehensive Browser Demo**: Create a complete browser demo showcasing the new self-generated TypeScript architecture
+  - Demonstrate interface-based design with type safety
+  - Show factory pattern usage for object creation  
+  - Include performance comparisons with old conversion system
+  - Example of direct JSON serialization without conversions
   
-- [ ] **Performance Testing**: Benchmark the conversion overhead
-  - Measure impact of custom conversions
-  - Optimize hot paths in the conversion system
-  - Add performance monitoring hooks
+- [ ] **Performance Analysis**: Benchmark the new simplified architecture
+  - Compare performance against old conversion-based system
+  - Measure WASM loading and execution performance
+  - Analyze bundle size improvements
+  - Document performance characteristics
 
-- [ ] **Type-Aware Conversion**: Enhance conversion system with proto type information
-  - Detect oneof fields from proto descriptors instead of heuristics
-  - Better BigInt field detection based on proto field types
-  - Support for Well-Known Types (Timestamp, Duration, etc.)
+- [ ] **Documentation Refresh**: Update all documentation to reflect new architecture
+  - Update README with new generation examples
+  - Refresh architecture diagrams and code samples
+  - Create migration guide for users upgrading from older versions
+  - Document the interface/model/factory pattern
 
 ## Short Term (Next Month)
 - [ ] **Streaming Support**: Research and implement streaming RPC support for WASM
@@ -51,10 +56,10 @@
   - IntelliJ IDEA plugin
   - Syntax highlighting for WASM annotations
 
-- [ ] **Advanced Conversion Features**:
-  - Custom type converters via configuration
-  - Conversion middleware system
-  - Proto extension support
+- [ ] **Advanced Generation Features**:
+  - Custom template functions and helpers
+  - Template inheritance and composition
+  - Proto extension support for custom annotations
 
 ## Long Term (6+ Months)
 - [ ] **Multi-Language Support**: 
@@ -92,14 +97,14 @@
 
 ## Technical Debt
 - [ ] **Code Cleanup**:
-  - Refactor template generation for better maintainability
-  - Add more unit tests for conversion logic
-  - Improve error messages throughout
+  - Add more unit tests for new TypeScript generation logic
+  - Improve error messages throughout the generation pipeline
+  - Refactor template data structures for better extensibility
 
 - [ ] **Performance Optimizations**:
-  - Lazy WASM loading
-  - Connection pooling for service calls
-  - Caching strategies
+  - Lazy WASM loading strategies
+  - Optimize generated TypeScript bundle size
+  - Implement caching for repeated generation tasks
 
 ## Research Topics
 - [ ] **WebAssembly Component Model**: Investigate integration with WASM Component Model

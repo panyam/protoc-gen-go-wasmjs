@@ -22,7 +22,7 @@ import (
 //go:embed templates/wasm.go.tmpl
 var wasmTemplate string
 
-//go:embed templates/client.ts.tmpl
+//go:embed templates/client_simple.ts.tmpl
 var typescriptTemplate string
 
 //go:embed templates/build.sh.tmpl
@@ -30,3 +30,13 @@ var buildScriptTemplate string
 
 //go:embed templates/main.go.tmpl
 var mainExampleTemplate string
+
+// New TypeScript generation templates
+//go:embed templates/interfaces.ts.tmpl
+var interfacesTemplate string
+
+//go:embed templates/models.ts.tmpl
+var modelsTemplate string
+
+//go:embed templates/factory.ts.tmpl
+var factoryTemplate string

@@ -22,13 +22,11 @@ import (
 
 // Config holds all configuration options for the WASM generator
 type Config struct {
-	// Core integration
-	TSGenerator  string // protoc-gen-es, protoc-gen-ts, etc.
-	TSImportPath string // Path where TypeScript types are generated (for imports)
-	TSImportExtension string // Extension for TypeScript imports (default: auto-detect from ts_generator)
+	// Core generation control
 	GenerateWasm       bool   // Generate WASM wrapper (default: true)
 	GenerateTypeScript bool   // Generate TypeScript client (default: true)
-	WasmExportPath string // Path where WASM wrapper should be generated
+	WasmExportPath     string // Path where WASM wrapper should be generated (defaults to protoc out directory)
+	TSExportPath       string // Path where TypeScript files should be generated (defaults to protoc out directory)
 	
 	// Service & method selection
 	Services      string // Comma-separated list of services
@@ -59,24 +57,6 @@ type Config struct {
 
 // Validate validates and normalizes the configuration
 func (c *Config) Validate() error {
-	// Validate TypeScript generator
-	if c.TSGenerator == "" {
-		c.TSGenerator = "protoc-gen-es"
-	}
-	
-	supportedTSGenerators := map[string]bool{
-		"protoc-gen-es": true,
-		"protoc-gen-ts": true,
-	}
-	if !supportedTSGenerators[c.TSGenerator] {
-		return fmt.Errorf("unsupported ts_generator: %s (supported: protoc-gen-es, protoc-gen-ts)", c.TSGenerator)
-	}
-	
-	// Validate TypeScript import path (where we read existing types)
-	if c.TSImportPath == "" {
-		c.TSImportPath = "./gen/ts"
-	}
-	
 	// Set defaults for generation flags
 	if c.GenerateWasm == false && c.GenerateTypeScript == false {
 		// If both are explicitly false, enable both (default behavior)
@@ -89,6 +69,11 @@ func (c *Config) Validate() error {
 	// Validate WASM export path (where we write WASM wrapper)
 	if c.WasmExportPath == "" {
 		c.WasmExportPath = "." // Default to current directory (protoc out directory)
+	}
+	
+	// Validate TypeScript export path (where we write TypeScript files)
+	if c.TSExportPath == "" {
+		c.TSExportPath = "." // Default to current directory (protoc out directory)
 	}
 	
 	// Parse services list
@@ -238,53 +223,7 @@ func (c *Config) GetDefaultModuleName(packageName string) string {
 	return name + "_services"
 }
 
-// GetTSImportPathForProto returns the TypeScript import path for a given proto file
-func (c *Config) GetTSImportPathForProto(protoFile string) string {
-	// Remove .proto extension and construct path based on TS generator
-	baseName := strings.TrimSuffix(protoFile, ".proto")
-	
-	switch c.TSGenerator {
-	case "protoc-gen-es":
-		return c.TSImportPath + "/" + baseName + "_pb.js"
-	case "protoc-gen-ts":
-		return c.TSImportPath + "/" + baseName + "_pb"
-	default:
-		return c.TSImportPath + "/" + baseName + "_pb"
-	}
-}
 
-// GetRelativeTSImportPathForProto returns the relative TypeScript import path for a given proto file
-// relative to where the TypeScript client is generated (co-located with WASM artifacts)
-func (c *Config) GetRelativeTSImportPathForProto(protoFile string) string {
-	// Remove .proto extension and construct path based on TS generator
-	baseName := strings.TrimSuffix(protoFile, ".proto")
-	
-	// Calculate relative path from WasmExportPath (where TS client is generated) to TSImportPath
-	relativePath := c.calculateRelativePath(c.WasmExportPath, c.TSImportPath)
-	
-	// Construct the full relative import path with proper filename
-	var filename string
-	if c.TSImportExtension != "" {
-		// Use explicit extension setting
-		if c.TSImportExtension == "none" {
-			filename = baseName + "_pb"
-		} else {
-			filename = baseName + "_pb." + c.TSImportExtension
-		}
-	} else {
-		// Auto-detect based on ts_generator (backwards compatibility)
-		switch c.TSGenerator {
-		case "protoc-gen-es":
-			filename = baseName + "_pb.js"
-		case "protoc-gen-ts":
-			filename = baseName + "_pb"
-		default:
-			filename = baseName + "_pb"
-		}
-	}
-	
-	return relativePath + "/" + filename
-}
 
 // calculateRelativePath calculates the relative path from fromPath to toPath
 // Both paths should be relative to the protoc working directory (where buf.gen.yaml is)

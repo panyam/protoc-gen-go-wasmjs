@@ -105,26 +105,26 @@ client.setConversionOptions({
 ## Conversion Options
 
 ### `oneofToJson` (function | 'auto')
-Converter for oneof fields when sending to WASM. Set to `'auto'` for automatic detection and conversion.
+Converter for oneof fields when receiving from WASM. Set to `'auto'` for automatic conversion from JSON to oneof structure.
 
 **Auto mode example:**
 ```typescript
-// Input: protobuf-es style
-const request = {
+// Input: JSON from WASM (flattened)
+{
+    moveUnit: { fromQ: -1, fromR: -2, toQ: -1, toR: -1 }
+}
+
+// Output: protobuf-es style oneof
+const response = {
     moveType: {
         case: "moveUnit",
         value: { fromQ: -1, fromR: -2, toQ: -1, toR: -1 }
     }
 };
-
-// Output: flattened for Go
-{
-    moveUnit: { fromQ: -1, fromR: -2, toQ: -1, toR: -1 }
-}
 ```
 
 ### `oneofFromJson` (function | 'auto')
-Converter for oneof fields when receiving from WASM. Set to `'auto'` for automatic handling.
+Converter for oneof fields when sending to WASM. Set to `'auto'` for automatic flattening of oneof structures.
 
 ### `schemaProvider` (function)
 Optional function that provides message schemas for better conversion accuracy. Returns `MessageSchema` objects with field type information.

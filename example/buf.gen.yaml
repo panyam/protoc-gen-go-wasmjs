@@ -28,8 +28,6 @@ plugins:
   - local: ../bin/protoc-gen-go-wasmjs
     out: ./gen/wasm/all-services
     opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
       - js_namespace=library
       - module_name=library_all_services
@@ -39,8 +37,6 @@ plugins:
   - local: ../bin/protoc-gen-go-wasmjs
     out: ./gen/wasm/user-services
     opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
       - js_namespace=userModule
       - module_name=user_services
@@ -51,8 +47,6 @@ plugins:
   - local: ../bin/protoc-gen-go-wasmjs
     out: ./gen/wasmts/user-services
     opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=../../../gen/ts  # Relative to out directory  
       - js_structure=namespaced
       - js_namespace=userModule
       - module_name=user_services
@@ -63,8 +57,6 @@ plugins:
   - local: ../bin/protoc-gen-go-wasmjs
     out: ./gen/wasm/library-services
     opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
       - js_namespace=libraryModule
       - module_name=library_services
@@ -74,8 +66,6 @@ plugins:
   - local: ../bin/protoc-gen-go-wasmjs
     out: ./gen/wasm/admin-services
     opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=../../../gen/ts  # Relative to out directory
       - js_structure=namespaced
       - js_namespace=admin
       - module_name=admin_services
