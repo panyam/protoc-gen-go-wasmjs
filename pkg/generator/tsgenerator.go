@@ -178,12 +178,12 @@ func (ts *TSGenerator) generateFactoryFile(messages []MessageInfo, packagePath s
 	return err
 }
 
-// getBaseFileName converts proto file path to base filename
+// getBaseFileName extracts just the filename from proto file path
 func (ts *TSGenerator) getBaseFileName(protoFile string) string {
-	// Remove .proto extension and convert path separators
-	baseName := strings.TrimSuffix(protoFile, ".proto")
-	baseName = strings.ReplaceAll(baseName, "/", "_")
-	baseName = strings.ReplaceAll(baseName, "\\", "_")
+	// Get just the filename without path and extension
+	// e.g., "library/v1/library.proto" -> "library"
+	baseName := filepath.Base(protoFile)
+	baseName = strings.TrimSuffix(baseName, ".proto")
 	return baseName
 }
 
