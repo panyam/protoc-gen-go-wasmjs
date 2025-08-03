@@ -230,7 +230,7 @@ export class {{.DeserializerName}} {
   /**
    * Create and deserialize a new instance of a message type
    */
-  createAndDeserialize<T>(messageType: string, data: any): T | null {
+  createAndDeserialize<T>(messageType: string, data: any): T {
     // Try to get factory method using cross-package delegation
     let factoryMethod;
     
