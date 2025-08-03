@@ -75,8 +75,11 @@ Embedded templates using Go's `embed` package:
 Dedicated TypeScript generation logic:
 - Proto message analysis and field type conversion
 - Interface and model class generation
-- Factory pattern implementation
+- Enhanced factory pattern with cross-package composition
+- Schema generation with field metadata and proto field IDs
+- Deserializer generation with factory integration
 - Package-based nested directory structure
+- Cross-package dependency detection and import management
 
 ### 6. Type System (`pkg/generator/types.go`)
 Data structures passed to templates and message analysis:
@@ -132,40 +135,100 @@ This allows users to inject their own implementations with full control over dep
 Generates complete TypeScript structure directly from proto definitions:
 
 ```
-For each proto package (e.g., library.v1):
-├── library_v1_library_interfaces.ts  // TypeScript interfaces
-├── library_v1_library_models.ts      // Concrete class implementations
-└── factory.ts                        // Type-safe factories
+For each proto package (e.g., library.v2):
+├── library_interfaces.ts           // TypeScript interfaces  
+├── library_models.ts               // Concrete class implementations
+├── factory.ts                      // Enhanced factories with cross-package composition
+├── library_schemas.ts              // Schema definitions with field metadata
+└── library_deserializer.ts         // Schema-aware deserializers
 ```
 
-#### Generated TypeScript Structure
+#### Enhanced TypeScript Generation Structure
 ```typescript
-// Interfaces for flexibility
+// 1. Interfaces for flexibility and type safety
 export interface Book {
-  id: string;
+  base?: BaseMessage;  // Cross-package reference
   title: string;
   author: string;
+  tags?: string[];     // Optional repeated field
   available: boolean;
 }
 
-// Concrete implementations with proper defaults
+// 2. Concrete implementations with proper defaults
 export class Book implements BookInterface {
-  id: string = "";
+  base?: BaseMessage;
   title: string = "";
   author: string = "";
+  tags?: string[];
   available: boolean = false;
 }
 
-// Factories for object creation
-export class LibraryV1Factory {
-  newBook = (data?: any): BookInterface => {
-    const out = new ConcreteBook();
-    if (data) {
-      out.id = data.id ?? "";
-      out.title = data.title ?? "";
-      // ... other fields
+// 3. Enhanced factories with cross-package composition
+export class LibraryV2Factory {
+  // Cross-package dependency injection
+  private commonFactory = new LibraryCommonFactory();
+  
+  // Context-aware factory methods
+  newBook = (
+    parent?: any,
+    attributeName?: string, 
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<BookInterface> => {
+    const instance = new ConcreteBook();
+    return { instance, fullyLoaded: false }; // Delegates to deserializer
+  }
+  
+  // Cross-package factory delegation
+  getFactoryMethod(messageType: string): FactoryMethod | undefined {
+    const packageName = extractPackage(messageType);
+    if (packageName === "library.common") {
+      return this.commonFactory[getMethodName(messageType)];
     }
-    return out;
+    return this[getMethodName(messageType)];
+  }
+}
+
+// 4. Schema definitions with complete field metadata
+export const BookSchema: MessageSchema = {
+  name: "Book",
+  fields: [
+    {
+      name: "base",
+      type: FieldType.MESSAGE,
+      id: 1,
+      messageType: "library.common.BaseMessage"  // Cross-package reference
+    },
+    { name: "title", type: FieldType.STRING, id: 2 },
+    { name: "tags", type: FieldType.REPEATED, id: 8, repeated: true },
+    // ... field definitions with proto field IDs
+  ]
+};
+
+// 5. Schema-aware deserializer with factory integration
+export class LibraryV2Deserializer {
+  constructor(
+    private schemaRegistry: Record<string, MessageSchema>,
+    private factory: FactoryInterface
+  ) {}
+  
+  // Type-safe deserialization using schema information
+  deserialize<T>(instance: T, data: any, messageType: string): T {
+    const schema = this.schemaRegistry[messageType];
+    for (const fieldSchema of schema.fields) {
+      if (fieldSchema.type === FieldType.MESSAGE) {
+        // Cross-package factory delegation
+        const factoryMethod = this.factory.getFactoryMethod?.(fieldSchema.messageType!);
+        if (factoryMethod) {
+          const result = factoryMethod(instance, fieldSchema.name, undefined, data[fieldSchema.name]);
+          instance[fieldSchema.name] = result.fullyLoaded ? 
+            result.instance : 
+            this.deserialize(result.instance, data[fieldSchema.name], fieldSchema.messageType!);
+        }
+      }
+      // ... handle other field types
+    }
+    return instance;
   }
 }
 ```

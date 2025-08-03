@@ -1,0 +1,64 @@
+// Copyright 2025 Sri Panyam
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package library.v2;
+
+import "wasmjs/v1/annotations.proto";
+import "library/common/base.proto";
+import "library/common/metadata.proto";
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/library/v2";
+
+// BookStats provides analytics for books
+message BookStats {
+  library.common.BaseMessage base = 1;
+  string book_id = 2;
+  int32 view_count = 3;
+  int32 checkout_count = 4;
+  float average_rating = 5;
+  int32 review_count = 6;
+}
+
+// UserActivity tracks user behavior
+message UserActivity {
+  library.common.BaseMessage base = 1;
+  string user_id = 2;
+  string activity_type = 3;
+  string book_id = 4;
+  string description = 5;
+}
+
+// GetBookStatsRequest for analytics
+message GetBookStatsRequest {
+  library.common.Metadata metadata = 1;
+  string book_id = 2;
+  string date_range = 3;
+}
+
+// GetBookStatsResponse for analytics
+message GetBookStatsResponse {
+  library.common.Metadata metadata = 1;
+  BookStats stats = 2;
+  library.common.ErrorInfo error = 3;
+}
+
+// AnalyticsService provides book and user analytics
+service AnalyticsService {
+  // GetBookStats retrieves analytics for a specific book
+  rpc GetBookStats(GetBookStatsRequest) returns (GetBookStatsResponse) {
+    option (wasmjs.v1.wasm_method_name) = "getBookAnalytics";
+  }
+}

@@ -5,6 +5,8 @@ import { Book as BookInterface, User as UserInterface, FindBooksRequest as FindB
 import { Book as ConcreteBook, User as ConcreteUser, FindBooksRequest as ConcreteFindBooksRequest, FindBooksResponse as ConcreteFindBooksResponse, CheckoutBookRequest as ConcreteCheckoutBookRequest, CheckoutBookResponse as ConcreteCheckoutBookResponse, ReturnBookRequest as ConcreteReturnBookRequest, ReturnBookResponse as ConcreteReturnBookResponse, GetUserBooksRequest as ConcreteGetUserBooksRequest, GetUserBooksResponse as ConcreteGetUserBooksResponse, GetUserRequest as ConcreteGetUserRequest, GetUserResponse as ConcreteGetUserResponse, CreateUserRequest as ConcreteCreateUserRequest, CreateUserResponse as ConcreteCreateUserResponse } from "./library_models";
 
 
+
+
 /**
  * Factory result interface for enhanced factory methods
  */
@@ -17,6 +19,7 @@ export interface FactoryResult<T> {
  * Enhanced factory with context-aware object construction
  */
 export class LibraryV1Factory {
+
 
   /**
    * Enhanced factory method for Book
@@ -299,6 +302,33 @@ export class LibraryV1Factory {
   }
 
 
+
+  /**
+   * Get factory method for a fully qualified message type
+   * Enables cross-package factory delegation
+   */
+  getFactoryMethod(messageType: string): ((parent?: any, attributeName?: string, attributeKey?: string | number, data?: any) => FactoryResult<any>) | undefined {
+    // Extract package from message type (e.g., "library.common.BaseMessage" -> "library.common")
+    const parts = messageType.split('.');
+    if (parts.length < 2) {
+      return undefined;
+    }
+    
+    const packageName = parts.slice(0, -1).join('.');
+    const typeName = parts[parts.length - 1];
+    const methodName = 'new' + typeName;
+    
+    // Check if this is our own package first
+    const currentPackage = "library.v1";
+    if (packageName === currentPackage) {
+      return this[methodName];
+    }
+    
+    // Delegate to appropriate dependency factory
+
+    
+    return undefined;
+  }
 
 
 

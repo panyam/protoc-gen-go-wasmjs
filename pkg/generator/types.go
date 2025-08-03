@@ -102,7 +102,7 @@ func (g *FileGenerator) Generate() error {
 		return err
 	}
 
-	// Skip packages with no services
+	// Check if package has services
 	hasServices := false
 	for _, file := range g.packageFiles {
 		if len(file.Services) > 0 {
@@ -110,7 +110,13 @@ func (g *FileGenerator) Generate() error {
 			break
 		}
 	}
-	if !hasServices {
+	
+	// Check if package has messages (for TypeScript generation)
+	messages := g.collectAllMessages()
+	hasMessages := len(messages) > 0
+	
+	// Skip packages with no services AND no messages
+	if !hasServices && !hasMessages {
 		return nil
 	}
 
@@ -120,8 +126,8 @@ func (g *FileGenerator) Generate() error {
 		return err
 	}
 
-	// Generate WASM wrapper if enabled
-	if g.config.GenerateWasm {
+	// Generate WASM wrapper if enabled (only when there are services)
+	if g.config.GenerateWasm && hasServices {
 		if err := g.generateWasmWrapper(templateData); err != nil {
 			return err
 		}
@@ -130,17 +136,20 @@ func (g *FileGenerator) Generate() error {
 	// Generate TypeScript artifacts if enabled
 	if g.config.GenerateTypeScript {
 		// Generate old-style TypeScript client (for now, during transition)
-		if err := g.generateTypeScriptClient(templateData); err != nil {
-			return err
+		if templateData != nil {
+			if err := g.generateTypeScriptClient(templateData); err != nil {
+				return err
+			}
 		}
 		
-		// Generate new TypeScript interfaces, models, and factory
-		messages := g.collectAllMessages()
-		if len(messages) > 0 {
-			// Create package directory structure
-			packagePath := g.buildPackagePath(templateData.PackageName)
+		// Generate new TypeScript interfaces, models, factory, schemas, deserializers
+		// Generate these for ANY package that has messages (not just services)
+		if hasMessages {
+			// Get package name for TypeScript generation
+			packageName := string(g.file.Desc.Package())
+			packagePath := g.buildPackagePath(packageName)
 			
-			// Generate TypeScript artifacts
+			// Generate TypeScript artifacts for all messages
 			tsGen := NewTSGenerator(g)
 			if err := tsGen.GenerateAll(messages, packagePath); err != nil {
 				return err
@@ -148,8 +157,8 @@ func (g *FileGenerator) Generate() error {
 		}
 	}
 
-	// Generate build script and main example only when generating WASM
-	if g.config.GenerateWasm {
+	// Generate build script and main example only when generating WASM and have services
+	if g.config.GenerateWasm && hasServices {
 		// Generate build script if requested
 		if g.config.GenerateBuildScript {
 			if err := g.generateBuildScript(templateData); err != nil {

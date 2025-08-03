@@ -43,3 +43,6 @@ var factoryTemplate string
 
 //go:embed templates/schemas.ts.tmpl
 var schemasTemplate string
+
+//go:embed templates/deserializer.ts.tmpl
+var deserializerTemplate string
