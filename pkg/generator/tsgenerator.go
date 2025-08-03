@@ -24,16 +24,25 @@ import (
 // TypeScript Generation Functions
 // ====================================================================================
 
+// ExternalImport represents an external type import
+type ExternalImport struct {
+	TypeName     string // e.g., "Date" or "Timestamp"
+	ImportSource string // e.g., "<native>" or "@bufbuild/protobuf/wkt"
+	IsNative     bool   // true if this is a native TypeScript type
+}
+
 // InterfaceTemplateData holds data for interface template generation
 type InterfaceTemplateData struct {
-	Messages []MessageInfo
-	BaseName string
+	Messages        []MessageInfo
+	BaseName        string
+	ExternalImports []ExternalImport
 }
 
 // ModelTemplateData holds data for model template generation  
 type ModelTemplateData struct {
-	Messages []MessageInfo
-	BaseName string
+	Messages        []MessageInfo
+	BaseName        string
+	ExternalImports []ExternalImport
 }
 
 // FactoryDependency represents a dependency on another package's factory
@@ -46,9 +55,10 @@ type FactoryDependency struct {
 
 // FactoryTemplateData holds data for factory template generation
 type FactoryTemplateData struct {
-	Messages     []MessageInfo
-	FactoryName  string
-	Dependencies []FactoryDependency // Cross-package factory dependencies
+	Messages        []MessageInfo
+	FactoryName     string
+	Dependencies    []FactoryDependency // Cross-package factory dependencies
+	ExternalImports []ExternalImport
 }
 
 // TSGenerator handles TypeScript-specific generation
@@ -64,6 +74,11 @@ func (ts *TSGenerator) collectFactoryDependencies(messages []MessageInfo, curren
 		for _, field := range message.Fields {
 			// Check if field references a message from another package
 			if field.MessageType != "" && strings.Contains(field.MessageType, ".") {
+				// Skip external types that are mapped to TypeScript types
+				if _, isExternal := ts.fileGen.config.GetExternalTypeMapping(field.MessageType); isExternal {
+					continue
+				}
+				
 				// Extract package name from fully qualified message type
 				parts := strings.Split(field.MessageType, ".")
 				if len(parts) >= 2 {
@@ -99,6 +114,36 @@ func (ts *TSGenerator) collectFactoryDependencies(messages []MessageInfo, curren
 	}
 	
 	return dependencies
+}
+
+// collectExternalImports analyzes messages to find external type imports needed
+func (ts *TSGenerator) collectExternalImports(messages []MessageInfo) []ExternalImport {
+	importMap := make(map[string]ExternalImport)
+	
+	for _, message := range messages {
+		for _, field := range message.Fields {
+			// Check if field references an external type
+			if field.MessageType != "" && strings.Contains(field.MessageType, ".") {
+				// Check if there's an external type mapping for this type
+				if mapping, exists := ts.fileGen.config.GetExternalTypeMapping(field.MessageType); exists {
+					// Use the TypeScript type name as the key to avoid duplicates
+					importMap[mapping.TypeScript] = ExternalImport{
+						TypeName:     mapping.TypeScript,
+						ImportSource: mapping.ImportSource,
+						IsNative:     mapping.IsNative,
+					}
+				}
+			}
+		}
+	}
+	
+	// Convert map to slice
+	var imports []ExternalImport
+	for _, imp := range importMap {
+		imports = append(imports, imp)
+	}
+	
+	return imports
 }
 
 // getFactoryNameForPackage generates factory class name from package name
@@ -456,8 +501,9 @@ func (ts *TSGenerator) getBaseFileName(protoFile string) string {
 // generateInterfaceContent generates the TypeScript interface file content using templates
 func (ts *TSGenerator) generateInterfaceContent(messages []MessageInfo, baseName string) (string, error) {
 	data := InterfaceTemplateData{
-		Messages: messages,
-		BaseName: baseName,
+		Messages:        messages,
+		BaseName:        baseName,
+		ExternalImports: ts.collectExternalImports(messages),
 	}
 	
 	tmpl, err := template.New("interfaces").Funcs(templateFuncMap).Parse(interfacesTemplate)
@@ -477,8 +523,9 @@ func (ts *TSGenerator) generateInterfaceContent(messages []MessageInfo, baseName
 // generateModelContent generates the TypeScript model class file content using templates
 func (ts *TSGenerator) generateModelContent(messages []MessageInfo, baseName string) (string, error) {
 	data := ModelTemplateData{
-		Messages: messages,
-		BaseName: baseName,
+		Messages:        messages,
+		BaseName:        baseName,
+		ExternalImports: ts.collectExternalImports(messages),
 	}
 	
 	tmpl, err := template.New("models").Funcs(templateFuncMap).Parse(modelsTemplate)
@@ -521,9 +568,10 @@ func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo) (string, e
 	dependencies := ts.collectFactoryDependencies(messages, currentPackage)
 	
 	data := FactoryTemplateData{
-		Messages:     messagesWithMethods,
-		FactoryName:  factoryName,
-		Dependencies: dependencies,
+		Messages:        messagesWithMethods,
+		FactoryName:     factoryName,
+		Dependencies:    dependencies,
+		ExternalImports: ts.collectExternalImports(messages),
 	}
 	
 	tmpl, err := template.New("factory").Funcs(templateFuncMap).Parse(factoryTemplate)
@@ -559,8 +607,9 @@ type DeserializerTemplateData struct {
 // generatePackageInterfaceContent generates TypeScript interface content for the entire package
 func (ts *TSGenerator) generatePackageInterfaceContent(messages []MessageInfo, packageName string) (string, error) {
 	data := InterfaceTemplateData{
-		Messages: messages,
-		BaseName: "interfaces",
+		Messages:        messages,
+		BaseName:        "interfaces",
+		ExternalImports: ts.collectExternalImports(messages),
 	}
 	
 	tmpl, err := template.New("interfaces").Funcs(templateFuncMap).Parse(interfacesTemplate)
@@ -580,8 +629,9 @@ func (ts *TSGenerator) generatePackageInterfaceContent(messages []MessageInfo, p
 // generatePackageModelContent generates TypeScript model content for the entire package
 func (ts *TSGenerator) generatePackageModelContent(messages []MessageInfo, packageName string) (string, error) {
 	data := ModelTemplateData{
-		Messages: messages,
-		BaseName: "models",
+		Messages:        messages,
+		BaseName:        "interfaces", // Changed from "models" to "interfaces" for package-based imports
+		ExternalImports: ts.collectExternalImports(messages),
 	}
 	
 	tmpl, err := template.New("models").Funcs(templateFuncMap).Parse(modelsTemplate)

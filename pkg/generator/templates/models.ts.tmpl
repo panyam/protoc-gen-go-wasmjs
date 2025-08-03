@@ -1,4 +1,7 @@
-import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}} } from "./{{.BaseName}}_interfaces";
+{{if .ExternalImports}}{{range .ExternalImports}}{{if not .IsNative}}import { {{.TypeName}} } from "{{.ImportSource}}";
+{{end}}{{end}}
+
+{{end}}import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}} } from "./interfaces";
 
 {{range .Messages}}
 {{if .Comment}}/**

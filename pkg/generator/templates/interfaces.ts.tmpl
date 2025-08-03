@@ -1,7 +1,10 @@
 // Generated TypeScript interfaces from proto file
 // DO NOT EDIT - This file is auto-generated
 
-{{range .Messages}}
+{{if .ExternalImports}}{{range .ExternalImports}}{{if not .IsNative}}import { {{.TypeName}} } from "{{.ImportSource}}";
+{{end}}{{end}}
+
+{{end}}{{range .Messages}}
 {{if .Comment}}/**
  * {{.Comment}}
  */{{end}}

@@ -20,6 +20,14 @@ import (
 	"strings"
 )
 
+// ExternalTypeMapping represents a mapping from a protobuf type to TypeScript type
+type ExternalTypeMapping struct {
+	ProtoType    string // e.g., "google.protobuf.Timestamp"
+	TypeScript   string // e.g., "Date" or "google.protobuf.Timestamp"
+	ImportSource string // e.g., "<native>" or "@bufbuild/protobuf/wkt"
+	IsNative     bool   // true if this is a native TypeScript type
+}
+
 // Config holds all configuration options for the WASM generator
 type Config struct {
 	// Core generation control
@@ -48,11 +56,15 @@ type Config struct {
 	WasmPackageSuffix   string // Package suffix for WASM wrapper
 	GenerateBuildScript bool   // Generate build script for WASM compilation
 	
+	// External type mappings (e.g., "google.protobuf.Timestamp:<native>:Date")
+	ExternalTypes string // Comma-separated external type mappings
+	
 	// Parsed configuration (populated by Validate)
 	ServicesSet      map[string]bool
 	MethodIncludes   []string
 	MethodExcludes   []string
 	MethodRenames    map[string]string
+	ExternalTypeMappings map[string]ExternalTypeMapping // Parsed external type mappings
 }
 
 // Validate validates and normalizes the configuration
@@ -155,6 +167,11 @@ func (c *Config) Validate() error {
 		c.WasmPackageSuffix = "wasm"
 	}
 	
+	// Parse external type mappings
+	if err := c.parseExternalTypes(); err != nil {
+		return fmt.Errorf("failed to parse external types: %w", err)
+	}
+	
 	return nil
 }
 
@@ -248,6 +265,77 @@ func (c *Config) calculateRelativePath(fromPath, toPath string) string {
 	}
 	
 	return relPath
+}
+
+// parseExternalTypes parses external type mappings configuration
+func (c *Config) parseExternalTypes() error {
+	c.ExternalTypeMappings = make(map[string]ExternalTypeMapping)
+	
+	// Add default mappings for well-known types
+	c.addDefaultExternalTypes()
+	
+	// Parse user-provided external type mappings
+	if c.ExternalTypes != "" {
+		for _, mapping := range strings.Split(c.ExternalTypes, ",") {
+			mapping = strings.TrimSpace(mapping)
+			if mapping == "" {
+				continue
+			}
+			
+			// Parse mapping format: "proto.type:source:typescript_type"
+			// e.g., "google.protobuf.Timestamp:<native>:Date"
+			// e.g., "google.protobuf.FieldMask:@bufbuild/protobuf/wkt:FieldMask"
+			parts := strings.SplitN(mapping, ":", 3)
+			if len(parts) != 3 {
+				return fmt.Errorf("invalid external type mapping format: %s (expected proto.type:source:typescript_type)", mapping)
+			}
+			
+			protoType := strings.TrimSpace(parts[0])
+			importSource := strings.TrimSpace(parts[1])
+			tsType := strings.TrimSpace(parts[2])
+			
+			if protoType == "" || importSource == "" || tsType == "" {
+				return fmt.Errorf("invalid external type mapping: empty components in %s", mapping)
+			}
+			
+			isNative := importSource == "<native>"
+			
+			c.ExternalTypeMappings[protoType] = ExternalTypeMapping{
+				ProtoType:    protoType,
+				TypeScript:   tsType,
+				ImportSource: importSource,
+				IsNative:     isNative,
+			}
+		}
+	}
+	
+	return nil
+}
+
+// addDefaultExternalTypes adds default mappings for well-known protobuf types
+func (c *Config) addDefaultExternalTypes() {
+	// Default mapping for google.protobuf.Timestamp to native Date
+	c.ExternalTypeMappings["google.protobuf.Timestamp"] = ExternalTypeMapping{
+		ProtoType:    "google.protobuf.Timestamp",
+		TypeScript:   "Date",
+		ImportSource: "<native>",
+		IsNative:     true,
+	}
+	
+	// Default mapping for google.protobuf.FieldMask 
+	// Using a simple string array for now - users can override with external package if needed
+	c.ExternalTypeMappings["google.protobuf.FieldMask"] = ExternalTypeMapping{
+		ProtoType:    "google.protobuf.FieldMask",
+		TypeScript:   "string[]",
+		ImportSource: "<native>",
+		IsNative:     true,
+	}
+}
+
+// GetExternalTypeMapping returns the TypeScript mapping for a protobuf type
+func (c *Config) GetExternalTypeMapping(protoType string) (ExternalTypeMapping, bool) {
+	mapping, exists := c.ExternalTypeMappings[protoType]
+	return mapping, exists
 }
 
 // Helper function to convert PascalCase to camelCase

@@ -552,8 +552,19 @@ func (g *FileGenerator) getBaseTSType(protoType string, field *protogen.Field) s
 	case "bytes":
 		return "Uint8Array"
 	default:
-		// For message types, use the message name as interface reference
+		// For message types, check for external type mappings first
 		if field.Message != nil {
+			// Get the fully qualified message type name
+			packageName := string(field.Message.Desc.ParentFile().Package())
+			messageName := string(field.Message.Desc.Name())
+			fullTypeName := packageName + "." + messageName
+			
+			// Check if there's an external type mapping for this type
+			if mapping, exists := g.config.GetExternalTypeMapping(fullTypeName); exists {
+				return mapping.TypeScript
+			}
+			
+			// Use the message name as interface reference
 			return string(field.Message.Desc.Name())
 		}
 		// For enum types

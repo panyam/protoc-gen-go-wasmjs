@@ -1,4 +1,8 @@
-{{/* Import all interfaces from single package file */}}
+{{/* External imports for external types */}}
+{{if .ExternalImports}}{{range .ExternalImports}}{{if not .IsNative}}import { {{.TypeName}} } from "{{.ImportSource}}";
+{{end}}{{end}}
+
+{{end}}{{/* Import all interfaces from single package file */}}
 import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}} } from "./interfaces";
 
 {{/* Import all models from single package file */}}
@@ -66,6 +70,12 @@ export class {{.FactoryName}} {
       return (this as any)[methodName];
     }
     
+    // Check external type factory mappings
+    const externalFactory = this.externalTypeFactories[messageType];
+    if (externalFactory) {
+      return externalFactory;
+    }
+    
     // Delegate to appropriate dependency factory
 {{range .Dependencies}}    if (packageName === "{{.PackageName}}") {
       return (this.{{.InstanceName}} as any)[methodName];
@@ -96,5 +106,100 @@ export class {{.FactoryName}} {
       }
     }
     return instance;
+  }
+
+  // External type conversion methods
+
+  /**
+   * Mapping of external types to their factory methods
+   */
+  private externalTypeFactories: Record<string, (parent?: any, attributeName?: string, attributeKey?: string | number, data?: any) => FactoryResult<any>> = {
+    "google.protobuf.Timestamp": this.newTimestamp,
+    "google.protobuf.FieldMask": this.newFieldMask,
+  };
+
+  /**
+   * Convert native Date to protobuf Timestamp format for serialization
+   */
+  serializeTimestamp(date: Date): any {
+    if (!date) return null;
+    return {
+      seconds: Math.floor(date.getTime() / 1000).toString(),
+      nanos: (date.getTime() % 1000) * 1000000
+    };
+  }
+
+  /**
+   * Factory method for converting protobuf Timestamp data to native Date
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object  
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw protobuf timestamp data
+   * @returns Factory result with Date instance
+   */
+  newTimestamp = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<Date> => {
+    if (!data) {
+      return { instance: new Date(), fullyLoaded: true };
+    }
+    
+    let date: Date;
+    if (typeof data === 'string') {
+      // Handle ISO string format
+      date = new Date(data);
+    } else if (data.seconds !== undefined) {
+      // Handle protobuf format with seconds/nanos
+      const seconds = typeof data.seconds === 'string' 
+        ? parseInt(data.seconds, 10) 
+        : data.seconds;
+      const nanos = data.nanos || 0;
+      date = new Date(seconds * 1000 + Math.floor(nanos / 1000000));
+    } else {
+      date = new Date();
+    }
+    
+    return { instance: date, fullyLoaded: true };
+  }
+
+  /**
+   * Convert native string array to protobuf FieldMask format for serialization
+   */
+  serializeFieldMask(paths: string[]): any {
+    if (!paths || !Array.isArray(paths)) return null;
+    return { paths };
+  }
+
+  /**
+   * Factory method for converting protobuf FieldMask data to native string array
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw protobuf field mask data
+   * @returns Factory result with string array instance
+   */
+  newFieldMask = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<string[]> => {
+    if (!data) {
+      return { instance: [], fullyLoaded: true };
+    }
+    
+    let paths: string[];
+    if (Array.isArray(data)) {
+      paths = data;
+    } else if (data.paths && Array.isArray(data.paths)) {
+      paths = data.paths;
+    } else {
+      paths = [];
+    }
+    
+    return { instance: paths, fullyLoaded: true };
   }
 }
