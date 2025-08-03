@@ -43,6 +43,7 @@ type ModelTemplateData struct {
 	Messages        []MessageInfo
 	BaseName        string
 	ExternalImports []ExternalImport
+	DeserializerName string // e.g., "LibraryV2Deserializer"
 }
 
 // FactoryDependency represents a dependency on another package's factory
@@ -631,9 +632,10 @@ func (ts *TSGenerator) generatePackageInterfaceContent(messages []MessageInfo, p
 // generatePackageModelContent generates TypeScript model content for the entire package
 func (ts *TSGenerator) generatePackageModelContent(messages []MessageInfo, packageName string) (string, error) {
 	data := ModelTemplateData{
-		Messages:        messages,
-		BaseName:        "interfaces", // Changed from "models" to "interfaces" for package-based imports
-		ExternalImports: ts.collectExternalImports(messages),
+		Messages:         messages,
+		BaseName:         "interfaces", // Changed from "models" to "interfaces" for package-based imports
+		ExternalImports:  ts.collectExternalImports(messages),
+		DeserializerName: ts.buildDeserializerName(packageName),
 	}
 	
 	tmpl, err := template.New("models").Funcs(templateFuncMap).Parse(modelsTemplate)

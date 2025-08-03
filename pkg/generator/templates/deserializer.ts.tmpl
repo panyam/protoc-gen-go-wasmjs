@@ -260,7 +260,7 @@ export class {{.DeserializerName}} {
    * @param data Raw data to deserialize
    * @returns Deserialized instance or null if creation failed
    */
-  static from<T>(messageType: string, data: any): T | null {
+  static from<T>(messageType: string, data: any) {
     const deserializer = new {{.DeserializerName}}(); // Uses default factory and schema registry
     return deserializer.createAndDeserialize<T>(messageType, data);
   }
