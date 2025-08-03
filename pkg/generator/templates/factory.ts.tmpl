@@ -71,7 +71,7 @@ export class {{.FactoryName}} {
     }
     
     // Check external type factory mappings
-    const externalFactory = this.externalTypeFactories[messageType];
+    const externalFactory = this.externalTypeFactories()[messageType];
     if (externalFactory) {
       return externalFactory;
     }
@@ -113,9 +113,11 @@ export class {{.FactoryName}} {
   /**
    * Mapping of external types to their factory methods
    */
-  private externalTypeFactories: Record<string, (parent?: any, attributeName?: string, attributeKey?: string | number, data?: any) => FactoryResult<any>> = {
-    "google.protobuf.Timestamp": this.newTimestamp,
-    "google.protobuf.FieldMask": this.newFieldMask,
+  private externalTypeFactories(): Record<string, (parent?: any, attributeName?: string, attributeKey?: string | number, data?: any) => FactoryResult<any>> { 
+      return {
+          "google.protobuf.Timestamp": this.newTimestamp,
+          "google.protobuf.FieldMask": this.newFieldMask,
+      }
   };
 
   /**
