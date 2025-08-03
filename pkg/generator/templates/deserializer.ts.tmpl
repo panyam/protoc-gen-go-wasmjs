@@ -8,8 +8,6 @@ import { FieldType, FieldSchema, MessageSchema } from "./{{.BaseName}}_schemas";
  * Factory interface that deserializer expects
  */
 export interface FactoryInterface {
-  [key: string]: (parent?: any, attributeName?: string, attributeKey?: string | number, data?: any) => FactoryResult<any>;
-  
   /**
    * Get factory method for a fully qualified message type
    * This enables cross-package factory delegation
@@ -140,7 +138,7 @@ export class {{.DeserializerName}} {
     } else {
       // Fallback to simple method name lookup
       const factoryMethodName = this.getFactoryMethodName(messageType);
-      factoryMethod = this.factory[factoryMethodName];
+      factoryMethod = (this.factory as any)[factoryMethodName];
     }
 
     if (factoryMethod) {
@@ -178,7 +176,7 @@ export class {{.DeserializerName}} {
     } else {
       // Fallback to simple method name lookup
       const factoryMethodName = this.getFactoryMethodName(messageType);
-      factoryMethod = this.factory[factoryMethodName];
+      factoryMethod = (this.factory as any)[factoryMethodName];
     }
 
     return fieldValue.map((item, index) => {
@@ -236,7 +234,7 @@ export class {{.DeserializerName}} {
     } else {
       // Fallback to simple method name lookup
       const factoryMethodName = this.getFactoryMethodName(messageType);
-      factoryMethod = this.factory[factoryMethodName];
+      factoryMethod = (this.factory as any)[factoryMethodName];
     }
 
     if (!factoryMethod) {

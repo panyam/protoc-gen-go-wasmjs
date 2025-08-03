@@ -13,6 +13,8 @@
 // limitations under the License.
 
 syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+import "library/v2/models.proto";
 
 package library.v2;
 
@@ -33,6 +35,7 @@ message Book {
   bool available = 7;
   repeated string tags = 8; // New in v2
   float rating = 9; // New in v2
+  google.protobuf.Timestamp created_at = 10;
 }
 
 // Enhanced User with common base  
@@ -61,6 +64,8 @@ message FindBooksResponse {
   repeated Book books = 2;
   int32 total_count = 3;
   bool has_more = 4; // New in v2
+  Pagination pagination = 5;
+   map<string, string> field_errors = 6;
 }
 
 // Enhanced LibraryService v2

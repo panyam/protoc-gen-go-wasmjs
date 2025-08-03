@@ -1,9 +1,8 @@
-{{/* Import all interfaces */}}
-{{range $file, $messages := .ImportsByFile}}import { {{range $i, $iface := $messages}}{{if $i}}, {{end}}{{$iface}}{{end}} } from "./{{$file}}_interfaces";
-{{end}}
-{{/* Import all models */}}
-{{range $file, $models := .ModelImportsByFile}}import { {{range $i, $model := $models}}{{if $i}}, {{end}}{{$model}}{{end}} } from "./{{$file}}_models";
-{{end}}
+{{/* Import all interfaces from single package file */}}
+import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}} } from "./interfaces";
+
+{{/* Import all models from single package file */}}
+import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as Concrete{{$msg.TSName}}{{end}} } from "./models";
 {{/* Import dependency factories */}}
 {{range .Dependencies}}import { {{.FactoryName}} } from "{{.ImportPath}}";
 {{end}}
@@ -64,12 +63,12 @@ export class {{.FactoryName}} {
     // Check if this is our own package first
     const currentPackage = "{{range .Messages}}{{.PackageName}}{{break}}{{end}}";
     if (packageName === currentPackage) {
-      return this[methodName];
+      return (this as any)[methodName];
     }
     
     // Delegate to appropriate dependency factory
 {{range .Dependencies}}    if (packageName === "{{.PackageName}}") {
-      return this.{{.InstanceName}}[methodName];
+      return (this.{{.InstanceName}} as any)[methodName];
     }
 {{end}}
     

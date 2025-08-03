@@ -53,6 +53,7 @@ message GetBookStatsResponse {
   library.common.Metadata metadata = 1;
   BookStats stats = 2;
   library.common.ErrorInfo error = 3;
+   map<string, string> field_errors = 6;
 }
 
 // AnalyticsService provides book and user analytics

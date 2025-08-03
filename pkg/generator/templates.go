@@ -46,3 +46,6 @@ var schemasTemplate string
 
 //go:embed templates/deserializer.ts.tmpl
 var deserializerTemplate string
+
+//go:embed templates/deserializer_schemas.ts.tmpl  
+var deserializerSchemasTemplate string

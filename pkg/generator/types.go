@@ -110,11 +110,11 @@ func (g *FileGenerator) Generate() error {
 			break
 		}
 	}
-	
+
 	// Check if package has messages (for TypeScript generation)
 	messages := g.collectAllMessages()
 	hasMessages := len(messages) > 0
-	
+
 	// Skip packages with no services AND no messages
 	if !hasServices && !hasMessages {
 		return nil
@@ -141,14 +141,14 @@ func (g *FileGenerator) Generate() error {
 				return err
 			}
 		}
-		
+
 		// Generate new TypeScript interfaces, models, factory, schemas, deserializers
 		// Generate these for ANY package that has messages (not just services)
 		if hasMessages {
 			// Get package name for TypeScript generation
 			packageName := string(g.file.Desc.Package())
 			packagePath := g.buildPackagePath(packageName)
-			
+
 			// Generate TypeScript artifacts for all messages
 			tsGen := NewTSGenerator(g)
 			if err := tsGen.GenerateAll(messages, packagePath); err != nil {
@@ -199,16 +199,16 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 	}
 
 	return &TemplateData{
-		PackageName:      packageName,
-		SourcePath:       g.file.Desc.Path(),
-		GoPackage:        string(g.file.GoImportPath),
-		Services:         services,
-		Config:           g.config,
-		JSNamespace:      g.config.GetDefaultJSNamespace(packageName),
-		ModuleName:       g.config.GetDefaultModuleName(packageName),
-		APIStructure:     g.config.JSStructure,
-		Imports:          imports,
-		PackageMap:       packageMap,
+		PackageName:  packageName,
+		SourcePath:   g.file.Desc.Path(),
+		GoPackage:    string(g.file.GoImportPath),
+		Services:     services,
+		Config:       g.config,
+		JSNamespace:  g.config.GetDefaultJSNamespace(packageName),
+		ModuleName:   g.config.GetDefaultModuleName(packageName),
+		APIStructure: g.config.JSStructure,
+		Imports:      imports,
+		PackageMap:   packageMap,
 	}, nil
 }
 
@@ -326,9 +326,6 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 	}
 }
 
-
-
-
 // getQualifiedTypeName returns the fully qualified Go type name for a message
 func (g *FileGenerator) getQualifiedTypeName(message *protogen.Message, packageAlias string) string {
 	// Return the qualified type name with package alias
@@ -341,67 +338,72 @@ func (g *FileGenerator) getQualifiedTypeName(message *protogen.Message, packageA
 
 // MessageInfo represents a proto message for TypeScript generation
 type MessageInfo struct {
-	Name         string      // Message name (e.g., "Book")
-	GoName       string      // Go struct name (e.g., "Book")
-	TSName       string      // TypeScript interface name (e.g., "Book")
-	Fields       []FieldInfo // All fields in the message
-	PackageName  string      // Proto package name
-	ProtoFile    string      // Source proto file path
-	IsNested     bool        // Whether this is a nested message
-	Comment      string      // Leading comment from proto
-	MethodName   string      // Factory method name (e.g., "newBook") - for template use
-	OneofGroups  []string    // List of oneof group names in this message
+	Name        string      // Message name (e.g., "Book")
+	GoName      string      // Go struct name (e.g., "Book")
+	TSName      string      // TypeScript interface name (e.g., "Book")
+	Fields      []FieldInfo // All fields in the message
+	PackageName string      // Proto package name
+	ProtoFile   string      // Source proto file path
+	IsNested    bool        // Whether this is a nested message
+	Comment     string      // Leading comment from proto
+	MethodName  string      // Factory method name (e.g., "newBook") - for template use
+	OneofGroups []string    // List of oneof group names in this message
 }
 
 // FieldInfo represents a proto field for TypeScript generation
 type FieldInfo struct {
-	Name         string    // Original proto field name (e.g., "user_id")
-	JSONName     string    // JSON field name (e.g., "userId")
-	TSName       string    // TypeScript property name (e.g., "userId")
-	ProtoType    string    // Original proto type (e.g., "string", "int32")
-	TSType       string    // TypeScript type (e.g., "string", "number")
-	GoType       string    // Go type for reference
-	IsRepeated   bool      // Whether this is a repeated field
-	IsOptional   bool      // Whether this is an optional field
-	IsOneof      bool      // Whether this field is part of a oneof
-	OneofName    string    // Name of the oneof group (if applicable)
-	OneofGroup   string    // Alias for OneofName (for template compatibility)
-	MessageType  string    // For message fields, the message type name
-	DefaultValue string    // Default value for the field
-	Comment      string    // Field comment from proto
-	ProtoFieldID int32     // Proto field number (e.g., text_query = 1)
+	Name         string // Original proto field name (e.g., "user_id")
+	JSONName     string // JSON field name (e.g., "userId")
+	TSName       string // TypeScript property name (e.g., "userId")
+	ProtoType    string // Original proto type (e.g., "string", "int32")
+	TSType       string // TypeScript type (e.g., "string", "number")
+	GoType       string // Go type for reference
+	IsRepeated   bool   // Whether this is a repeated field
+	IsOptional   bool   // Whether this is an optional field
+	IsOneof      bool   // Whether this field is part of a oneof
+	OneofName    string // Name of the oneof group (if applicable)
+	OneofGroup   string // Alias for OneofName (for template compatibility)
+	MessageType  string // For message fields, the message type name
+	DefaultValue string // Default value for the field
+	Comment      string // Field comment from proto
+	ProtoFieldID int32  // Proto field number (e.g., text_query = 1)
 }
 
 // collectAllMessages collects all message definitions from package files
 func (g *FileGenerator) collectAllMessages() []MessageInfo {
 	var messages []MessageInfo
-	
+
 	for _, file := range g.packageFiles {
 		// Collect top-level messages
 		for _, message := range file.Messages {
+			// Skip map entry messages (synthetic messages for map fields)
+			if message.Desc.IsMapEntry() {
+				continue
+			}
+
 			messageInfo := g.buildMessageInfo(message, file, false)
 			messages = append(messages, messageInfo)
-			
+
 			// Collect nested messages recursively
 			nestedMessages := g.collectNestedMessages(message, file)
 			messages = append(messages, nestedMessages...)
 		}
 	}
-	
+
 	return messages
 }
 
 // buildMessageInfo constructs MessageInfo from a protogen.Message
 func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protogen.File, isNested bool) MessageInfo {
 	messageName := string(message.Desc.Name())
-	
+
 	// Build field information
 	var fields []FieldInfo
 	for _, field := range message.Fields {
 		fieldInfo := g.buildFieldInfo(field)
 		fields = append(fields, fieldInfo)
 	}
-	
+
 	// Collect oneof groups
 	var oneofGroups []string
 	oneofMap := make(map[string]bool)
@@ -412,7 +414,7 @@ func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protog
 			oneofMap[oneofName] = true
 		}
 	}
-	
+
 	return MessageInfo{
 		Name:        messageName,
 		GoName:      string(message.GoIdent.GoName),
@@ -429,16 +431,21 @@ func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protog
 // collectNestedMessages recursively collects nested message definitions
 func (g *FileGenerator) collectNestedMessages(message *protogen.Message, file *protogen.File) []MessageInfo {
 	var nestedMessages []MessageInfo
-	
+
 	for _, nested := range message.Messages {
+		// Skip map entry messages (synthetic messages for map fields)
+		if nested.Desc.IsMapEntry() {
+			continue
+		}
+
 		nestedInfo := g.buildMessageInfo(nested, file, true)
 		nestedMessages = append(nestedMessages, nestedInfo)
-		
+
 		// Recursively collect deeply nested messages
 		deeplyNested := g.collectNestedMessages(nested, file)
 		nestedMessages = append(nestedMessages, deeplyNested...)
 	}
-	
+
 	return nestedMessages
 }
 
@@ -446,19 +453,19 @@ func (g *FileGenerator) collectNestedMessages(message *protogen.Message, file *p
 func (g *FileGenerator) buildFieldInfo(field *protogen.Field) FieldInfo {
 	fieldName := string(field.Desc.Name())
 	jsonName := field.Desc.JSONName() // Proto provides JSON name conversion
-	
+
 	// Convert proto type to TypeScript type
 	protoType := g.getProtoFieldType(field)
 	tsType := g.convertProtoTypeToTS(protoType, field)
 	goType := g.getGoFieldType(field)
-	
+
 	// Check if field is part of a oneof
 	isOneof := field.Oneof != nil
 	oneofName := ""
 	if isOneof {
 		oneofName = string(field.Oneof.Desc.Name())
 	}
-	
+
 	// For message types, get the fully qualified message type name
 	messageType := ""
 	if field.Message != nil {
@@ -471,10 +478,10 @@ func (g *FileGenerator) buildFieldInfo(field *protogen.Field) FieldInfo {
 			messageType = messageName
 		}
 	}
-	
+
 	// Get proto field number
 	protoFieldID := int32(field.Desc.Number())
-	
+
 	return FieldInfo{
 		Name:         fieldName,
 		JSONName:     jsonName,
@@ -517,13 +524,19 @@ func (g *FileGenerator) getProtoFieldType(field *protogen.Field) string {
 
 // convertProtoTypeToTS converts proto types to TypeScript types
 func (g *FileGenerator) convertProtoTypeToTS(protoType string, field *protogen.Field) string {
+	// Check if this is a map field
+	if g.isMapField(field) {
+		mapKeyType, mapValueType := g.getMapKeyValueTypes(field)
+		return "Map<" + mapKeyType + ", " + mapValueType + ">"
+	}
+
 	// Handle repeated fields
 	baseType := g.getBaseTSType(protoType, field)
-	
+
 	if field.Desc.IsList() {
 		return baseType + "[]"
 	}
-	
+
 	return baseType
 }
 
@@ -560,7 +573,7 @@ func (g *FileGenerator) getGoFieldType(field *protogen.Field) string {
 	if field.Enum != nil {
 		return string(field.Enum.GoIdent.GoName)
 	}
-	
+
 	// For primitive types, return the Go equivalent
 	kind := field.Desc.Kind()
 	switch kind.String() {
@@ -599,7 +612,7 @@ func (g *FileGenerator) getDefaultValue(field *protogen.Field) string {
 	if field.Desc.IsList() {
 		return "[]"
 	}
-	
+
 	kind := field.Desc.Kind()
 	switch kind.String() {
 	case "double", "float", "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "sfixed32", "sfixed64":
@@ -628,4 +641,44 @@ func (g *FileGenerator) buildPackagePath(packageName string) string {
 	// Convert "library.v1" to "library/v1" structure
 	packagePath := strings.ReplaceAll(packageName, ".", "/")
 	return packagePath
+}
+
+// isMapField checks if a protobuf field represents a map
+func (g *FileGenerator) isMapField(field *protogen.Field) bool {
+	// Check if the field descriptor has IsMap method
+	if field.Message != nil {
+		// For map fields, protogen might not set IsList but the message will be a map entry
+		return field.Message.Desc.IsMapEntry()
+	}
+	
+	return false
+}
+
+// getMapKeyValueTypes extracts the key and value types from a map field
+func (g *FileGenerator) getMapKeyValueTypes(field *protogen.Field) (string, string) {
+	if !g.isMapField(field) {
+		return "any", "any"
+	}
+
+	mapEntry := field.Message
+
+	// Map entry messages have exactly 2 fields: key (field 1) and value (field 2)
+	var keyField, valueField *protogen.Field
+	for _, f := range mapEntry.Fields {
+		if f.Desc.Number() == 1 {
+			keyField = f
+		} else if f.Desc.Number() == 2 {
+			valueField = f
+		}
+	}
+
+	if keyField == nil || valueField == nil {
+		return "any", "any"
+	}
+
+	// Convert key and value types to TypeScript
+	keyType := g.getBaseTSType(g.getProtoFieldType(keyField), keyField)
+	valueType := g.getBaseTSType(g.getProtoFieldType(valueField), valueField)
+
+	return keyType, valueType
 }
