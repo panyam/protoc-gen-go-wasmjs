@@ -3,6 +3,11 @@
 // DO NOT EDIT - This file is auto-generated
 
 import { FieldType, FieldSchema, MessageSchema } from "./{{.BaseName}}_schemas";
+import { {{.FactoryName}} } from "./factory";
+import { {{.SchemaRegistryName}} } from "./schemas";
+
+// Shared factory instance to avoid creating new instances on every deserializer construction
+const DEFAULT_FACTORY = new {{.FactoryName}}();
 
 /**
  * Factory interface that deserializer expects
@@ -28,8 +33,8 @@ export interface FactoryResult<T> {
  */
 export class {{.DeserializerName}} {
   constructor(
-    private schemaRegistry: Record<string, MessageSchema>,
-    private factory: FactoryInterface
+    private schemaRegistry: Record<string, MessageSchema> = {{.SchemaRegistryName}},
+    private factory: FactoryInterface = DEFAULT_FACTORY
   ) {}
 
   /**
@@ -247,5 +252,16 @@ export class {{.DeserializerName}} {
     } else {
       return this.deserialize(result.instance, data, messageType);
     }
+  }
+
+  /**
+   * Static utility method to create and deserialize a message without needing a deserializer instance
+   * @param messageType Fully qualified message type (use Class.MESSAGE_TYPE)
+   * @param data Raw data to deserialize
+   * @returns Deserialized instance or null if creation failed
+   */
+  static from<T>(messageType: string, data: any): T | null {
+    const deserializer = new {{.DeserializerName}}(); // Uses default factory and schema registry
+    return deserializer.createAndDeserialize<T>(messageType, data);
   }
 }

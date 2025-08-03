@@ -598,10 +598,12 @@ type SchemaTemplateData struct {
 
 // DeserializerTemplateData holds data for deserializer template generation
 type DeserializerTemplateData struct {
-	Messages         []MessageInfo
-	BaseName         string
-	PackageName      string
-	DeserializerName string
+	Messages            []MessageInfo
+	BaseName            string
+	PackageName         string
+	DeserializerName    string
+	FactoryName         string // e.g., "LibraryV2Factory"
+	SchemaRegistryName  string // e.g., "libraryV2SchemaRegistry"
 }
 
 // generatePackageInterfaceContent generates TypeScript interface content for the entire package
@@ -652,12 +654,16 @@ func (ts *TSGenerator) generatePackageModelContent(messages []MessageInfo, packa
 func (ts *TSGenerator) generatePackageDeserializerContent(messages []MessageInfo, packageName string) (string, error) {
 	// Generate deserializer name from package (e.g., "library.v1" -> "LibraryV1Deserializer")
 	deserializerName := ts.buildDeserializerName(packageName)
+	factoryName := ts.buildFactoryName(packageName)
+	schemaRegistryName := ts.buildSchemaRegistryName(packageName)
 	
 	data := DeserializerTemplateData{
-		Messages:         messages,
-		BaseName:         "deserializer",
-		PackageName:      packageName,
-		DeserializerName: deserializerName,
+		Messages:           messages,
+		BaseName:           "deserializer",
+		PackageName:        packageName,
+		DeserializerName:   deserializerName,
+		FactoryName:        factoryName,
+		SchemaRegistryName: schemaRegistryName,
 	}
 	
 	tmpl, err := template.New("deserializer").Funcs(templateFuncMap).Parse(deserializerTemplate)

@@ -8,6 +8,11 @@
  * {{.Comment}}
  */{{end}}
 export class {{.TSName}} implements {{.TSName}}Interface {
+  /**
+   * Fully qualified message type for schema resolution
+   */
+  static readonly MESSAGE_TYPE = "{{.FullyQualifiedName}}";
+
 {{range .Fields}}  {{if .Comment}}/** {{.Comment}} */
   {{end}}{{if .IsOneof}}{{.TSName}}?: {{.TSType}};{{else if eq .DefaultValue "undefined"}}{{.TSName}}?: {{.TSType}};{{else}}{{.TSName}}: {{.TSType}} = {{.DefaultValue}};{{end}}
 {{end}}}

@@ -33,6 +33,12 @@
   - **Type Mapping**: Configurable mapping system with default mappings for well-known types
   - **Factory Integration**: Table-driven `externalTypeFactories` with `newXYZ`/`serializeXYZ` methods
   - **Package Resolution**: Proper handling of well-known types without generating non-existent imports
+
+- ✅ **Enhanced Developer Experience**: Implemented ergonomic API improvements for type-safe deserialization
+  - **MESSAGE_TYPE Constants**: Each message class has `static readonly MESSAGE_TYPE` with fully qualified name
+  - **Static Deserializer Method**: `MyDeserializer.from<T>(messageType, data)` for convenient deserialization
+  - **Optional Constructor Parameters**: Deserializer constructor with default factory and schema registry
+  - **Shared Factory Instance**: Performance-optimized singleton factory to avoid unnecessary instantiation
   
 - [ ] **Enhanced Browser Demo**: Create a complete browser demo showcasing the enhanced factory and deserialization system
   - Demonstrate cross-package factory composition with real dependencies

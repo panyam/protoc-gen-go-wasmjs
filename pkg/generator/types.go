@@ -338,16 +338,17 @@ func (g *FileGenerator) getQualifiedTypeName(message *protogen.Message, packageA
 
 // MessageInfo represents a proto message for TypeScript generation
 type MessageInfo struct {
-	Name        string      // Message name (e.g., "Book")
-	GoName      string      // Go struct name (e.g., "Book")
-	TSName      string      // TypeScript interface name (e.g., "Book")
-	Fields      []FieldInfo // All fields in the message
-	PackageName string      // Proto package name
-	ProtoFile   string      // Source proto file path
-	IsNested    bool        // Whether this is a nested message
-	Comment     string      // Leading comment from proto
-	MethodName  string      // Factory method name (e.g., "newBook") - for template use
-	OneofGroups []string    // List of oneof group names in this message
+	Name                string      // Message name (e.g., "Book")
+	GoName              string      // Go struct name (e.g., "Book")
+	TSName              string      // TypeScript interface name (e.g., "Book")
+	Fields              []FieldInfo // All fields in the message
+	PackageName         string      // Proto package name
+	ProtoFile           string      // Source proto file path
+	IsNested            bool        // Whether this is a nested message
+	Comment             string      // Leading comment from proto
+	MethodName          string      // Factory method name (e.g., "newBook") - for template use
+	OneofGroups         []string    // List of oneof group names in this message
+	FullyQualifiedName  string      // Fully qualified message type (e.g., "library.v2.Book")
 }
 
 // FieldInfo represents a proto field for TypeScript generation
@@ -415,16 +416,21 @@ func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protog
 		}
 	}
 
+	// Build fully qualified name (e.g., "library.v2.Book")
+	packageName := string(file.Desc.Package())
+	fullyQualifiedName := packageName + "." + messageName
+	
 	return MessageInfo{
-		Name:        messageName,
-		GoName:      string(message.GoIdent.GoName),
-		TSName:      messageName, // Same as proto name for interfaces
-		Fields:      fields,
-		PackageName: string(file.Desc.Package()),
-		ProtoFile:   file.Desc.Path(),
-		IsNested:    isNested,
-		Comment:     strings.TrimSpace(string(message.Comments.Leading)),
-		OneofGroups: oneofGroups,
+		Name:               messageName,
+		GoName:             string(message.GoIdent.GoName),
+		TSName:             messageName, // Same as proto name for interfaces
+		Fields:             fields,
+		PackageName:        packageName,
+		ProtoFile:          file.Desc.Path(),
+		IsNested:           isNested,
+		Comment:            strings.TrimSpace(string(message.Comments.Leading)),
+		OneofGroups:        oneofGroups,
+		FullyQualifiedName: fullyQualifiedName,
 	}
 }
 
