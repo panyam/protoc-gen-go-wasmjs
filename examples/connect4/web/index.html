@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect4 - Real-time Multiplayer Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 30px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+
+        .game-status {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .board-container {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .board {
+            background: #1e40af;
+            border-radius: 10px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            min-height: 300px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid #1e40af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cell:hover {
+            background: #60a5fa;
+        }
+
+        .cell.occupied {
+            cursor: not-allowed;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+        }
+
+        .btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+
+        .join-form {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .players-list {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .players-list h3 {
+            margin-bottom: 10px;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .player-item:last-child {
+            border-bottom: none;
+        }
+
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log h3 {
+            margin-bottom: 10px;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            font-size: 0.9rem;
+            color: #6b7280;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .winning-line {
+            background: #ffd700 !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔴 Connect4 Multiplayer</h1>
+        <p>Real-time collaborative gaming with stateful proxies</p>
+    </div>
+
+    <div class="game-container">
+        <!-- Join Game Form -->
+        <div id="joinForm" class="join-form">
+            <h3>Join Game</h3>
+            <div class="form-group">
+                <label for="gameId">Game ID:</label>
+                <input type="text" id="gameId" placeholder="Enter game ID to join or create" value="demo-game">
+            </div>
+            <div class="form-group">
+                <label for="playerName">Your Name:</label>
+                <input type="text" id="playerName" placeholder="Enter your name" required>
+            </div>
+            <div class="controls">
+                <button class="btn" onclick="joinOrCreateGame()">Join Game</button>
+            </div>
+            <p style="margin-top: 10px; font-size: 0.9rem; color: #6b7280;">
+                If the game doesn't exist, it will be created automatically.
+            </p>
+        </div>
+
+        <!-- Game Interface -->
+        <div id="gameInterface" class="hidden">
+            <div class="game-info">
+                <div class="player-info">
+                    <span>Current Player:</span>
+                    <div id="currentPlayerColor" class="player-color"></div>
+                    <span id="currentPlayerName">Waiting...</span>
+                </div>
+                <div class="game-status" id="gameStatus">Waiting for players...</div>
+                <div>Turn: <span id="turnNumber">0</span></div>
+            </div>
+
+            <div class="board-container">
+                <div id="gameBoard" class="board">
+                    <!-- Board cells will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" onclick="resetGame()">New Game</button>
+                <button class="btn" onclick="leaveGame()">Leave Game</button>
+            </div>
+
+            <div class="players-list">
+                <h3>Players</h3>
+                <div id="playersList"></div>
+            </div>
+
+            <div class="log">
+                <h3>Game Log</h3>
+                <div id="gameLog"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state (shared via localStorage for demo)
+        let gameState = null;
+        let currentPlayerId = null;
+        let wsConnection = null;
+
+        // Load shared game state from localStorage
+        function loadSharedGameState() {
+            const stored = localStorage.getItem('connect4_demo_game');
+            if (stored) {
+                try {
+                    return JSON.parse(stored);
+                } catch (e) {
+                    console.error('Failed to parse stored game state:', e);
+                }
+            }
+            return null;
+        }
+
+        // Save game state to localStorage for sharing between windows
+        function saveSharedGameState(state) {
+            localStorage.setItem('connect4_demo_game', JSON.stringify(state));
+            // Trigger storage event for other windows
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        // Listen for game state changes from other windows
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'connect4_demo_game' || e.type === 'storage') {
+                const newState = loadSharedGameState();
+                
+                if (!newState && gameState) {
+                    // Game was deleted (all players left)
+                    addLogEntry(`Game "${gameState.gameId}" was deleted - all players have left`);
+                    gameState = null;
+                    currentPlayerId = null;
+                    joinForm.classList.remove('hidden');
+                    gameInterface.classList.add('hidden');
+                    document.getElementById('gameId').value = '';
+                    document.getElementById('playerName').value = '';
+                } else if (newState && newState.gameId === (gameState?.gameId)) {
+                    // Game state updated
+                    gameState = newState;
+                    updateUI();
+                    addLogEntry('Game state updated from another window');
+                }
+            }
+        });
+
+        // UI Elements
+        const joinForm = document.getElementById('joinForm');
+        const gameInterface = document.getElementById('gameInterface');
+        const gameBoard = document.getElementById('gameBoard');
+        const gameStatus = document.getElementById('gameStatus');
+        const currentPlayerName = document.getElementById('currentPlayerName');
+        const currentPlayerColor = document.getElementById('currentPlayerColor');
+        const turnNumber = document.getElementById('turnNumber');
+        const playersList = document.getElementById('playersList');
+        const gameLog = document.getElementById('gameLog');
+
+        // Initialize the board
+        function initializeBoard(width = 7, height = 6) {
+            gameBoard.innerHTML = '';
+            gameBoard.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+            
+            for (let row = 0; row < height; row++) {
+                for (let col = 0; col < width; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = () => dropPiece(col);
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        // Join game (creates if doesn't exist)
+        async function joinOrCreateGame() {
+            const gameId = document.getElementById('gameId').value;
+            const playerName = document.getElementById('playerName').value;
+            
+            if (!gameId || !playerName) {
+                alert('Please enter both game ID and player name');
+                return;
+            }
+
+            try {
+                // Load existing game from localStorage
+                let existingState = loadSharedGameState();
+                
+                // Check if game exists and matches the ID
+                if (existingState && existingState.gameId === gameId) {
+                    // Game exists - join it
+                    gameState = existingState;
+                    
+                    // Check if player name already exists
+                    if (gameState.players.some(p => p.name === playerName)) {
+                        alert('Player name already taken. Please choose a different name.');
+                        return;
+                    }
+
+                    const playerId = `player_${gameState.players.length + 1}`;
+                    const colors = ['#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF'];
+                    const playerColor = colors[gameState.players.length % colors.length];
+
+                    gameState.players.push({
+                        id: playerId,
+                        name: playerName,
+                        color: playerColor,
+                        isConnected: true,
+                        joinOrder: gameState.players.length
+                    });
+
+                    currentPlayerId = playerId;
+
+                    // Start game if we have enough players
+                    if (gameState.players.length >= gameState.config.minPlayers) {
+                        gameState.status = 'IN_PROGRESS';
+                        gameState.currentPlayerId = gameState.players[0].id;
+                    }
+
+                    saveSharedGameState(gameState);
+                    showGameInterface();
+                    addLogEntry(`${playerName} joined existing game "${gameId}"`);
+
+                    if (gameState.status === 'IN_PROGRESS') {
+                        addLogEntry('Game started! Players have enough participants.');
+                    }
+                } else {
+                    // Game doesn't exist - create it
+                    gameState = {
+                        gameId: gameId,
+                        config: {
+                            boardWidth: 7,
+                            boardHeight: 6,
+                            minPlayers: 2,
+                            maxPlayers: 4,
+                            connectLength: 4,
+                            allowMultipleWinners: false,
+                            moveTimeoutSeconds: 30
+                        },
+                        players: [{
+                            id: 'player_1',
+                            name: playerName,
+                            color: '#FF0000',
+                            isConnected: true,
+                            joinOrder: 0
+                        }],
+                        board: {
+                            width: 7,
+                            height: 6,
+                            rows: Array(6).fill().map(() => ({ cells: Array(7).fill('') })),
+                            columnHeights: Array(7).fill(0)
+                        },
+                        status: 'WAITING_FOR_PLAYERS',
+                        turnNumber: 0,
+                        winners: [],
+                        playerStats: {},
+                        currentPlayerId: null
+                    };
+
+                    currentPlayerId = 'player_1';
+                    saveSharedGameState(gameState);
+                    showGameInterface();
+                    addLogEntry(`Game "${gameId}" created and ${playerName} joined as first player`);
+                    addLogEntry('Waiting for more players to start...');
+                }
+
+            } catch (error) {
+                console.error('Error joining/creating game:', error);
+                alert('Failed to join or create game');
+            }
+        }
+
+        // Show the game interface
+        function showGameInterface() {
+            joinForm.classList.add('hidden');
+            gameInterface.classList.remove('hidden');
+            
+            initializeBoard(gameState.config.boardWidth, gameState.config.boardHeight);
+            updateUI();
+        }
+
+        // Update the UI with current game state
+        function updateUI() {
+            if (!gameState) return;
+
+            // Update game status
+            gameStatus.textContent = getStatusText(gameState.status);
+            turnNumber.textContent = gameState.turnNumber;
+
+            // Update current player info
+            if (gameState.currentPlayerId) {
+                const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayerId);
+                if (currentPlayer) {
+                    currentPlayerName.textContent = currentPlayer.name;
+                    currentPlayerColor.style.backgroundColor = currentPlayer.color;
+                }
+            }
+
+            // Update board
+            updateBoard();
+
+            // Update players list
+            updatePlayersList();
+        }
+
+        // Update the board display
+        function updateBoard() {
+            const cells = gameBoard.querySelectorAll('.cell');
+            
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const playerId = gameState.board.rows[row].cells[col];
+                
+                if (playerId) {
+                    const player = gameState.players.find(p => p.id === playerId);
+                    if (player) {
+                        cell.style.backgroundColor = player.color;
+                        cell.classList.add('occupied');
+                    }
+                } else {
+                    cell.style.backgroundColor = '#3b82f6';
+                    cell.classList.remove('occupied');
+                }
+            });
+        }
+
+        // Update players list
+        function updatePlayersList() {
+            playersList.innerHTML = '';
+            
+            gameState.players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player-item';
+                
+                const colorDiv = document.createElement('div');
+                colorDiv.className = 'player-color';
+                colorDiv.style.backgroundColor = player.color;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = player.name;
+                if (player.id === currentPlayerId) {
+                    nameSpan.textContent += ' (You)';
+                }
+                
+                const statusSpan = document.createElement('span');
+                statusSpan.textContent = player.isConnected ? ' • Online' : ' • Offline';
+                statusSpan.style.color = player.isConnected ? '#10b981' : '#ef4444';
+                
+                playerDiv.appendChild(colorDiv);
+                playerDiv.appendChild(nameSpan);
+                playerDiv.appendChild(statusSpan);
+                playersList.appendChild(playerDiv);
+            });
+        }
+
+        // Drop a piece in the specified column
+        async function dropPiece(column) {
+            if (!gameState || gameState.status !== 'IN_PROGRESS') {
+                addLogEntry('Game is not in progress');
+                return;
+            }
+
+            if (gameState.currentPlayerId !== currentPlayerId) {
+                addLogEntry('It\'s not your turn');
+                return;
+            }
+
+            if (gameState.board.columnHeights[column] >= gameState.config.boardHeight) {
+                addLogEntry('Column is full');
+                return;
+            }
+
+            try {
+                // Simulate piece drop (in real implementation, this would call WASM service)
+                const row = gameState.config.boardHeight - 1 - gameState.board.columnHeights[column];
+                
+                // Place the piece
+                gameState.board.rows[row].cells[column] = currentPlayerId;
+                gameState.board.columnHeights[column]++;
+                
+                // Check for winning lines
+                const winningLines = checkForWinningLines(row, column, currentPlayerId);
+                
+                if (winningLines.length > 0) {
+                    gameState.winners.push(currentPlayerId);
+                    gameState.status = 'FINISHED';
+                    highlightWinningLines(winningLines);
+                    
+                    const player = gameState.players.find(p => p.id === currentPlayerId);
+                    addLogEntry(`🎉 ${player.name} wins!`);
+                } else {
+                    // Advance to next player
+                    const currentIndex = gameState.players.findIndex(p => p.id === gameState.currentPlayerId);
+                    const nextIndex = (currentIndex + 1) % gameState.players.length;
+                    gameState.currentPlayerId = gameState.players[nextIndex].id;
+                    gameState.turnNumber++;
+                    
+                    const player = gameState.players.find(p => p.id === currentPlayerId);
+                    const nextPlayer = gameState.players.find(p => p.id === gameState.currentPlayerId);
+                    addLogEntry(`${player.name} dropped piece in column ${column + 1}. ${nextPlayer.name}'s turn.`);
+                }
+
+                // Save updated game state
+                saveSharedGameState(gameState);
+                updateUI();
+
+            } catch (error) {
+                console.error('Error dropping piece:', error);
+                addLogEntry('Failed to drop piece');
+            }
+        }
+
+        // Check for winning lines (simplified version)
+        function checkForWinningLines(row, col, playerId) {
+            const lines = [];
+            const directions = [
+                { dx: 1, dy: 0, name: 'horizontal' },
+                { dx: 0, dy: 1, name: 'vertical' },
+                { dx: 1, dy: 1, name: 'diagonal_down' },
+                { dx: 1, dy: -1, name: 'diagonal_up' }
+            ];
+
+            directions.forEach(dir => {
+                const positions = [];
+                
+                // Check both directions from the placed piece
+                for (let direction = -1; direction <= 1; direction += 2) {
+                    let r = row;
+                    let c = col;
+                    
+                    while (r >= 0 && r < gameState.config.boardHeight && 
+                           c >= 0 && c < gameState.config.boardWidth &&
+                           gameState.board.rows[r].cells[c] === playerId) {
+                        positions.push({ row: r, column: c });
+                        r += dir * dir.dy;
+                        c += dir * dir.dx;
+                    }
+                }
+
+                if (positions.length >= gameState.config.connectLength) {
+                    lines.push({ positions, direction: dir.name });
+                }
+            });
+
+            return lines;
+        }
+
+        // Highlight winning lines on the board
+        function highlightWinningLines(lines) {
+            lines.forEach(line => {
+                line.positions.forEach(pos => {
+                    const cell = document.querySelector(`[data-row="${pos.row}"][data-col="${pos.column}"]`);
+                    if (cell) {
+                        cell.classList.add('winning-line');
+                    }
+                });
+            });
+        }
+
+        // Utility functions
+        function getStatusText(status) {
+            switch (status) {
+                case 'WAITING_FOR_PLAYERS': return 'Waiting for players...';
+                case 'IN_PROGRESS': return 'Game in progress';
+                case 'FINISHED': return 'Game finished';
+                default: return 'Unknown status';
+            }
+        }
+
+        function addLogEntry(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            gameLog.appendChild(entry);
+            gameLog.scrollTop = gameLog.scrollHeight;
+        }
+
+        // Game management functions
+        function resetGame() {
+            if (confirm('Are you sure you want to start a new game?')) {
+                if (gameState) {
+                    gameState.board.rows.forEach(row => row.cells.fill(''));
+                    gameState.board.columnHeights.fill(0);
+                    gameState.status = 'IN_PROGRESS';
+                    gameState.turnNumber = 0;
+                    gameState.winners = [];
+                    gameState.currentPlayerId = gameState.players[0].id;
+                    
+                    saveSharedGameState(gameState);
+                    updateUI();
+                    addLogEntry('New game started!');
+                    
+                    // Remove winning line highlights
+                    document.querySelectorAll('.winning-line').forEach(cell => {
+                        cell.classList.remove('winning-line');
+                    });
+                }
+            }
+        }
+
+        function leaveGame() {
+            if (confirm('Are you sure you want to leave the game?')) {
+                // Remove current player from game state
+                if (gameState && currentPlayerId) {
+                    gameState.players = gameState.players.filter(p => p.id !== currentPlayerId);
+                    
+                    // If no players left, delete the game entirely
+                    if (gameState.players.length === 0) {
+                        localStorage.removeItem('connect4_demo_game');
+                        addLogEntry(`Game "${gameState.gameId}" deleted - all players have left`);
+                        // Trigger storage event for other windows
+                        window.dispatchEvent(new Event('storage'));
+                    } else {
+                        // Still have players, just save the updated state
+                        saveSharedGameState(gameState);
+                        addLogEntry(`You left the game. ${gameState.players.length} player(s) remaining.`);
+                    }
+                }
+                
+                gameState = null;
+                currentPlayerId = null;
+                
+                joinForm.classList.remove('hidden');
+                gameInterface.classList.add('hidden');
+                
+                document.getElementById('gameId').value = '';
+                document.getElementById('playerName').value = '';
+            }
+        }
+
+        // Initialize the demo
+        addLogEntry('Welcome to Connect4! This demo shows the UI that would work with the generated stateful proxies.');
+        addLogEntry('In the full implementation, this would connect to the WASM service and sync via WebSocket.');
+    </script>
+</body>
+</html>
