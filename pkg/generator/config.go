@@ -245,6 +245,12 @@ func (c *Config) GetDefaultModuleName(packageName string) string {
 // calculateRelativePath calculates the relative path from fromPath to toPath
 // Both paths should be relative to the protoc working directory (where buf.gen.yaml is)
 func (c *Config) calculateRelativePath(fromPath, toPath string) string {
+	return CalculateRelativePath(fromPath, toPath)
+}
+
+// CalculateRelativePath is a public helper function that calculates the relative path
+// from fromPath to toPath. Both paths should be relative to the protoc working directory.
+func CalculateRelativePath(fromPath, toPath string) string {
 	// Clean the paths to handle . and .. properly
 	fromPath = filepath.Clean(fromPath)
 	toPath = filepath.Clean(toPath)

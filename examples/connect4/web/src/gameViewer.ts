@@ -1,0 +1,456 @@
+// Entry point for the game viewer page (/{gameId})
+// Handles individual Connect4 game interface and real-time multiplayer
+
+import Connect4Client from '../gen/wasmts/multiplayer_connect4Client.client';
+import { GameState, GameConfig, Player } from '../gen/wasmts/connect4/models';
+
+// Note: StatefulProxy will be available globally from the included script
+declare var StatefulProxy: any;
+
+// Game interface state
+interface GameUI {
+    gameId: string;
+    playerId: string;
+    gameState: GameState | null;
+    statefulProxy: any;
+    connect4Client: Connect4Client | null;
+}
+
+class GameViewer {
+    private ui: GameUI;
+    private elements: { [key: string]: HTMLElement | null } = {};
+
+    constructor() {
+        // Extract game ID from URL path
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        const gameId = pathParts[0] || '';
+        
+        this.ui = {
+            gameId,
+            playerId: '',
+            gameState: null,
+            statefulProxy: null,
+            connect4Client: null
+        };
+
+        this.init();
+    }
+
+    private async init(): Promise<void>{
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeUI());
+        } else {
+            this.initializeUI();
+        }
+    }
+
+    private initializeUI(): void {
+        // Get UI elements
+        this.elements = {
+            joinGameForm: document.getElementById('joinGameForm'),
+            gameInterface: document.getElementById('gameInterface'),
+            errorState: document.getElementById('errorState'),
+            gameBoard: document.getElementById('gameBoard'),
+            gameStatus: document.getElementById('gameStatus'),
+            currentPlayerName: document.getElementById('currentPlayerName'),
+            currentPlayerColor: document.getElementById('currentPlayerColor'),
+            turnNumber: document.getElementById('turnNumber'),
+            playersList: document.getElementById('playersList'),
+            gameLog: document.getElementById('gameLog'),
+            currentGameId: document.getElementById('currentGameId'),
+            gameUrl: document.getElementById('gameUrl')
+        };
+
+        // Set game ID and URL in UI
+        if (this.elements.currentGameId) {
+            this.elements.currentGameId.textContent = this.ui.gameId;
+        }
+        if (this.elements.gameUrl) {
+            this.elements.gameUrl.textContent = window.location.href;
+        }
+
+        // Check if we have a valid game ID
+        if (!this.ui.gameId || !this.isValidGameId(this.ui.gameId)) {
+            this.showError('Invalid game ID');
+            return;
+        }
+
+        // Set up form handlers
+        const joinForm = document.getElementById('joinGameForm');
+        if (joinForm) {
+            joinForm.addEventListener('submit', (e) => this.handleJoinGame(e));
+        }
+
+        // Initialize game components
+        this.initializeWasmClient();
+        this.initializeStatefulProxy();
+        this.loadStoredGameState();
+    }
+
+    private async initializeWasmClient(): Promise<void> {
+        try {
+            console.log('Loading WASM module...');
+            this.ui.connect4Client = new Connect4Client();
+            await this.ui.connect4Client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
+            await this.ui.connect4Client.waitUntilReady();
+            console.log('WASM module loaded successfully!');
+        } catch (error) {
+            console.error('Failed to load WASM:', error);
+            this.showError('Failed to load game engine');
+        }
+    }
+
+    private initializeStatefulProxy(): void {
+        try {
+            // Initialize stateful proxy with IndexedDB transport for cross-page persistence
+            this.ui.statefulProxy = new StatefulProxy(this.ui.gameId, 'indexeddb');
+            
+            // Set up state change listener
+            this.ui.statefulProxy.onStateChange((patches: any[]) => {
+                console.log('Received state patches:', patches);
+                this.applyPatches(patches);
+            });
+
+            console.log('Stateful proxy initialized');
+        } catch (error) {
+            console.error('Failed to initialize stateful proxy:', error);
+        }
+    }
+
+    private loadStoredGameState(): void {
+        try {
+            const stored = localStorage.getItem(`connect4_game_${this.ui.gameId}`);
+            if (stored) {
+                const parsedState = JSON.parse(stored);
+                this.ui.gameState = GameState.from(parsedState);
+                console.log('Loaded stored game state:', this.ui.gameState);
+                
+                // Check if we can resume the game
+                if (this.ui.gameState && this.ui.gameState.players.length > 0) {
+                    // Try to find stored player ID
+                    const storedPlayerId = localStorage.getItem(`connect4_player_${this.ui.gameId}`);
+                    if (storedPlayerId) {
+                        this.ui.playerId = storedPlayerId;
+                        this.showGameInterface();
+                        this.updateGameDisplay();
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to parse stored game state:', error);
+        }
+
+        // Show join form if no valid stored state
+        this.showJoinForm();
+    }
+
+    private async handleJoinGame(event: Event): Promise<void> {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target as HTMLFormElement);
+        const playerName = formData.get('playerName') as string;
+
+        if (!playerName.trim()) {
+            alert('Please enter your name');
+            return;
+        }
+
+        this.ui.playerId = `player_${Date.now()}`;
+        
+        try {
+            // Try to join existing game first
+            const joinResponse = await this.joinGame(playerName);
+            
+            if (joinResponse.success) {
+                this.ui.gameState = GameState.from(joinResponse.data);
+                this.storeGameState();
+                this.showGameInterface();
+                this.updateGameDisplay();
+                this.addLogEntry(`${playerName} joined the game`);
+            } else {
+                // If join fails, try to create a new game
+                console.log('Join failed, attempting to create new game...');
+                const createResponse = await this.createGame(playerName);
+                
+                if (createResponse.success) {
+                    this.ui.gameState = GameState.from(createResponse.data);
+                    this.storeGameState();
+                    this.showGameInterface();
+                    this.updateGameDisplay();
+                    this.addLogEntry(`Game created by ${playerName}`);
+                } else {
+                    throw new Error(createResponse.message || 'Failed to create game');
+                }
+            }
+        } catch (error) {
+            console.error('Error joining game:', error);
+            this.showError('Failed to join or create game. Please try again.');
+        }
+    }
+
+    private async joinGame(playerName: string): Promise<any> {
+        if (!this.ui.connect4Client) {
+            throw new Error('WASM client not initialized');
+        }
+
+        return await this.ui.connect4Client.callMethod('connect4Service.joinGame', {
+            gameId: this.ui.gameId,
+            playerId: this.ui.playerId,
+            playerName: playerName
+        });
+    }
+
+    private async createGame(playerName: string): Promise<any> {
+        if (!this.ui.connect4Client) {
+            throw new Error('WASM client not initialized');
+        }
+
+        const gameConfig = {
+            boardWidth: 7,
+            boardHeight: 6,
+            connectLength: 4,
+            maxPlayers: 2,
+            minPlayers: 2,
+            allowMultipleWinners: false,
+            moveTimeoutSeconds: 30
+        };
+
+        const response = await this.ui.connect4Client.callMethod('connect4Service.createGame', {
+            gameId: this.ui.gameId,
+            playerId: this.ui.playerId,
+            playerName: playerName,
+            config: gameConfig
+        }) as any;
+
+        if (!response.success) {
+            throw new Error(response.message || 'Failed to create game');
+        }
+
+        return response;
+    }
+
+    public async dropPiece(column: number): Promise<void> {
+        if (!this.ui.connect4Client || !this.ui.gameState) {
+            console.error('Game not properly initialized');
+            return;
+        }
+
+        try {
+            const response = await this.ui.connect4Client.callMethod('connect4Service.dropPiece', {
+                gameId: this.ui.gameId,
+                playerId: this.ui.playerId,
+                column: column
+            }) as any;
+
+            if (response.success) {
+                this.ui.gameState = GameState.from(response.data);
+                this.storeGameState();
+                this.updateGameDisplay();
+                
+                // Send state update through stateful proxy
+                if (this.ui.statefulProxy) {
+                    this.ui.statefulProxy.sendPatches([{
+                        operation: 'update',
+                        path: '',
+                        value: this.ui.gameState,
+                        timestamp: Date.now(),
+                        source: this.ui.playerId
+                    }]);
+                }
+            } else {
+                console.error('Failed to drop piece:', response.message);
+            }
+        } catch (error) {
+            console.error('Error dropping piece:', error);
+        }
+    }
+
+    private applyPatches(patches: any[]): void {
+        for (const patch of patches) {
+            if (patch.operation === 'update' && patch.value) {
+                try {
+                    const newState = GameState.from(patch.value);
+                    if (newState) {
+                        this.ui.gameState = newState;
+                        this.storeGameState();
+                        this.updateGameDisplay();
+                        this.addLogEntry('Game state updated from another player');
+                    }
+                } catch (error) {
+                    console.error('Failed to apply patch:', error);
+                }
+            }
+        }
+    }
+
+    private showJoinForm(): void {
+        if (this.elements.joinGameForm) {
+            this.elements.joinGameForm.classList.remove('hidden');
+        }
+        if (this.elements.gameInterface) {
+            this.elements.gameInterface.classList.add('hidden');
+        }
+        if (this.elements.errorState) {
+            this.elements.errorState.classList.add('hidden');
+        }
+    }
+
+    private showGameInterface(): void {
+        if (this.elements.joinGameForm) {
+            this.elements.joinGameForm.classList.add('hidden');
+        }
+        if (this.elements.gameInterface) {
+            this.elements.gameInterface.classList.remove('hidden');
+        }
+        if (this.elements.errorState) {
+            this.elements.errorState.classList.add('hidden');
+        }
+        
+        this.initializeGameBoard();
+    }
+
+    private showError(message: string): void {
+        if (this.elements.joinGameForm) {
+            this.elements.joinGameForm.classList.add('hidden');
+        }
+        if (this.elements.gameInterface) {
+            this.elements.gameInterface.classList.add('hidden');
+        }
+        if (this.elements.errorState) {
+            this.elements.errorState.classList.remove('hidden');
+            const errorMessage = this.elements.errorState.querySelector('p');
+            if (errorMessage) {
+                errorMessage.textContent = message;
+            }
+        }
+    }
+
+    private initializeGameBoard(): void {
+        if (!this.elements.gameBoard || !this.ui.gameState?.board) return;
+
+        const rows = this.ui.gameState.config?.boardHeight || 6;
+        const cols = this.ui.gameState.config?.boardWidth || 7;
+
+        let boardHTML = '';
+        for (let row = 0; row < rows; row++) {
+            boardHTML += '<div class="board-row">';
+            for (let col = 0; col < cols; col++) {
+                const cellValue = this.ui.gameState.board.rows[row]?.cells[col] || '';
+                const pieceClass = cellValue ? `piece-${cellValue}` : '';
+                boardHTML += `
+                    <div class="board-cell ${pieceClass}" 
+                         data-row="${row}" 
+                         data-col="${col}"
+                         onclick="gameViewer.dropPiece(${col})">
+                        ${cellValue ? '●' : ''}
+                    </div>
+                `;
+            }
+            boardHTML += '</div>';
+        }
+
+        this.elements.gameBoard.innerHTML = boardHTML;
+    }
+
+    private updateGameDisplay(): void {
+        if (!this.ui.gameState) return;
+
+        // Update turn information
+        if (this.elements.turnNumber) {
+            this.elements.turnNumber.textContent = this.ui.gameState.turnNumber.toString();
+        }
+
+        // Update current player
+        const currentPlayer = this.ui.gameState.players.find(p => p.id === this.ui.gameState!.currentPlayerId);
+        if (this.elements.currentPlayerName && currentPlayer) {
+            this.elements.currentPlayerName.textContent = currentPlayer.name;
+        }
+
+        // Update game status
+        if (this.elements.gameStatus) {
+            let statusText = 'In Progress';
+            if (this.ui.gameState.status === 2) { // Assuming 2 is game over
+                statusText = this.ui.gameState.winners.length > 0 ? 
+                    `Game Over - Winner: ${this.ui.gameState.winners.join(', ')}` : 
+                    'Game Over - Draw';
+            } else if (this.ui.gameState.players.length < 2) {
+                statusText = 'Waiting for players...';
+            }
+            this.elements.gameStatus.textContent = statusText;
+        }
+
+        // Update players list
+        if (this.elements.playersList) {
+            this.elements.playersList.innerHTML = this.ui.gameState.players.map(player => `
+                <div class="player-item ${player.id === this.ui.gameState!.currentPlayerId ? 'current' : ''}">
+                    <span class="player-name">${player.name}</span>
+                    <span class="player-color player-color-${player.color || 'red'}">●</span>
+                </div>
+            `).join('');
+        }
+
+        // Update board
+        this.initializeGameBoard();
+    }
+
+    private storeGameState(): void {
+        if (this.ui.gameState) {
+            localStorage.setItem(`connect4_game_${this.ui.gameId}`, JSON.stringify(this.ui.gameState));
+            localStorage.setItem(`connect4_player_${this.ui.gameId}`, this.ui.playerId);
+        }
+    }
+
+    private addLogEntry(message: string): void {
+        if (!this.elements.gameLog) return;
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+        logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+        
+        this.elements.gameLog.appendChild(logEntry);
+        this.elements.gameLog.scrollTop = this.elements.gameLog.scrollHeight;
+    }
+
+    private isValidGameId(gameId: string): boolean {
+        if (!gameId || gameId.length === 0 || gameId.length > 50) {
+            return false;
+        }
+        return /^[a-zA-Z0-9-]+$/.test(gameId);
+    }
+
+    // Public methods for HTML onclick handlers
+    public resetGame(): void {
+        if (confirm('Are you sure you want to start a new game?')) {
+            localStorage.removeItem(`connect4_game_${this.ui.gameId}`);
+            localStorage.removeItem(`connect4_player_${this.ui.gameId}`);
+            window.location.reload();
+        }
+    }
+
+    public leaveGame(): void {
+        if (confirm('Are you sure you want to leave this game?')) {
+            localStorage.removeItem(`connect4_game_${this.ui.gameId}`);
+            localStorage.removeItem(`connect4_player_${this.ui.gameId}`);
+            window.location.href = '/';
+        }
+    }
+}
+
+// Initialize the game viewer
+const gameViewer = new GameViewer();
+
+// Make it globally available for HTML onclick handlers
+(window as any).gameViewer = gameViewer;
+(window as any).joinCurrentGame = () => {
+    const form = document.getElementById('joinGameForm');
+    if (form) {
+        form.dispatchEvent(new Event('submit'));
+    }
+};
+(window as any).resetGame = () => gameViewer.resetGame();
+(window as any).leaveGame = () => gameViewer.leaveGame();
+
+export default gameViewer;

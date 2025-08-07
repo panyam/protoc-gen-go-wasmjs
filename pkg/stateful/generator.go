@@ -24,25 +24,33 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/panyam/protoc-gen-go-wasmjs/pkg/generator"
 	wasmjs "github.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1"
 )
 
 //go:embed templates/*.tmpl
 var templateFS embed.FS
 
+// Config holds configuration for the stateful generator
+type Config struct {
+	ClientImportPath string
+}
+
 // Generator generates stateful TypeScript proxy classes
 type Generator struct {
 	plugin    *protogen.Plugin
+	config    *Config
 	services  []*StatefulService
 	templates *template.Template
 }
 
 // StatefulService represents a service marked with stateful annotations
 type StatefulService struct {
-	Service    *protogen.Service
-	Options    *wasmjs.StatefulOptions
-	Methods    []*StatefulMethod
-	OutputPath string
+	Service          *protogen.Service
+	Options          *wasmjs.StatefulOptions
+	Methods          []*StatefulMethod
+	OutputPath       string
+	ClientImportPath string
 }
 
 // StatefulMethod represents a method that returns patches
@@ -51,10 +59,19 @@ type StatefulMethod struct {
 	Options *wasmjs.StatefulMethodOptions
 }
 
-// NewGenerator creates a new stateful generator
+// NewGenerator creates a new stateful generator with default config
 func NewGenerator(plugin *protogen.Plugin) *Generator {
+	return NewGeneratorWithConfig(plugin, &Config{})
+}
+
+// NewGeneratorWithConfig creates a new stateful generator with custom config
+func NewGeneratorWithConfig(plugin *protogen.Plugin, config *Config) *Generator {
+	if config == nil {
+		config = &Config{}
+	}
 	return &Generator{
 		plugin: plugin,
+		config: config,
 	}
 }
 
@@ -118,10 +135,14 @@ func (g *Generator) discoverStatefulServices() error {
 			}
 
 			// Create stateful service
+			outputPath := g.getOutputPath(file, service)
+			clientImportPath := g.calculateClientImportPath(outputPath, file)
+
 			statefulService := &StatefulService{
-				Service:    service,
-				Options:    statefulOpts,
-				OutputPath: g.getOutputPath(file, service),
+				Service:          service,
+				Options:          statefulOpts,
+				OutputPath:       outputPath,
+				ClientImportPath: clientImportPath,
 			}
 
 			// Find stateful methods
@@ -193,6 +214,29 @@ func (g *Generator) getOutputPath(file *protogen.File, service *protogen.Service
 	filename := fmt.Sprintf("%s_stateful.ts", serviceName)
 
 	return filepath.Join(statefulDir, filename)
+}
+
+// calculateClientImportPath calculates the relative import path from stateful proxy to WASM client
+func (g *Generator) calculateClientImportPath(statefulOutputPath string, file *protogen.File) string {
+	// If client import path is configured, use it to calculate relative path
+	if g.config.ClientImportPath != "" {
+		// Use the helper from generator package
+		return generator.CalculateRelativePath(statefulOutputPath, g.config.ClientImportPath)
+	}
+
+	// Default: calculate relative path to the WASM client
+	// This assumes the WASM client is in the same directory as the proto-generated files
+	dir := filepath.Dir(file.GeneratedFilenamePrefix)
+
+	// Default WASM client filename (following the pattern from main generator)
+	baseName := strings.Replace(filepath.Base(file.Desc.Path()), ".proto", "", 1)
+	// Capitalize first letter (simple replacement for strings.Title)
+	if len(baseName) > 0 {
+		baseName = strings.ToUpper(baseName[:1]) + baseName[1:]
+	}
+	wasmClientFile := filepath.Join(dir, fmt.Sprintf("%sClient.client.ts", baseName))
+
+	return generator.CalculateRelativePath(statefulOutputPath, wasmClientFile)
 }
 
 // generateTypeScriptFiles generates all TypeScript proxy files

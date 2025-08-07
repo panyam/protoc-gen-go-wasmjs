@@ -1,24 +1,25 @@
 # Connect4 Example Makefile
 # Demonstrates stateful proxy generation for real-time multiplayer games
 
-.PHONY: all generate wasm web clean test
+.PHONY: all generate wasm web clean test compile-ts
 
-all: parent generate wasm web
+all: parent generate web compile-ts wasm web
 
 parent:
 	cd ../../ && make
 
 # Generate all protobuf code using buf
 generate:
-	echo buf generate
+	buf generate
 
 # Build WASM service
-wasm: generate
-	cd wasm && GOOS=wasip1 GOARCH=wasm go build -o ../web/connect4_service.wasm service.go
-	cd cmd/wasm && GOOS=js GOARCH=wasm go build -o ../../web/multiplayer_connect4.wasm *.go
+wasm: compile-ts
+	mkdir -p wasm
+	GOOS=js GOARCH=wasm go build -o ./static/wasm/multiplayer_connect4.wasm cmd/wasm/*.go
 
 # Start development web server
-web:
+web: 
+	cd web && make
 	@echo "Starting Connect4 game server..."
 	@echo "Open http://localhost:8080 to play!"
 	go run cmd/serve/*.go
@@ -35,6 +36,7 @@ stateful:
 clean:
 	rm -rf gen/
 	rm -rf web/gen/
+	rm -rf static/gen/
 	rm -f web/*.wasm
 
 # Test the stateful proxy generation

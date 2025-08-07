@@ -34,7 +34,7 @@ func NewServer() *Server {
 
 // Load HTML templates
 func (s *Server) loadTemplates() {
-	templatePattern := filepath.Join("templates", "*.html")
+	templatePattern := filepath.Join("cmd/serve/templates", "*.html")
 	templates, err := template.ParseGlob(templatePattern)
 	if err != nil {
 		log.Fatalf("Failed to load templates: %v", err)
@@ -45,19 +45,9 @@ func (s *Server) loadTemplates() {
 // Setup HTTP routes
 func (s *Server) setupRoutes() {
 	// Static files (CSS, JS from static/)
-	staticDir := http.Dir("./static/")
+	staticDir := http.Dir("./web/static/")
 	staticHandler := http.StripPrefix("/static/", http.FileServer(staticDir))
 	s.mux.Handle("/static/", staticHandler)
-
-	// Generated TypeScript and protobuf files (from web/gen/)
-	genDir := http.Dir("./web/gen/")
-	genHandler := http.StripPrefix("/static/gen/", http.FileServer(genDir))
-	s.mux.Handle("/static/gen/", genHandler)
-
-	// WASM files (from web/)
-	wasmDir := http.Dir("./web/")
-	wasmHandler := http.StripPrefix("/static/wasm/", http.FileServer(wasmDir))
-	s.mux.Handle("/static/wasm/", wasmHandler)
 
 	// Health check
 	s.mux.HandleFunc("/health", s.handleHealth)
@@ -74,19 +64,19 @@ func (s *Server) handleRouting(w http.ResponseWriter, r *http.Request) {
 	}
 
 	path := strings.Trim(r.URL.Path, "/")
-	
+
 	// Home page - shows games list
 	if path == "" {
 		s.handleGamesPage(w, r)
 		return
 	}
-	
+
 	// Game page - shows individual game
 	if isValidGameID(path) {
 		s.handleGamePage(w, r, path)
 		return
 	}
-	
+
 	// Not found
 	http.NotFound(w, r)
 }
@@ -94,7 +84,7 @@ func (s *Server) handleRouting(w http.ResponseWriter, r *http.Request) {
 // Handle games list page
 func (s *Server) handleGamesPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	
+
 	err := s.templates.ExecuteTemplate(w, "games.html", nil)
 	if err != nil {
 		log.Printf("Error rendering games template: %v", err)
@@ -106,12 +96,12 @@ func (s *Server) handleGamesPage(w http.ResponseWriter, r *http.Request) {
 // Handle individual game page
 func (s *Server) handleGamePage(w http.ResponseWriter, r *http.Request, gameID string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	
+
 	data := TemplateData{
 		GameID:  gameID,
 		GameURL: fmt.Sprintf("%s://%s/%s", getScheme(r), r.Host, gameID),
 	}
-	
+
 	err := s.templates.ExecuteTemplate(w, "game.html", data)
 	if err != nil {
 		log.Printf("Error rendering game template: %v", err)
@@ -137,14 +127,14 @@ func isValidGameID(gameID string) bool {
 	if len(gameID) == 0 || len(gameID) > 50 {
 		return false
 	}
-	
+
 	// Allow alphanumeric characters and hyphens
 	for _, r := range gameID {
 		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-') {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -163,14 +153,14 @@ func getScheme(r *http.Request) string {
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		// Wrap the response writer to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
+
 		next.ServeHTTP(wrapped, r)
-		
+
 		duration := time.Since(start)
-		
+
 		log.Printf("%s %s %d %v",
 			r.Method,
 			r.URL.Path,
@@ -197,12 +187,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		
+
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -213,11 +203,11 @@ func securityMiddleware(next http.Handler) http.Handler {
 		// Add WASM security headers for all requests (required for WASM)
 		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
 		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
-		
+
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
-		
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -226,7 +216,7 @@ func main() {
 	port := "8080"
 
 	server := NewServer()
-	
+
 	// Add middleware
 	handler := loggingMiddleware(
 		corsMiddleware(
@@ -240,8 +230,8 @@ func main() {
 	log.Printf("💚 Health check: http://localhost:%s/health", port)
 	log.Printf("📁 Serving:")
 	log.Printf("   - Static files from: ./static/")
-	log.Printf("   - Generated files from: ./web/gen/ -> /static/gen/")
 	log.Printf("   - WASM files from: ./web/ -> /static/wasm/")
+	log.Printf("   - Stateful proxies in: ./web/gen/")
 
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatalf("Server failed to start: %v", err)

@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -25,26 +26,27 @@ import (
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/stateful"
 )
 
-var (
-	version = flag.Bool("version", false, "print the version and exit")
-)
-
 func main() {
-	flag.Parse()
-	if *version {
+	// Handle version flag before protogen.Options
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
 		fmt.Printf("protoc-gen-go-wasmjs-stateful %s\n", getVersion())
 		return
 	}
 
-	var flags flag.FlagSet
+	var flagSet flag.FlagSet
+
+	// Stateful proxy options
+	clientImportPath := flagSet.String("client_import_path", "", "Import path for the WASM client")
 
 	protogen.Options{
-		ParamFunc: flags.Set,
+		ParamFunc: flagSet.Set,
 	}.Run(func(gen *protogen.Plugin) error {
 		gen.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
 
-		// Create stateful generator
-		statefulGen := stateful.NewGenerator(gen)
+		// Create stateful generator with configuration
+		statefulGen := stateful.NewGeneratorWithConfig(gen, &stateful.Config{
+			ClientImportPath: *clientImportPath,
+		})
 
 		// Generate stateful proxy files
 		if err := statefulGen.Generate(); err != nil {
