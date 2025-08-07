@@ -22,7 +22,7 @@ plugins:
 
   # =================================================================
   # Multi-Target WASM Generation Examples (Export Pattern)
-  # Uses published wasmjs proto dependencies + local plugin installation
+  # Development mode: uses local plugin and symlinked wasmjs annotations
   # =================================================================
   
   # Default target - All services (backwards compatibility)

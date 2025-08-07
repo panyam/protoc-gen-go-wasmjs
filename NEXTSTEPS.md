@@ -26,6 +26,17 @@
   - **Type Safety Improvements**: Fixed factory method subscripting (`this[methodName]`) and `FactoryInterface` compatibility issues
   - **Build System Stability**: Resolved all TypeScript compilation errors and maintained 100% build success rate
 
+## Recently Completed (August 2025)
+- ✅ **Symlink Elimination & BSR Integration**: Successfully resolved protobuf dependency management for both examples
+  - **Published wasmjs Protos**: Published `wasmjs/v1/annotations.proto` to buf.build registry at `buf.build/panyam/protoc-gen-go-wasmjs`
+  - **Production Mode**: Both examples now use published wasmjs proto dependencies + local plugin installation
+  - **Development Mode**: Clean development workflow with local symlinks and buf.lock management
+  - **Dual Configuration**: Separate buf.yaml/buf.gen.yaml files for production vs development workflows
+  - **User Experience**: End users no longer need symlink management - just add one dependency line and install plugin
+  - **Library Example**: Complete elimination of symlink requirement with comprehensive Makefile targets
+  - **Connect4 Example**: Applied same symlink elimination pattern with real-time multiplayer focus
+  - **Documentation**: Created SETUP.md guides for both examples explaining production vs development workflows
+
 ## Immediate Tasks (Current Priority)
 - ✅ **External Package Import Support**: Implemented comprehensive external type mapping system
   - **Google Protobuf Types**: Full support for `google.protobuf.Timestamp` → `Date`, `google.protobuf.FieldMask` → `string[]`

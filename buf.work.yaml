@@ -1,0 +1,5 @@
+version: v2
+directories:
+  - proto
+  - examples/library/proto
+  - examples/connect4/proto

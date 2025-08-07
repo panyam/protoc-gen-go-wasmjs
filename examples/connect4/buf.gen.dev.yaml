@@ -1,0 +1,57 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go
+plugins:
+  # Generate standard Go protobuf types
+  - remote: buf.build/protocolbuffers/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate gRPC service interfaces
+  - remote: buf.build/grpc/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate TypeScript protobuf types 
+  # - remote: buf.build/bufbuild/es
+    # out: ./gechoen/ts
+    # opt: target=ts
+
+  # =================================================================
+  # WASM Generation for Connect4 Game (Development Mode)
+  # Uses local plugin and symlinked wasmjs annotations
+  # =================================================================
+
+  # Multiplayer optimized target - Focus on real-time performance
+  # Target 1: Generate WASM wrapper
+  - local: ../../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm
+    opt:
+      - js_structure=namespaced
+      - js_namespace=multiplayerConnect4
+      - module_name=multiplayer_connect4
+      - generate_typescript=false  # Only generate WASM
+
+  # Target 2: Generate TypeScript client only for UserService  
+  - local: ../../bin/protoc-gen-go-wasmjs
+    out: ./web/gen/wasmts
+    opt:
+      - js_structure=namespaced
+      - js_namespace=multiplayerConnect4
+      - module_name=multiplayer_connect4
+      - generate_wasm=false  # Only generate TypeScript
+
+  # =================================================================
+  # Stateful Proxy Generation (NEW!)
+  # =================================================================
+  
+  # Generate stateful TypeScript proxies for real-time collaboration
+  # Disabling for now till we figure out how to handle the imports of Patches and Diffs
+  # - local: ../../bin/protoc-gen-go-wasmjs-stateful
+    # out: ./web/gen
+    # opt: 
+      # - paths=source_relative
+      # - client_import_path=../static/gen/multiplayer/wasmjs/v1

@@ -4,7 +4,7 @@ modules:
 deps:
   - buf.build/googleapis/googleapis
   - buf.build/protocolbuffers/wellknowntypes
-  - buf.build/panyam/protoc-gen-go-wasmjs
+  # Note: wasmjs annotations are included via symlink, NOT from buf.build in dev mode
 lint:
   use:
     - STANDARD

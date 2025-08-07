@@ -8,9 +8,31 @@ all: parent generate web compile-ts wasm web
 parent:
 	cd ../../ && make
 
-# Generate all protobuf code using buf
+# Default: production mode using published wasmjs protos + local plugin
 generate:
+	rm -Rf gen
 	buf generate
+
+# Development mode: uses local plugin and symlinked wasmjs annotations
+generate-dev: parent symlink-wasmjs
+	rm -Rf gen
+	# Remove buf.lock to avoid conflicts with published wasmjs dependency
+	rm -f buf.lock
+	buf generate --template buf.gen.dev.yaml --config buf.dev.yaml
+
+# Create symlink to wasmjs annotations for development
+symlink-wasmjs:
+	@if [ ! -L proto/wasmjs ]; then \
+		echo "Creating wasmjs symlink for development..."; \
+		ln -s ../../../proto/wasmjs proto/wasmjs; \
+	fi
+
+# Remove symlink (for switching back to production mode)
+remove-symlink:
+	@if [ -L proto/wasmjs ]; then \
+		echo "Removing wasmjs symlink..."; \
+		rm proto/wasmjs; \
+	fi
 
 # Build WASM service
 wasm: compile-ts
