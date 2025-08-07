@@ -90,6 +90,12 @@ func main() {
 				continue
 			}
 			packageName := string(f.Desc.Package())
+			
+			// Skip wasmjs annotation packages - they are library files, not user code
+			if packageName == "wasmjs.v1" {
+				continue
+			}
+			
 			packageFiles[packageName] = append(packageFiles[packageName], f)
 		}
 

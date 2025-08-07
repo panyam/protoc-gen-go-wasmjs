@@ -121,17 +121,37 @@ func (ts *TSGenerator) collectFactoryDependencies(messages []MessageInfo, curren
 func (ts *TSGenerator) collectExternalImports(messages []MessageInfo) []ExternalImport {
 	importMap := make(map[string]ExternalImport)
 	
+	// Get current package name for comparison
+	currentPackage := ""
+	if len(messages) > 0 {
+		currentPackage = messages[0].PackageName
+	}
+	
 	for _, message := range messages {
 		for _, field := range message.Fields {
 			// Check if field references an external type
 			if field.MessageType != "" && strings.Contains(field.MessageType, ".") {
-				// Check if there's an external type mapping for this type
+				// Check if there's an external type mapping for this type (e.g., google.protobuf.Timestamp -> Date)
 				if mapping, exists := ts.fileGen.config.GetExternalTypeMapping(field.MessageType); exists {
 					// Use the TypeScript type name as the key to avoid duplicates
 					importMap[mapping.TypeScript] = ExternalImport{
 						TypeName:     mapping.TypeScript,
 						ImportSource: mapping.ImportSource,
 						IsNative:     mapping.IsNative,
+					}
+				} else {
+					// Check if this is a cross-package message reference within the project
+					fieldPackage := ts.extractPackageName(field.MessageType)
+					if fieldPackage != currentPackage && fieldPackage != "" {
+						// This is a cross-package reference - generate import for it
+						messageName := ts.extractMessageName(field.MessageType)
+						importPath := ts.buildCrossPackageImportPath(currentPackage, fieldPackage)
+						
+						importMap[messageName] = ExternalImport{
+							TypeName:     messageName,
+							ImportSource: importPath,
+							IsNative:     false,
+						}
 					}
 				}
 			}
@@ -145,6 +165,59 @@ func (ts *TSGenerator) collectExternalImports(messages []MessageInfo) []External
 	}
 	
 	return imports
+}
+
+// extractPackageName extracts the package name from a fully qualified message type
+// e.g., "library.common.BaseMessage" -> "library.common"
+func (ts *TSGenerator) extractPackageName(fullMessageType string) string {
+	parts := strings.Split(fullMessageType, ".")
+	if len(parts) <= 1 {
+		return ""
+	}
+	// Return all parts except the last one (which is the message name)
+	return strings.Join(parts[:len(parts)-1], ".")
+}
+
+// extractMessageName extracts the message name from a fully qualified message type
+// e.g., "library.common.BaseMessage" -> "BaseMessage"
+func (ts *TSGenerator) extractMessageName(fullMessageType string) string {
+	parts := strings.Split(fullMessageType, ".")
+	if len(parts) == 0 {
+		return fullMessageType
+	}
+	// Return the last part (which is the message name)
+	return parts[len(parts)-1]
+}
+
+// buildCrossPackageImportPath builds the relative import path from current package to target package
+// e.g., from "library.v2" to "library.common" -> "../common/interfaces"
+func (ts *TSGenerator) buildCrossPackageImportPath(currentPackage, targetPackage string) string {
+	currentParts := strings.Split(currentPackage, ".")
+	targetParts := strings.Split(targetPackage, ".")
+	
+	// Find common prefix
+	commonPrefixLen := 0
+	for i := 0; i < len(currentParts) && i < len(targetParts) && currentParts[i] == targetParts[i]; i++ {
+		commonPrefixLen++
+	}
+	
+	// Build relative path
+	var pathParts []string
+	
+	// Go up for each unique part in current package
+	for i := commonPrefixLen; i < len(currentParts); i++ {
+		pathParts = append(pathParts, "..")
+	}
+	
+	// Go down for each unique part in target package
+	for i := commonPrefixLen; i < len(targetParts); i++ {
+		pathParts = append(pathParts, targetParts[i])
+	}
+	
+	// Add "interfaces" at the end since we import from interfaces.ts
+	pathParts = append(pathParts, "interfaces")
+	
+	return strings.Join(pathParts, "/")
 }
 
 // getFactoryNameForPackage generates factory class name from package name
