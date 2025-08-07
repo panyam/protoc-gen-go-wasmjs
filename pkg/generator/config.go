@@ -35,35 +35,35 @@ type Config struct {
 	GenerateTypeScript bool   // Generate TypeScript client (default: true)
 	WasmExportPath     string // Path where WASM wrapper should be generated (defaults to protoc out directory)
 	TSExportPath       string // Path where TypeScript files should be generated (defaults to protoc out directory)
-	
+
 	// Service & method selection
 	Services      string // Comma-separated list of services
 	MethodInclude string // Comma-separated glob patterns for methods to include
 	MethodExclude string // Comma-separated glob patterns for methods to exclude
 	MethodRename  string // Comma-separated method renames (OldName:NewName)
-	
+
 	// JS API structure
 	JSStructure string // namespaced|flat|service_based
 	JSNamespace string // Global JavaScript namespace
 	ModuleName  string // WASM module name
-	
+
 	// Customization
 	TemplateDir  string // Directory containing custom templates
 	WasmTemplate string // Custom WASM template file
 	TSTemplate   string // Custom TypeScript template file
-	
+
 	// Build integration
 	WasmPackageSuffix   string // Package suffix for WASM wrapper
 	GenerateBuildScript bool   // Generate build script for WASM compilation
-	
+
 	// External type mappings (e.g., "google.protobuf.Timestamp:<native>:Date")
 	ExternalTypes string // Comma-separated external type mappings
-	
+
 	// Parsed configuration (populated by Validate)
-	ServicesSet      map[string]bool
-	MethodIncludes   []string
-	MethodExcludes   []string
-	MethodRenames    map[string]string
+	ServicesSet          map[string]bool
+	MethodIncludes       []string
+	MethodExcludes       []string
+	MethodRenames        map[string]string
 	ExternalTypeMappings map[string]ExternalTypeMapping // Parsed external type mappings
 }
 
@@ -77,17 +77,17 @@ func (c *Config) Validate() error {
 	}
 	// If neither is explicitly set, default to generating both
 	// This will be handled by the flags parsing in main.go
-	
+
 	// Validate WASM export path (where we write WASM wrapper)
 	if c.WasmExportPath == "" {
 		c.WasmExportPath = "." // Default to current directory (protoc out directory)
 	}
-	
+
 	// Validate TypeScript export path (where we write TypeScript files)
 	if c.TSExportPath == "" {
 		c.TSExportPath = "." // Default to current directory (protoc out directory)
 	}
-	
+
 	// Parse services list
 	c.ServicesSet = make(map[string]bool)
 	if c.Services != "" {
@@ -98,7 +98,7 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
-	
+
 	// Parse method includes
 	if c.MethodInclude != "" {
 		for _, pattern := range strings.Split(c.MethodInclude, ",") {
@@ -108,7 +108,7 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
-	
+
 	// Parse method excludes
 	if c.MethodExclude != "" {
 		for _, pattern := range strings.Split(c.MethodExclude, ",") {
@@ -118,7 +118,7 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
-	
+
 	// Parse method renames
 	c.MethodRenames = make(map[string]string)
 	if c.MethodRename != "" {
@@ -138,21 +138,21 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
-	
+
 	// Validate JS structure
 	if c.JSStructure == "" {
 		c.JSStructure = "namespaced"
 	}
-	
+
 	validStructures := map[string]bool{
-		"namespaced":     true,
-		"flat":           true,
-		"service_based":  true,
+		"namespaced":    true,
+		"flat":          true,
+		"service_based": true,
 	}
 	if !validStructures[c.JSStructure] {
 		return fmt.Errorf("invalid js_structure: %s (supported: namespaced, flat, service_based)", c.JSStructure)
 	}
-	
+
 	// Validate template directory if specified
 	if c.TemplateDir != "" {
 		absPath, err := filepath.Abs(c.TemplateDir)
@@ -161,17 +161,17 @@ func (c *Config) Validate() error {
 		}
 		c.TemplateDir = absPath
 	}
-	
+
 	// Set defaults for WASM package suffix
 	if c.WasmPackageSuffix == "" {
 		c.WasmPackageSuffix = "wasm"
 	}
-	
+
 	// Parse external type mappings
 	if err := c.parseExternalTypes(); err != nil {
 		return fmt.Errorf("failed to parse external types: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -191,19 +191,19 @@ func (c *Config) ShouldGenerateMethod(methodName string) bool {
 			return false
 		}
 	}
-	
+
 	// If no includes specified, include by default (unless excluded above)
 	if len(c.MethodIncludes) == 0 {
 		return true
 	}
-	
+
 	// Check includes
 	for _, pattern := range c.MethodIncludes {
 		if matched, _ := filepath.Match(pattern, methodName); matched {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -212,7 +212,7 @@ func (c *Config) GetMethodJSName(methodName string) string {
 	if renamed, exists := c.MethodRenames[methodName]; exists {
 		return renamed
 	}
-	
+
 	// Convert to camelCase for JavaScript
 	return toCamelCase(methodName)
 }
@@ -222,7 +222,7 @@ func (c *Config) GetDefaultJSNamespace(packageName string) string {
 	if c.JSNamespace != "" {
 		return c.JSNamespace
 	}
-	
+
 	// Convert package name to lowercase and replace dots with underscores
 	namespace := strings.ToLower(packageName)
 	namespace = strings.ReplaceAll(namespace, ".", "_")
@@ -234,13 +234,11 @@ func (c *Config) GetDefaultModuleName(packageName string) string {
 	if c.ModuleName != "" {
 		return c.ModuleName
 	}
-	
+
 	// Convert package name and add suffix
 	name := strings.ReplaceAll(packageName, ".", "_")
 	return name + "_services"
 }
-
-
 
 // calculateRelativePath calculates the relative path from fromPath to toPath
 // Both paths should be relative to the protoc working directory (where buf.gen.yaml is)
@@ -254,32 +252,32 @@ func CalculateRelativePath(fromPath, toPath string) string {
 	// Clean the paths to handle . and .. properly
 	fromPath = filepath.Clean(fromPath)
 	toPath = filepath.Clean(toPath)
-	
+
 	// Calculate relative path
 	relPath, err := filepath.Rel(fromPath, toPath)
 	if err != nil {
 		// Fallback to absolute path if relative calculation fails
 		return toPath
 	}
-	
+
 	// Convert to forward slashes for TypeScript imports
 	relPath = filepath.ToSlash(relPath)
-	
+
 	// Ensure path starts with ./ for relative imports
 	if !strings.HasPrefix(relPath, "./") && !strings.HasPrefix(relPath, "../") {
 		relPath = "./" + relPath
 	}
-	
+
 	return relPath
 }
 
 // parseExternalTypes parses external type mappings configuration
 func (c *Config) parseExternalTypes() error {
 	c.ExternalTypeMappings = make(map[string]ExternalTypeMapping)
-	
+
 	// Add default mappings for well-known types
 	c.addDefaultExternalTypes()
-	
+
 	// Parse user-provided external type mappings
 	if c.ExternalTypes != "" {
 		for _, mapping := range strings.Split(c.ExternalTypes, ",") {
@@ -287,7 +285,7 @@ func (c *Config) parseExternalTypes() error {
 			if mapping == "" {
 				continue
 			}
-			
+
 			// Parse mapping format: "proto.type:source:typescript_type"
 			// e.g., "google.protobuf.Timestamp:<native>:Date"
 			// e.g., "google.protobuf.FieldMask:@bufbuild/protobuf/wkt:FieldMask"
@@ -295,17 +293,17 @@ func (c *Config) parseExternalTypes() error {
 			if len(parts) != 3 {
 				return fmt.Errorf("invalid external type mapping format: %s (expected proto.type:source:typescript_type)", mapping)
 			}
-			
+
 			protoType := strings.TrimSpace(parts[0])
 			importSource := strings.TrimSpace(parts[1])
 			tsType := strings.TrimSpace(parts[2])
-			
+
 			if protoType == "" || importSource == "" || tsType == "" {
 				return fmt.Errorf("invalid external type mapping: empty components in %s", mapping)
 			}
-			
+
 			isNative := importSource == "<native>"
-			
+
 			c.ExternalTypeMappings[protoType] = ExternalTypeMapping{
 				ProtoType:    protoType,
 				TypeScript:   tsType,
@@ -314,7 +312,7 @@ func (c *Config) parseExternalTypes() error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -327,8 +325,8 @@ func (c *Config) addDefaultExternalTypes() {
 		ImportSource: "<native>",
 		IsNative:     true,
 	}
-	
-	// Default mapping for google.protobuf.FieldMask 
+
+	// Default mapping for google.protobuf.FieldMask
 	// Using a simple string array for now - users can override with external package if needed
 	c.ExternalTypeMappings["google.protobuf.FieldMask"] = ExternalTypeMapping{
 		ProtoType:    "google.protobuf.FieldMask",
@@ -349,7 +347,7 @@ func toCamelCase(s string) string {
 	if len(s) == 0 {
 		return s
 	}
-	
+
 	// Convert first character to lowercase
 	return strings.ToLower(s[:1]) + s[1:]
 }
