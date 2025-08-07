@@ -303,8 +303,8 @@ const file_wasmjs_v1_annotations_proto_rawDesc = "" +
 	"\x13wasm_method_exclude\x12\x1e.google.protobuf.MethodOptions\x18ӆ\x03 \x01(\bR\x11wasmMethodExclude:M\n" +
 	"\x11wasm_service_name\x12\x1f.google.protobuf.ServiceOptions\x18Ԇ\x03 \x01(\tR\x0fwasmServiceName:Y\n" +
 	"\bstateful\x12\x1f.google.protobuf.ServiceOptions\x18Ն\x03 \x01(\v2\x1a.wasmjs.v1.StatefulOptionsR\bstateful:k\n" +
-	"\x0fstateful_method\x12\x1e.google.protobuf.MethodOptions\x18ֆ\x03 \x01(\v2 .wasmjs.v1.StatefulMethodOptionsR\x0estatefulMethodB\xae\x01\n" +
-	"\rcom.wasmjs.v1B\x10AnnotationsProtoP\x01ZFgithub.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1;wasmjsv1\xa2\x02\x03WXX\xaa\x02\tWasmjs.V1\xca\x02\tWasmjs\\V1\xe2\x02\x15Wasmjs\\V1\\GPBMetadata\xea\x02\n" +
+	"\x0fstateful_method\x12\x1e.google.protobuf.MethodOptions\x18ֆ\x03 \x01(\v2 .wasmjs.v1.StatefulMethodOptionsR\x0estatefulMethodB\xba\x01\n" +
+	"\rcom.wasmjs.v1B\x10AnnotationsProtoP\x01ZRgithub.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go/wasmjs/v1;wasmjsv1\xa2\x02\x03WXX\xaa\x02\tWasmjs.V1\xca\x02\tWasmjs\\V1\xe2\x02\x15Wasmjs\\V1\\GPBMetadata\xea\x02\n" +
 	"Wasmjs::V1b\x06proto3"
 
 var (

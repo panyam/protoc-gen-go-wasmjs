@@ -1,0 +1,131 @@
+// Copyright 2025 Sri Panyam
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package wasmjs.v1;
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1";
+
+// Patch operations for modifying protobuf message fields
+enum PatchOperation {
+  // Set a field value (scalar, message, or replace entire field)
+  SET = 0;
+  
+  // Insert an item into a repeated field at a specific index
+  INSERT_LIST = 1;
+  
+  // Remove an item from a repeated field at a specific index
+  REMOVE_LIST = 2;
+  
+  // Move an item within a repeated field from one index to another
+  MOVE_LIST = 3;
+  
+  // Insert or update a key-value pair in a map field
+  INSERT_MAP = 4;
+  
+  // Remove a key-value pair from a map field
+  REMOVE_MAP = 5;
+  
+  // Clear all items from a repeated field
+  CLEAR_LIST = 6;
+  
+  // Clear all key-value pairs from a map field
+  CLEAR_MAP = 7;
+}
+
+// A single patch operation on a protobuf message field
+message MessagePatch {
+  // The type of operation to perform
+  PatchOperation operation = 1;
+  
+  // Path to the field being modified (e.g., "players[2].name", "places['tile_123'].latitude")
+  string field_path = 2;
+  
+  // The new value to set (for SET, INSERT_LIST, INSERT_MAP operations)
+  // Encoded as JSON for type flexibility
+  string value_json = 3;
+  
+  // Index for list operations (INSERT_LIST, REMOVE_LIST, MOVE_LIST)
+  int32 index = 4;
+  
+  // Map key for map operations (INSERT_MAP, REMOVE_MAP)
+  string key = 5;
+  
+  // Source index for MOVE_LIST operations
+  int32 old_index = 6;
+  
+  // Monotonically increasing change number for ordering
+  int64 change_number = 7;
+  
+  // Timestamp when the change was created (microseconds since epoch)
+  int64 timestamp = 8;
+  
+  // Optional user ID who made the change (for conflict resolution)
+  string user_id = 9;
+  
+  // Optional transaction ID to group related patches
+  string transaction_id = 10;
+}
+
+// A batch of patches applied to a single entity
+message PatchBatch {
+  // The fully qualified protobuf message type (e.g., "example.Game")
+  string message_type = 1;
+  
+  // The unique identifier of the entity being modified
+  string entity_id = 2;
+  
+  // List of patches to apply in order
+  repeated MessagePatch patches = 3;
+  
+  // The highest change number in this batch
+  int64 change_number = 4;
+  
+  // Source of the changes
+  PatchSource source = 5;
+  
+  // Optional metadata about the batch
+  map<string, string> metadata = 6;
+}
+
+// Source of patch changes
+enum PatchSource {
+  // Changes originating from local user actions
+  LOCAL = 0;
+  
+  // Changes from remote users via real-time sync
+  REMOTE = 1;
+  
+  // Authoritative changes from the server
+  SERVER = 2;
+  
+  // Changes loaded from persistent storage
+  STORAGE = 3;
+}
+
+// Response message for methods that return patches
+message PatchResponse {
+  // The patches to apply
+  repeated PatchBatch patch_batches = 1;
+  
+  // Success status
+  bool success = 2;
+  
+  // Error message if success is false
+  string error_message = 3;
+  
+  // The new change number after applying these patches
+  int64 new_change_number = 4;
+}

@@ -72,3 +72,67 @@ extend google.protobuf.MethodOptions {
 extend google.protobuf.ServiceOptions {
   string wasm_service_name = 50004;
 }
+
+// stateful enables stateful proxy generation for a service.
+// When enabled, generates a stateful proxy class that maintains local state
+// and can apply differential patches for real-time collaboration.
+//
+// Example usage:
+//   service GameService {
+//     option (wasmjs.v1.stateful) = {
+//       enabled: true
+//       state_message_type: "example.Game"
+//       conflict_resolution: CHANGE_NUMBER_BASED
+//     };
+//   }
+extend google.protobuf.ServiceOptions {
+  StatefulOptions stateful = 50005;
+}
+
+// stateful_method marks a method as returning patch operations.
+// Use this for methods that return differential updates instead of full objects.
+//
+// Example usage:
+//   rpc SubmitMoves(GameMovesRequest) returns (GamePatchResponse) {
+//     option (wasmjs.v1.stateful_method) = {
+//       returns_patches: true
+//       broadcasts: true
+//     };
+//   }
+extend google.protobuf.MethodOptions {
+  StatefulMethodOptions stateful_method = 50006;
+}
+
+// Configuration for stateful services
+message StatefulOptions {
+  // Whether stateful proxy generation is enabled
+  bool enabled = 1;
+  
+  // The fully qualified name of the message type that represents the state
+  // (e.g., "example.Game", "library.Map")
+  string state_message_type = 2;
+  
+  // Strategy for resolving conflicts when multiple changes occur
+  ConflictResolution conflict_resolution = 3;
+}
+
+// Configuration for stateful methods
+message StatefulMethodOptions {
+  // Whether this method returns patch operations instead of full objects
+  bool returns_patches = 1;
+  
+  // Whether changes from this method should be broadcast to other clients
+  bool broadcasts = 2;
+}
+
+// Conflict resolution strategies for stateful objects
+enum ConflictResolution {
+  // Use change numbers to determine order (default)
+  CHANGE_NUMBER_BASED = 0;
+  
+  // Use timestamps for ordering (requires synchronized clocks)
+  TIMESTAMP_BASED = 1;
+  
+  // Last writer wins (simple but may lose data)
+  LAST_WRITER_WINS = 2;
+}
