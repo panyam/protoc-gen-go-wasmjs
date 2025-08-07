@@ -232,6 +232,159 @@
         .hidden {
             display: none;
         }
+
+        /* Page Layout */
+        .page {
+            min-height: 400px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .page-header h2 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+
+        .page-header p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .game-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .game-nav h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .game-url {
+            font-family: monospace;
+            background: #f3f4f6;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-back {
+            background: #6b7280;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .btn-back:hover {
+            background: #4b5563;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        /* Games List */
+        .games-list {
+            margin-bottom: 40px;
+            min-height: 200px;
+        }
+
+        .game-item {
+            background: #f8f9fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .game-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .game-info-summary {
+            flex: 1;
+        }
+
+        .game-id {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .game-meta {
+            display: flex;
+            gap: 20px;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .game-players {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .player-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid #333;
+        }
+
+        .game-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .create-game-form {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            border-top: 3px solid #667eea;
+        }
+
+        .create-game-form h3 {
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .empty-state h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .join-form {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
@@ -241,56 +394,90 @@
     </div>
 
     <div class="game-container">
-        <!-- Join Game Form -->
-        <div id="joinForm" class="join-form">
-            <h3>Join Game</h3>
-            <div class="form-group">
-                <label for="gameId">Game ID:</label>
-                <input type="text" id="gameId" placeholder="Enter game ID to join or create" value="demo-game">
+        <!-- Game List Page -->
+        <div id="gameListPage" class="page">
+            <div class="page-header">
+                <h2>🎮 Active Games</h2>
+                <p>Join an existing game or create a new one</p>
             </div>
-            <div class="form-group">
-                <label for="playerName">Your Name:</label>
-                <input type="text" id="playerName" placeholder="Enter your name" required>
+
+            <div id="gamesList" class="games-list">
+                <!-- Active games will be populated here -->
             </div>
-            <div class="controls">
-                <button class="btn" onclick="joinOrCreateGame()">Join Game</button>
+
+            <div class="create-game-form">
+                <h3>Create New Game</h3>
+                <div class="form-group">
+                    <label for="newGameId">Game ID:</label>
+                    <input type="text" id="newGameId" placeholder="Enter unique game ID">
+                </div>
+                <div class="form-group">
+                    <label for="creatorName">Your Name:</label>
+                    <input type="text" id="creatorName" placeholder="Enter your name" required>
+                </div>
+                <div class="controls">
+                    <button class="btn" onclick="createNewGame()">Create Game</button>
+                    <button class="btn btn-secondary" onclick="refreshGamesList()">Refresh List</button>
+                </div>
             </div>
-            <p style="margin-top: 10px; font-size: 0.9rem; color: #6b7280;">
-                If the game doesn't exist, it will be created automatically.
-            </p>
         </div>
 
-        <!-- Game Interface -->
-        <div id="gameInterface" class="hidden">
-            <div class="game-info">
-                <div class="player-info">
-                    <span>Current Player:</span>
-                    <div id="currentPlayerColor" class="player-color"></div>
-                    <span id="currentPlayerName">Waiting...</span>
-                </div>
-                <div class="game-status" id="gameStatus">Waiting for players...</div>
-                <div>Turn: <span id="turnNumber">0</span></div>
-            </div>
-
-            <div class="board-container">
-                <div id="gameBoard" class="board">
-                    <!-- Board cells will be generated by JavaScript -->
+        <!-- Game Page -->
+        <div id="gamePage" class="page hidden">
+            <div class="page-header">
+                <div class="game-nav">
+                    <button class="btn btn-back" onclick="navigateToHome()">← Back to Games</button>
+                    <h2 id="gamePageTitle">Game: <span id="currentGameId"></span></h2>
+                    <div class="game-url">
+                        <small>Share this URL: <span id="gameUrl"></span></small>
+                    </div>
                 </div>
             </div>
 
-            <div class="controls">
-                <button class="btn" onclick="resetGame()">New Game</button>
-                <button class="btn" onclick="leaveGame()">Leave Game</button>
+            <!-- Join Form for specific game -->
+            <div id="joinGameForm" class="join-form">
+                <h3>Join Game</h3>
+                <div class="form-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" placeholder="Enter your name" required>
+                </div>
+                <div class="controls">
+                    <button class="btn" onclick="joinCurrentGame()">Join Game</button>
+                </div>
             </div>
 
-            <div class="players-list">
-                <h3>Players</h3>
-                <div id="playersList"></div>
-            </div>
+            <!-- Game Interface -->
+            <div id="gameInterface" class="hidden">
+                <div class="game-info">
+                    <div class="player-info">
+                        <span>Current Player:</span>
+                        <div id="currentPlayerColor" class="player-color"></div>
+                        <span id="currentPlayerName">Waiting...</span>
+                    </div>
+                    <div class="game-status" id="gameStatus">Waiting for players...</div>
+                    <div>Turn: <span id="turnNumber">0</span></div>
+                </div>
 
-            <div class="log">
-                <h3>Game Log</h3>
-                <div id="gameLog"></div>
+                <div class="board-container">
+                    <div id="gameBoard" class="board">
+                        <!-- Board cells will be generated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" onclick="resetGame()">New Game</button>
+                    <button class="btn" onclick="leaveGame()">Leave Game</button>
+                </div>
+
+                <div class="players-list">
+                    <h3>Players</h3>
+                    <div id="playersList"></div>
+                </div>
+
+                <div class="log">
+                    <h3>Game Log</h3>
+                    <div id="gameLog"></div>
+                </div>
             </div>
         </div>
     </div>
