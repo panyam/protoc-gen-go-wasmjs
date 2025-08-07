@@ -1,0 +1,71 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/panyam/protoc-gen-go-wasmjs/examples/library/gen/go
+plugins:
+  # Generate standard Go protobuf types
+  - remote: buf.build/protocolbuffers/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate gRPC service interfaces
+  - remote: buf.build/grpc/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate TypeScript protobuf types 
+  - remote: buf.build/bufbuild/es
+    out: ./gen/ts
+    opt: target=ts
+
+  # =================================================================
+  # Multi-Target WASM Generation Examples (Export Pattern)
+  # =================================================================
+  
+  # Default target - All services (backwards compatibility)
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/all-services
+    opt:
+      - js_structure=namespaced
+      - js_namespace=library
+      - module_name=library_all_services
+
+  # User management target (dual-target approach)
+  # Target 1: Generate WASM wrapper only for UserService
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/user-services
+    opt:
+      - js_structure=namespaced
+      - js_namespace=userModule
+      - module_name=user_services
+      - services=UserService
+      - generate_typescript=false  # Only generate WASM
+
+  # Target 2: Generate TypeScript client only for UserService  
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasmts/user-services
+    opt:
+      - js_structure=namespaced
+      - js_namespace=userModule
+      - module_name=user_services
+      - services=UserService
+      - generate_wasm=false  # Only generate TypeScript
+
+  # Library target - Only LibraryService (optimized for book browsing)
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/library-services
+    opt:
+      - js_structure=namespaced
+      - js_namespace=libraryModule
+      - module_name=library_services
+      - services=LibraryService
+
+  # Admin target - All services with different namespace (admin dashboard)
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/admin-services
+    opt:
+      - js_structure=namespaced
+      - js_namespace=admin
+      - module_name=admin_services
