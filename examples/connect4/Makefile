@@ -15,7 +15,7 @@ generate:
 # Build WASM service
 wasm: generate
 	cd wasm && GOOS=wasip1 GOARCH=wasm go build -o ../web/connect4_service.wasm service.go
-	cd cmd/wasm && GOOS=wasip1 GOARCH=wasm go build -o ../../web/multiplayer_connect4.wasm *.go
+	cd cmd/wasm && GOOS=js GOARCH=wasm go build -o ../../web/multiplayer_connect4.wasm *.go
 
 # Start development web server
 web:

@@ -25,33 +25,138 @@ class StatefulTransport {
     }
 }
 
-// BroadcastChannel transport for cross-tab communication
-class BroadcastChannelTransport extends StatefulTransport {
-    constructor(gameId) {
+// IndexedDB + Polling transport for persistent cross-page communication
+class IndexedDBTransport extends StatefulTransport {
+    constructor(gameId, pollInterval = 1000) {
         super(gameId);
-        this.channel = new BroadcastChannel(`connect4-stateful-${gameId}`);
-        this.channel.onmessage = (event) => this.handleMessage(event);
+        this.pollInterval = pollInterval;
+        this.dbName = `connect4-stateful-${gameId}`;
+        this.storeName = 'patches';
+        this.db = null;
+        this.lastPatchId = 0;
+        this.pollTimer = null;
+        this.isPolling = false;
+        
+        this.initDB();
     }
     
-    async sendPatches(patches) {
-        this.channel.postMessage({
-            type: 'patches',
-            gameId: this.gameId,
-            patches: patches,
-            timestamp: Date.now(),
-            source: 'broadcast'
+    async initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, 1);
+            
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                this.db = request.result;
+                this.startPolling();
+                resolve();
+            };
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(this.storeName)) {
+                    const store = db.createObjectStore(this.storeName, { 
+                        keyPath: 'id', 
+                        autoIncrement: true 
+                    });
+                    store.createIndex('timestamp', 'timestamp', { unique: false });
+                    store.createIndex('gameId', 'gameId', { unique: false });
+                }
+            };
         });
     }
     
-    handleMessage(event) {
-        const { type, gameId, patches } = event.data;
-        if (type === 'patches' && gameId === this.gameId && this.onPatchReceived) {
-            this.onPatchReceived(patches);
+    async sendPatches(patches) {
+        if (!this.db || !patches || patches.length === 0) return;
+        
+        const transaction = this.db.transaction([this.storeName], 'readwrite');
+        const store = transaction.objectStore(this.storeName);
+        
+        const patchRecord = {
+            gameId: this.gameId,
+            patches: patches,
+            timestamp: Date.now(),
+            source: 'indexeddb'
+        };
+        
+        try {
+            await new Promise((resolve, reject) => {
+                const request = store.add(patchRecord);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+            
+            console.log(`Stored ${patches.length} patches to IndexedDB`);
+        } catch (error) {
+            console.error('Failed to store patches:', error);
+        }
+    }
+    
+    async pollForPatches() {
+        if (!this.db || this.isPolling) return;
+        
+        this.isPolling = true;
+        
+        try {
+            const transaction = this.db.transaction([this.storeName], 'readonly');
+            const store = transaction.objectStore(this.storeName);
+            const index = store.index('gameId');
+            
+            const patches = await new Promise((resolve, reject) => {
+                const patches = [];
+                const request = index.openCursor(IDBKeyRange.only(this.gameId));
+                
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        const record = cursor.value;
+                        if (record.id > this.lastPatchId) {
+                            patches.push(...record.patches);
+                            this.lastPatchId = record.id;
+                        }
+                        cursor.continue();
+                    } else {
+                        resolve(patches);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+            
+            if (patches.length > 0 && this.onPatchReceived) {
+                console.log(`Polled ${patches.length} new patches from IndexedDB`);
+                this.onPatchReceived(patches);
+            }
+        } catch (error) {
+            console.error('Failed to poll patches:', error);
+        } finally {
+            this.isPolling = false;
+        }
+    }
+    
+    startPolling() {
+        if (this.pollTimer) return;
+        
+        console.log(`Started IndexedDB polling every ${this.pollInterval}ms for game ${this.gameId}`);
+        this.pollTimer = setInterval(() => {
+            this.pollForPatches();
+        }, this.pollInterval);
+        
+        // Do an initial poll
+        this.pollForPatches();
+    }
+    
+    stopPolling() {
+        if (this.pollTimer) {
+            clearInterval(this.pollTimer);
+            this.pollTimer = null;
+            console.log(`Stopped IndexedDB polling for game ${this.gameId}`);
         }
     }
     
     destroy() {
-        this.channel.close();
+        this.stopPolling();
+        if (this.db) {
+            this.db.close();
+        }
     }
 }
 
