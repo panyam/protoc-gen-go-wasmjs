@@ -358,11 +358,25 @@
         </div>
     </div>
 
+    <!-- Load the generated TypeScript client and protobuf types -->
+    <script type="module">
+        // Import the generated WASM client and protobuf types
+        import Connect4_gameClient from './gen/wasm/connect4-game/connect4_gameClient.client.js';
+        import { GameState, GameConfig, GameStatus } from './gen/ts/connect4/game_pb.js';
+        
+        // Make them available globally for the main script
+        window.Connect4Client = Connect4_gameClient;
+        window.GameState = GameState;
+        window.GameConfig = GameConfig;
+        window.GameStatus = GameStatus;
+    </script>
+
     <script>
         // Application state
         let gameState = null;
         let currentPlayerId = null;
         let currentGameId = null;
+        let connect4Client = null;
 
         // UI Elements
         const joinGameForm = document.getElementById('joinGameForm');
@@ -375,6 +389,22 @@
         const turnNumber = document.getElementById('turnNumber');
         const playersList = document.getElementById('playersList');
         const gameLog = document.getElementById('gameLog');
+
+        // Initialize WASM client
+        async function initializeWasmClient() {
+            try {
+                addLogEntry('Loading WASM module...');
+                connect4Client = new window.Connect4Client();
+                await connect4Client.loadWasm('./multiplayer_connect4.wasm');
+                await connect4Client.waitUntilReady();
+                addLogEntry('WASM module loaded successfully!');
+                return true;
+            } catch (error) {
+                console.error('Failed to load WASM:', error);
+                addLogEntry(`Failed to load WASM module: ${error.message}`);
+                return false;
+            }
+        }
 
         // Get URL parameters
         function getUrlParameter(name) {
@@ -443,7 +473,7 @@
         });
 
         // Page initialization
-        function initializePage() {
+        async function initializePage() {
             currentGameId = getUrlParameter('gameId');
             const playerId = getUrlParameter('playerId');
 
@@ -452,22 +482,40 @@
                 return;
             }
 
+            // Initialize WASM client first
+            const wasmReady = await initializeWasmClient();
+            if (!wasmReady) {
+                showErrorState();
+                return;
+            }
+
             document.getElementById('currentGameId').textContent = currentGameId;
             document.getElementById('gameUrl').textContent = window.location.href.split('?')[0] + '?gameId=' + currentGameId;
 
-            const existingGame = loadGameState(currentGameId);
-            if (existingGame) {
-                gameState = existingGame;
-                // Check if user was already in this game (browser refresh or direct link with playerId)
-                if (playerId && existingGame.players.some(p => p.id === playerId)) {
-                    currentPlayerId = playerId;
-                    showGameInterface();
+            // Try to get game state from WASM service
+            try {
+                const wasmGameState = await connect4Client.connect4Service.getGame({ gameId: currentGameId });
+                if (wasmGameState) {
+                    gameState = wasmGameState;
+                    // Check if user was already in this game
+                    if (playerId && gameState.players.some(p => p.id === playerId)) {
+                        currentPlayerId = playerId;
+                        showGameInterface();
+                        addLogEntry(`Reconnected as ${gameState.players.find(p => p.id === playerId).name}`);
+                    } else {
+                        showJoinForm();
+                    }
                 } else {
+                    // Game doesn't exist in WASM service yet
                     showJoinForm();
                 }
-            } else {
+            } catch (error) {
+                console.log('Game not found in WASM service, will create new one');
                 showJoinForm();
             }
+
+            // Set up periodic sync with localStorage for cross-tab communication
+            startLocalStorageSync();
         }
 
         function showErrorState() {
@@ -490,8 +538,8 @@
             updateUI();
         }
 
-        // Join current game
-        function joinCurrentGame() {
+        // Join current game - now calls WASM service
+        async function joinCurrentGame() {
             const playerName = document.getElementById('playerName').value;
             
             if (!playerName) {
@@ -499,96 +547,98 @@
                 return;
             }
 
-            const existingGame = loadGameState(currentGameId);
-            
-            if (existingGame) {
-                // Check if player name already exists
-                if (existingGame.players.some(p => p.name === playerName)) {
-                    alert('Player name already taken. Please choose a different name.');
-                    return;
-                }
+            if (!connect4Client) {
+                alert('WASM module not loaded. Please refresh the page.');
+                return;
+            }
 
-                const playerId = `player_${existingGame.players.length + 1}`;
-                const colors = ['#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF'];
-                const playerColor = colors[existingGame.players.length % colors.length];
+            try {
+                addLogEntry(`Joining game "${currentGameId}" as ${playerName}...`);
 
-                existingGame.players.push({
-                    id: playerId,
-                    name: playerName,
-                    color: playerColor,
-                    isConnected: true,
-                    joinOrder: existingGame.players.length
+                // Try to join existing game first
+                let response = await connect4Client.connect4Service.joinGame({
+                    gameId: currentGameId,
+                    playerName: playerName,
+                    preferredColor: '' // Let service assign color
                 });
 
-                // Start game if we have enough players
-                if (existingGame.players.length >= existingGame.config.minPlayers) {
-                    existingGame.status = 'IN_PROGRESS';
-                    existingGame.currentPlayerId = existingGame.players[0].id;
+                if (response.success) {
+                    currentPlayerId = response.playerId;
+                    gameState = response.gameState;
+                    
+                    // Update URL with player ID for reconnection
+                    const newUrl = `${window.location.pathname}?gameId=${currentGameId}&playerId=${currentPlayerId}`;
+                    window.history.replaceState({}, '', newUrl);
+                    
+                    // Save to localStorage for cross-tab sync
+                    saveGameStateToLocalStorage(currentGameId, gameState);
+                    
+                    showGameInterface();
+                    addLogEntry(`Successfully joined game! You are ${playerName} (${response.assignedColor})`);
+
+                    if (gameState.status === 'IN_PROGRESS') {
+                        addLogEntry('Game started! Enough players have joined.');
+                    }
+                } else {
+                    // Join failed, try to create the game
+                    addLogEntry('Game not found, creating new game...');
+                    await createNewGameAndJoin(currentGameId, playerName);
                 }
 
-                gameState = existingGame;
-                currentPlayerId = playerId;
-                saveGameState(currentGameId, gameState);
+            } catch (error) {
+                console.error('Error joining game:', error);
+                addLogEntry(`Failed to join game: ${error.message}`);
                 
-                // Update URL with player ID for reconnection
-                const newUrl = `${window.location.pathname}?gameId=${currentGameId}&playerId=${playerId}`;
-                window.history.replaceState({}, '', newUrl);
-                
-                showGameInterface();
-                addLogEntry(`${playerName} joined game "${currentGameId}"`);
-
-                if (gameState.status === 'IN_PROGRESS') {
-                    addLogEntry('Game started! Enough players have joined.');
+                // Fallback: try to create new game
+                try {
+                    await createNewGameAndJoin(currentGameId, playerName);
+                } catch (createError) {
+                    console.error('Error creating game:', createError);
+                    addLogEntry(`Failed to create game: ${createError.message}`);
+                    alert('Failed to join or create game. Please try again.');
                 }
-            } else {
-                // Game doesn't exist, create it
-                createNewGameAndJoin(currentGameId, playerName);
             }
         }
 
-        function createNewGameAndJoin(gameId, playerName) {
-            const newGameState = {
-                gameId: gameId,
-                config: {
-                    boardWidth: 7,
-                    boardHeight: 6,
-                    minPlayers: 2,
-                    maxPlayers: 4,
-                    connectLength: 4,
-                    allowMultipleWinners: false,
-                    moveTimeoutSeconds: 30
-                },
-                players: [{
-                    id: 'player_1',
-                    name: playerName,
-                    color: '#FF0000',
-                    isConnected: true,
-                    joinOrder: 0
-                }],
-                board: {
-                    width: 7,
-                    height: 6,
-                    rows: Array(6).fill().map(() => ({ cells: Array(7).fill('') })),
-                    columnHeights: Array(7).fill(0)
-                },
-                status: 'WAITING_FOR_PLAYERS',
-                turnNumber: 0,
-                winners: [],
-                playerStats: {},
-                currentPlayerId: null
-            };
+        async function createNewGameAndJoin(gameId, playerName) {
+            try {
+                addLogEntry(`Creating new game "${gameId}"...`);
 
-            gameState = newGameState;
-            currentPlayerId = 'player_1';
-            saveGameState(gameId, gameState);
-            
-            // Update URL with player ID
-            const newUrl = `${window.location.pathname}?gameId=${gameId}&playerId=player_1`;
-            window.history.replaceState({}, '', newUrl);
-            
-            showGameInterface();
-            addLogEntry(`Game "${gameId}" created and ${playerName} joined as first player`);
-            addLogEntry('Waiting for more players to start...');
+                const response = await connect4Client.connect4Service.createGame({
+                    gameId: gameId,
+                    config: {
+                        boardWidth: 7,
+                        boardHeight: 6,
+                        minPlayers: 2,
+                        maxPlayers: 4,
+                        connectLength: 4,
+                        allowMultipleWinners: false,
+                        moveTimeoutSeconds: 30
+                    },
+                    creatorName: playerName
+                });
+
+                if (response.success) {
+                    currentPlayerId = response.playerId;
+                    gameState = response.gameState;
+                    
+                    // Update URL with player ID
+                    const newUrl = `${window.location.pathname}?gameId=${gameId}&playerId=${currentPlayerId}`;
+                    window.history.replaceState({}, '', newUrl);
+                    
+                    // Save to localStorage for cross-tab sync
+                    saveGameStateToLocalStorage(gameId, gameState);
+                    
+                    showGameInterface();
+                    addLogEntry(`Game "${gameId}" created successfully! You are the first player.`);
+                    addLogEntry('Waiting for more players to start...');
+                } else {
+                    throw new Error(response.errorMessage || 'Failed to create game');
+                }
+            } catch (error) {
+                console.error('Error creating game:', error);
+                throw error;
+            }
         }
 
         // Initialize the board
