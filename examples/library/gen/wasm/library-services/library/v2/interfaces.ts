@@ -1,9 +1,9 @@
 // Generated TypeScript interfaces from proto file
 // DO NOT EDIT - This file is auto-generated
 
+import { Metadata } from "../common/interfaces";
 import { ErrorInfo } from "../common/interfaces";
 import { BaseMessage } from "../common/interfaces";
-import { Metadata } from "../common/interfaces";
 
 
 
