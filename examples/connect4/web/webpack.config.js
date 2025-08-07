@@ -11,8 +11,9 @@ const SRC_FOLDERS = [
   "./src",
   "./gen"
 ];
-const OUTPUT_FOLDERS = ["./templates"]; // Where gen.*.html files go
+const OUTPUT_FOLDERS = ["../cmd/serve/templates"]; // Where gen.*.html files go
 const OUTPUT_DIR = path.resolve(__dirname, "./static/gen/js/");
+
 
 // Each entry is the EntryPage name, index in the SRC_FOLDERS where it can be found, type of file - ts vs tsx
 const components = [
@@ -87,14 +88,14 @@ module.exports = (_env, options) => {
           test: /\.(png|svg|jpg|jpeg|gif)$/i,
           type: "asset/resource",
            generator: {
-                filename: 'assets/[hash][ext][query]' // Place assets in static/js/gen/assets/
+                filename: 'assets/[hash][ext][query]' // Place assets in static/gen/js/assets/
            }
         },
         {
           test: /\.(woff|woff2|eot|ttf|otf)$/i,
           type: "asset/resource",
            generator: {
-                 filename: 'assets/[hash][ext][query]' // Place assets in static/js/gen/assets/
+                 filename: 'assets/[hash][ext][query]' // Place assets in static/gen/js/assets/
            }
         },
       ],
@@ -118,15 +119,15 @@ module.exports = (_env, options) => {
       fullySpecified: false, // Allow non-fully-specified imports for ES modules
     },
     output: {
-      path: OUTPUT_DIR, // -> ./static/js/gen/
+      path: OUTPUT_DIR, // -> ./static/gen/js/
       // Public path where browser requests bundles/assets. Matches path structure served by static server.
-      publicPath: `${staticPublicPath}/js/gen/`, // -> /static/js/gen/
-      filename: "[name].[contenthash].js",
-      library: ["connect4Pages", "[name]"],
-      libraryTarget: "umd",
-      umdNamedDefine: true,
-      globalObject: "this",
+      publicPath: `${staticPublicPath}/gen/js/`, // -> /static/gen/js/
+      filename: "[name].js",
+      module: true,
       clean: true, // Clean the output directory before build
+    },
+    experiments: {
+      outputModule: true,
     },
     plugins: [
       new webpack.ProvidePlugin({
