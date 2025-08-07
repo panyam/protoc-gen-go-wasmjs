@@ -16,21 +16,13 @@ plugins:
     opt: paths=source_relative
 
   # Generate TypeScript protobuf types 
-  - remote: buf.build/bufbuild/es
-    out: ./gen/ts
-    opt: target=ts
+  # - remote: buf.build/bufbuild/es
+    # out: ./gechoen/ts
+    # opt: target=ts
 
   # =================================================================
   # WASM Generation for Connect4 Game
   # =================================================================
-  
-  # Main Connect4 game service - Standard WASM generation
-  - local: ../../bin/protoc-gen-go-wasmjs
-    out: ./gen/wasm/connect4-game
-    opt:
-      - js_structure=namespaced
-      - js_namespace=connect4
-      - module_name=connect4_game
 
   # Multiplayer optimized target - Focus on real-time performance
   - local: ../../bin/protoc-gen-go-wasmjs
