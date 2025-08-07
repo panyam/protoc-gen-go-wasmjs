@@ -10,17 +10,18 @@ parent:
 
 # Generate all protobuf code using buf
 generate:
-	buf generate
+	echo buf generate
 
 # Build WASM service
 wasm: generate
 	cd wasm && GOOS=wasip1 GOARCH=wasm go build -o ../web/connect4_service.wasm service.go
+	cd cmd/wasm && GOOS=wasip1 GOARCH=wasm go build -o ../../web/multiplayer_connect4.wasm *.go
 
 # Start development web server
 web:
 	@echo "Starting Connect4 game server..."
 	@echo "Open http://localhost:8080 to play!"
-	cd web && python3 -m http.server 8080
+	go run cmd/serve/*.go
 
 # Generate only stateful proxies (for development)
 stateful:

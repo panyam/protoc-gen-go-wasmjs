@@ -372,11 +372,413 @@
     </script>
 
     <script>
+        // =============================================================================
+        // STATEFUL PROXY TRANSPORT SYSTEM - Pluggable Architecture
+        // =============================================================================
+        
+        // Abstract base class for transport implementations
+        class StatefulTransport {
+            constructor(gameId) {
+                this.gameId = gameId;
+                this.onPatchReceived = null; // Callback for incoming patches
+            }
+            
+            // Send patches to other clients/tabs
+            async sendPatches(patches) {
+                throw new Error('sendPatches must be implemented by transport');
+            }
+            
+            // Subscribe to incoming patches
+            subscribe(callback) {
+                this.onPatchReceived = callback;
+            }
+            
+            // Clean up resources
+            destroy() {
+                // Override in implementations
+            }
+        }
+        
+        // BroadcastChannel transport for cross-tab communication
+        class BroadcastChannelTransport extends StatefulTransport {
+            constructor(gameId) {
+                super(gameId);
+                this.channel = new BroadcastChannel(`connect4-stateful-${gameId}`);
+                this.channel.onmessage = (event) => this.handleMessage(event);
+            }
+            
+            async sendPatches(patches) {
+                this.channel.postMessage({
+                    type: 'patches',
+                    gameId: this.gameId,
+                    patches: patches,
+                    timestamp: Date.now(),
+                    source: 'broadcast'
+                });
+            }
+            
+            handleMessage(event) {
+                const { type, gameId, patches } = event.data;
+                if (type === 'patches' && gameId === this.gameId && this.onPatchReceived) {
+                    this.onPatchReceived(patches);
+                }
+            }
+            
+            destroy() {
+                this.channel.close();
+            }
+        }
+        
+        // WebSocket transport for server-based collaboration
+        class WebSocketTransport extends StatefulTransport {
+            constructor(gameId, wsUrl = null) {
+                super(gameId);
+                this.wsUrl = wsUrl || `ws://localhost:8080/game/${gameId}`;
+                this.ws = null;
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                this.connect();
+            }
+            
+            async connect() {
+                try {
+                    this.ws = new WebSocket(this.wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        console.log(`WebSocket connected for game ${this.gameId}`);
+                        this.reconnectAttempts = 0;
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'patches' && this.onPatchReceived) {
+                            this.onPatchReceived(data.patches);
+                        }
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.handleReconnect();
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                    };
+                } catch (error) {
+                    console.error('Failed to connect WebSocket:', error);
+                    this.handleReconnect();
+                }
+            }
+            
+            async sendPatches(patches) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({
+                        type: 'patches',
+                        gameId: this.gameId,
+                        patches: patches,
+                        timestamp: Date.now(),
+                        source: 'websocket'
+                    }));
+                } else {
+                    console.warn('WebSocket not ready, patches not sent');
+                }
+            }
+            
+            handleReconnect() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    const delay = Math.pow(2, this.reconnectAttempts) * 1000; // Exponential backoff
+                    console.log(`Reconnecting WebSocket in ${delay}ms (attempt ${this.reconnectAttempts})`);
+                    setTimeout(() => this.connect(), delay);
+                }
+            }
+            
+            destroy() {
+                if (this.ws) {
+                    this.ws.close();
+                }
+            }
+        }
+        
+        // Server-Sent Events transport for real-time updates from server
+        class SSETransport extends StatefulTransport {
+            constructor(gameId, sseUrl = null) {
+                super(gameId);
+                this.sseUrl = sseUrl || `/events/game/${gameId}`;
+                this.eventSource = null;
+                this.connect();
+            }
+            
+            connect() {
+                this.eventSource = new EventSource(this.sseUrl);
+                
+                this.eventSource.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'patches' && this.onPatchReceived) {
+                        this.onPatchReceived(data.patches);
+                    }
+                };
+                
+                this.eventSource.onerror = (error) => {
+                    console.error('SSE error:', error);
+                };
+            }
+            
+            async sendPatches(patches) {
+                // SSE is receive-only, send via regular HTTP POST
+                try {
+                    await fetch(`/api/game/${this.gameId}/patches`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ patches })
+                    });
+                } catch (error) {
+                    console.error('Failed to send patches via HTTP:', error);
+                }
+            }
+            
+            destroy() {
+                if (this.eventSource) {
+                    this.eventSource.close();
+                }
+            }
+        }
+        
+        // =============================================================================
+        // STATEFUL PROXY - Transport-Agnostic Implementation
+        // =============================================================================
+        
+        class StatefulProxy {
+            constructor(gameId, transportType = 'broadcast') {
+                this.gameId = gameId;
+                this.gameState = null;
+                this.patches = [];
+                this.lastChangeNumber = 0;
+                
+                // Initialize pluggable transport
+                this.transport = this.createTransport(transportType);
+                this.transport.subscribe((patches) => this.handleIncomingPatches(patches));
+                
+                // Storage keys
+                this.storageKey = `connect4_game_${gameId}`;
+                this.patchesKey = `connect4_patches_${gameId}`;
+                
+                // UI update callback
+                this.onStateChanged = null;
+            }
+            
+            // Factory method for creating transport instances
+            createTransport(type) {
+                switch (type) {
+                    case 'broadcast':
+                        return new BroadcastChannelTransport(this.gameId);
+                    case 'websocket':
+                        return new WebSocketTransport(this.gameId);
+                    case 'sse':
+                        return new SSETransport(this.gameId);
+                    default:
+                        console.warn(`Unknown transport type: ${type}, falling back to broadcast`);
+                        return new BroadcastChannelTransport(this.gameId);
+                }
+            }
+            
+            // Switch transport at runtime
+            async switchTransport(newType) {
+                const oldTransport = this.transport;
+                this.transport = this.createTransport(newType);
+                this.transport.subscribe((patches) => this.handleIncomingPatches(patches));
+                
+                // Clean up old transport
+                oldTransport.destroy();
+                
+                console.log(`Switched transport from ${oldTransport.constructor.name} to ${this.transport.constructor.name}`);
+            }
+            
+            // Set the game state and initialize proxy
+            setGameState(gameState) {
+                this.gameState = gameState;
+                this.saveState();
+                this.notifyStateChanged();
+            }
+            
+            // Apply patches from WASM service calls
+            async applyPatchesFromWasm(patches) {
+                if (!patches || patches.length === 0) return;
+                
+                // Apply patches locally
+                this.applyPatches(patches);
+                
+                // Broadcast to other clients
+                await this.transport.sendPatches(patches);
+                
+                // Store patches for conflict resolution
+                this.patches.push(...patches);
+                this.saveState();
+            }
+            
+            // Handle incoming patches from transport
+            handleIncomingPatches(patches) {
+                console.log(`Received ${patches.length} patches from transport`);
+                this.applyPatches(patches);
+                this.saveState();
+            }
+            
+            // Apply patches to local game state
+            applyPatches(patches) {
+                if (!this.gameState || !patches || patches.length === 0) return;
+                
+                // Sort patches by change number for correct ordering
+                patches.sort((a, b) => (a.changeNumber || 0) - (b.changeNumber || 0));
+                
+                patches.forEach(patch => {
+                    if (patch.changeNumber <= this.lastChangeNumber) {
+                        console.log(`Skipping old patch ${patch.changeNumber} (current: ${this.lastChangeNumber})`);
+                        return;
+                    }
+                    
+                    this.applyPatch(patch);
+                    this.lastChangeNumber = Math.max(this.lastChangeNumber, patch.changeNumber || 0);
+                });
+                
+                this.notifyStateChanged();
+            }
+            
+            // Apply a single patch to the game state
+            applyPatch(patch) {
+                const fieldPath = patch.fieldPath || patch.field_path;
+                const value = this.parseJsonValue(patch.valueJson || patch.value_json);
+                
+                console.log(`Applying patch: ${patch.operation} ${fieldPath} = ${patch.valueJson || patch.value_json}`);
+                
+                switch (patch.operation) {
+                    case 0: // SET
+                        this.setNestedValue(this.gameState, fieldPath, value);
+                        break;
+                    case 1: // INSERT_LIST
+                        this.insertIntoArray(this.gameState, fieldPath, value, patch.index);
+                        break;
+                    case 2: // REMOVE_LIST
+                        this.removeFromArray(this.gameState, fieldPath, patch.index);
+                        break;
+                    default:
+                        console.warn(`Unknown patch operation: ${patch.operation}`);
+                }
+            }
+            
+            // Parse JSON value from patch
+            parseJsonValue(jsonValue) {
+                try {
+                    return JSON.parse(jsonValue);
+                } catch (e) {
+                    return jsonValue;
+                }
+            }
+            
+            // Set nested object value by path (e.g., "board.rows[0].cells[1]")
+            setNestedValue(obj, path, value) {
+                const parts = path.split(/[\.\[\]]+/).filter(Boolean);
+                let current = obj;
+                
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const part = parts[i];
+                    const nextPart = parts[i + 1];
+                    
+                    if (!current[part]) {
+                        current[part] = isNaN(nextPart) ? {} : [];
+                    }
+                    current = current[part];
+                }
+                
+                const lastPart = parts[parts.length - 1];
+                current[lastPart] = value;
+            }
+            
+            // Insert into array by path
+            insertIntoArray(obj, path, value, index = -1) {
+                const parts = path.split(/[\.\[\]]+/).filter(Boolean);
+                let current = obj;
+                
+                for (let i = 0; i < parts.length; i++) {
+                    if (i === parts.length - 1) {
+                        if (!Array.isArray(current[parts[i]])) {
+                            current[parts[i]] = [];
+                        }
+                        if (index >= 0) {
+                            current[parts[i]].splice(index, 0, value);
+                        } else {
+                            current[parts[i]].push(value);
+                        }
+                    } else {
+                        current = current[parts[i]];
+                    }
+                }
+            }
+            
+            // Remove from array by path
+            removeFromArray(obj, path, index) {
+                const parts = path.split(/[\.\[\]]+/).filter(Boolean);
+                let current = obj;
+                
+                for (let i = 0; i < parts.length; i++) {
+                    if (i === parts.length - 1) {
+                        if (Array.isArray(current[parts[i]]) && index >= 0) {
+                            current[parts[i]].splice(index, 1);
+                        }
+                    } else {
+                        current = current[parts[i]];
+                    }
+                }
+            }
+            
+            // Save current state to localStorage
+            saveState() {
+                if (this.gameState) {
+                    localStorage.setItem(this.storageKey, JSON.stringify(this.gameState));
+                    localStorage.setItem(this.patchesKey, JSON.stringify(this.patches));
+                }
+            }
+            
+            // Load state from localStorage
+            loadState() {
+                const savedState = localStorage.getItem(this.storageKey);
+                const savedPatches = localStorage.getItem(this.patchesKey);
+                
+                if (savedState) {
+                    this.gameState = JSON.parse(savedState);
+                }
+                if (savedPatches) {
+                    this.patches = JSON.parse(savedPatches);
+                    this.lastChangeNumber = Math.max(...this.patches.map(p => p.changeNumber || 0), 0);
+                }
+                
+                return this.gameState;
+            }
+            
+            // Set callback for state changes
+            onStateChange(callback) {
+                this.onStateChanged = callback;
+            }
+            
+            // Notify that state has changed
+            notifyStateChanged() {
+                if (this.onStateChanged) {
+                    this.onStateChanged(this.gameState);
+                }
+            }
+            
+            // Clean up resources
+            destroy() {
+                if (this.transport) {
+                    this.transport.destroy();
+                }
+            }
+        }
+
         // Application state
         let gameState = null;
         let currentPlayerId = null;
         let currentGameId = null;
         let connect4Client = null;
+        let statefulProxy = null;
 
         // UI Elements
         const joinGameForm = document.getElementById('joinGameForm');
@@ -472,7 +874,54 @@
             }
         });
 
-        // Page initialization
+        // =============================================================================
+        // TRANSPORT SWITCHING AND UTILITY FUNCTIONS
+        // =============================================================================
+        
+        // Switch transport at runtime (useful for testing different approaches)
+        async function switchTransport(newType) {
+            if (!statefulProxy) {
+                addLogEntry('Stateful proxy not initialized');
+                return;
+            }
+            
+            const oldType = statefulProxy.transport.constructor.name;
+            await statefulProxy.switchTransport(newType);
+            addLogEntry(`Switched transport: ${oldType} → ${statefulProxy.transport.constructor.name}`);
+        }
+        
+        // Global function to make transport switching available in browser console
+        window.switchTransport = switchTransport;
+        
+        // Update the UI with current game state (enhanced for stateful proxy)
+        window.updateGameUI = function(newGameState) {
+            if (newGameState) {
+                gameState = newGameState;
+                updateUI();
+                addLogEntry('UI updated from stateful proxy');
+            }
+        };
+        
+        // Function to test patch application manually (useful for debugging)
+        window.testPatch = function(operation, fieldPath, value) {
+            if (!statefulProxy) {
+                console.log('Stateful proxy not initialized');
+                return;
+            }
+            
+            const patch = {
+                operation: operation, // 0=SET, 1=INSERT_LIST, 2=REMOVE_LIST
+                fieldPath: fieldPath,
+                valueJson: typeof value === 'string' ? value : JSON.stringify(value),
+                changeNumber: Date.now(),
+                timestamp: Date.now()
+            };
+            
+            statefulProxy.applyPatches([patch]);
+            console.log('Applied test patch:', patch);
+        };
+
+        // Page initialization with stateful proxy
         async function initializePage() {
             currentGameId = getUrlParameter('gameId');
             const playerId = getUrlParameter('playerId');
@@ -482,7 +931,17 @@
                 return;
             }
 
-            // Initialize WASM client first
+            // Initialize stateful proxy with configurable transport
+            const transportType = new URLSearchParams(window.location.search).get('transport') || 'broadcast';
+            statefulProxy = new StatefulProxy(currentGameId, transportType);
+            
+            // Set up UI update callback
+            statefulProxy.onStateChange((newGameState) => {
+                gameState = newGameState;
+                updateUI();
+            });
+
+            // Initialize WASM client
             const wasmReady = await initializeWasmClient();
             if (!wasmReady) {
                 showErrorState();
@@ -492,11 +951,13 @@
             document.getElementById('currentGameId').textContent = currentGameId;
             document.getElementById('gameUrl').textContent = window.location.href.split('?')[0] + '?gameId=' + currentGameId;
 
-            // Try to get game state from WASM service
+            // Try to load existing game state from WASM service
             try {
                 const wasmGameState = await connect4Client.connect4Service.getGame({ gameId: currentGameId });
                 if (wasmGameState) {
+                    statefulProxy.setGameState(wasmGameState);
                     gameState = wasmGameState;
+                    
                     // Check if user was already in this game
                     if (playerId && gameState.players.some(p => p.id === playerId)) {
                         currentPlayerId = playerId;
@@ -506,16 +967,30 @@
                         showJoinForm();
                     }
                 } else {
-                    // Game doesn't exist in WASM service yet
-                    showJoinForm();
+                    // Try to load from local storage (might have been created by another tab)
+                    const localState = statefulProxy.loadState();
+                    if (localState) {
+                        gameState = localState;
+                        showJoinForm();
+                        addLogEntry('Loaded game state from local storage');
+                    } else {
+                        showJoinForm();
+                    }
                 }
             } catch (error) {
-                console.log('Game not found in WASM service, will create new one');
+                console.log('Game not found in WASM service:', error);
+                
+                // Try local storage as fallback
+                const localState = statefulProxy.loadState();
+                if (localState) {
+                    gameState = localState;
+                    addLogEntry('Loaded game from local storage');
+                }
                 showJoinForm();
             }
 
-            // Set up periodic sync with localStorage for cross-tab communication
-            startLocalStorageSync();
+            addLogEntry(`Initialized with ${transportType} transport. Add ?transport=websocket or ?transport=sse to URL to switch.`);
+        }
         }
 
         function showErrorState() {
@@ -564,14 +1039,14 @@
 
                 if (response.success) {
                     currentPlayerId = response.playerId;
+                    
+                    // Set game state through stateful proxy
+                    statefulProxy.setGameState(response.gameState);
                     gameState = response.gameState;
                     
                     // Update URL with player ID for reconnection
                     const newUrl = `${window.location.pathname}?gameId=${currentGameId}&playerId=${currentPlayerId}`;
                     window.history.replaceState({}, '', newUrl);
-                    
-                    // Save to localStorage for cross-tab sync
-                    saveGameStateToLocalStorage(currentGameId, gameState);
                     
                     showGameInterface();
                     addLogEntry(`Successfully joined game! You are ${playerName} (${response.assignedColor})`);
@@ -733,7 +1208,7 @@
             });
         }
 
-        // Drop a piece in the specified column
+        // Drop a piece in the specified column - now uses WASM service with stateful proxy
         async function dropPiece(column) {
             if (!gameState || gameState.status !== 'IN_PROGRESS') {
                 addLogEntry('Game is not in progress');
@@ -751,42 +1226,31 @@
             }
 
             try {
-                // Simulate piece drop (in real implementation, this would call WASM service)
-                const row = gameState.config.boardHeight - 1 - gameState.board.columnHeights[column];
-                
-                // Place the piece
-                gameState.board.rows[row].cells[column] = currentPlayerId;
-                gameState.board.columnHeights[column]++;
-                
-                // Check for winning lines
-                const winningLines = checkForWinningLines(row, column, currentPlayerId);
-                
-                if (winningLines.length > 0) {
-                    gameState.winners.push(currentPlayerId);
-                    gameState.status = 'FINISHED';
-                    highlightWinningLines(winningLines);
+                // Call WASM service to drop piece
+                const response = await connect4Client.connect4Service.dropPiece({
+                    gameId: currentGameId,
+                    playerId: currentPlayerId,
+                    column: column
+                });
+
+                if (response.success && response.patches) {
+                    // Apply patches through stateful proxy (will broadcast to other tabs)
+                    await statefulProxy.applyPatchesFromWasm(response.patches);
                     
                     const player = gameState.players.find(p => p.id === currentPlayerId);
-                    addLogEntry(`🎉 ${player.name} wins!`);
+                    addLogEntry(`${player.name} dropped piece in column ${column + 1}`);
+                    
+                    // Check if game finished
+                    if (response.result && response.result.formedLine) {
+                        addLogEntry(`🎉 ${player.name} wins with ${response.result.winningLines.length} winning line(s)!`);
+                        highlightWinningLines(response.result.winningLines);
+                    }
                 } else {
-                    // Advance to next player
-                    const currentIndex = gameState.players.findIndex(p => p.id === gameState.currentPlayerId);
-                    const nextIndex = (currentIndex + 1) % gameState.players.length;
-                    gameState.currentPlayerId = gameState.players[nextIndex].id;
-                    gameState.turnNumber++;
-                    
-                    const player = gameState.players.find(p => p.id === currentPlayerId);
-                    const nextPlayer = gameState.players.find(p => p.id === gameState.currentPlayerId);
-                    addLogEntry(`${player.name} dropped piece in column ${column + 1}. ${nextPlayer.name}'s turn.`);
+                    addLogEntry(`Failed to drop piece: ${response.errorMessage || 'Unknown error'}`);
                 }
-
-                // Save updated game state
-                saveGameState(currentGameId, gameState);
-                updateUI();
-
             } catch (error) {
                 console.error('Error dropping piece:', error);
-                addLogEntry('Failed to drop piece');
+                addLogEntry(`Error: ${error.message}`);
             }
         }
 
