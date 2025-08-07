@@ -1,9 +1,10 @@
 # Connect4 Example Makefile
 # Demonstrates stateful proxy generation for real-time multiplayer games
 
-.PHONY: all generate wasm web clean test compile-ts
+.PHONY: all generate wasm web clean test 
 
-all: parent generate web compile-ts wasm web
+# Run generate seperately for now
+all: parent web wasm web
 
 parent:
 	cd ../../ && make
@@ -35,7 +36,7 @@ remove-symlink:
 	fi
 
 # Build WASM service
-wasm: compile-ts
+wasm: 
 	mkdir -p wasm
 	GOOS=js GOARCH=wasm go build -o ./static/wasm/multiplayer_connect4.wasm cmd/wasm/*.go
 
