@@ -80,6 +80,8 @@ Dedicated TypeScript generation logic:
 - Deserializer generation with factory integration
 - Package-based nested directory structure
 - Cross-package dependency detection and import management
+- **Comprehensive Enum Support**: Complete enum collection, generation, and import system
+- **wasmjs.v1 Package Filtering**: Intelligent filtering to exclude annotation packages from artifact generation
 
 ### 6. Type System (`pkg/generator/types.go`)
 Data structures passed to templates and message analysis:
@@ -112,11 +114,39 @@ type FieldInfo struct {
     MessageType  string    // For message fields, the message type name
     DefaultValue string    // Default value for the field
 }
+
+type EnumInfo struct {
+    Name               string           // Enum name (e.g., "GameStatus")
+    TSName             string           // TypeScript enum name
+    Values             []EnumValueInfo  // All enum values
+    PackageName        string           // Proto package name
+    ProtoFile          string           // Source proto file
+    Comment            string           // Leading comment from proto
+    FullyQualifiedName string           // Fully qualified name with package
+}
+
+type EnumValueInfo struct {
+    Name     string // Enum value name (e.g., "GAME_STATUS_UNSPECIFIED")
+    TSName   string // TypeScript enum value name
+    Number   int32  // Enum value number
+    Comment  string // Leading comment from proto
+}
 ```
 
 ## Key Architectural Patterns
 
-### 1. Export Pattern for Dependency Injection
+### 1. wasmjs.v1 Package Filtering
+The system intelligently filters wasmjs annotation packages from artifact generation:
+```go
+// In cmd/protoc-gen-go-wasmjs/main.go (lines 94-97)
+packageName := strings.ReplaceAll(*protoFile.Package, ".", "")
+if packageName == "wasmjs.v1" {
+    continue  // Skip wasmjs annotation packages
+}
+```
+This ensures annotation packages remain visible to the proto compiler while avoiding unwanted artifact generation.
+
+### 2. Export Pattern for Dependency Injection
 Instead of generating fixed `main()` functions, we generate export structs:
 ```go
 type ServicesExports struct {
@@ -131,7 +161,36 @@ func (exports *ServicesExports) RegisterAPI() {
 
 This allows users to inject their own implementations with full control over dependencies.
 
-### 2. Self-Generated TypeScript Architecture
+### 3. Comprehensive Enum Support
+Complete enum collection and TypeScript generation system:
+```go
+// EnumInfo represents proto enums with full metadata
+type EnumInfo struct {
+    Name               string
+    TSName             string
+    Values             []EnumValueInfo
+    PackageName        string
+    FullyQualifiedName string
+}
+
+// collectAllEnums gathers enums from all proto files
+func collectAllEnums(files []*descriptorpb.FileDescriptorProto, packageFilter string) []EnumInfo
+```
+
+Template generation includes enums in interfaces.ts:
+```typescript
+{{range .Enums}}export enum {{.TSName}} {
+{{range .Values}}  {{.TSName}} = {{.Number}},
+{{end}}}
+{{end}}
+```
+
+And proper imports in all TypeScript files:
+```typescript
+import { MessageInterface, GameStatus } from "./interfaces";
+```
+
+### 4. Self-Generated TypeScript Architecture
 Generates complete TypeScript structure directly from proto definitions:
 
 ```
@@ -152,6 +211,14 @@ export interface Book {
   author: string;
   tags?: string[];     // Optional repeated field
   available: boolean;
+}
+
+// Generated enums with proper TypeScript syntax
+export enum GameStatus {
+  GAME_STATUS_UNSPECIFIED = 0,
+  GAME_STATUS_WAITING_FOR_PLAYERS = 1,
+  GAME_STATUS_IN_PROGRESS = 2,
+  GAME_STATUS_FINISHED = 3,
 }
 
 // 2. Concrete implementations with proper defaults
@@ -233,7 +300,7 @@ export class LibraryV2Deserializer {
 }
 ```
 
-### 3. Simplified Client Architecture
+### 5. Simplified Client Architecture
 
 #### Direct JSON Communication
 The TypeScript client uses direct JSON serialization without conversion layers:
@@ -266,7 +333,7 @@ class Client {
 4. **Type safety**: Full TypeScript support with proper optional field handling
 5. **Performance**: Minimal overhead with direct JSON serialization
 
-### 4. Multi-Target Generation
+### 6. Multi-Target Generation
 Supports generating different combinations of services for different use cases:
 ```yaml
 # User page - only UserService
@@ -280,7 +347,7 @@ Supports generating different combinations of services for different use cases:
   opt: []  # All services
 ```
 
-### 5. Dual-Target Architecture
+### 7. Dual-Target Architecture
 WASM and TypeScript artifacts can be generated independently:
 ```yaml
 # Generate only WASM

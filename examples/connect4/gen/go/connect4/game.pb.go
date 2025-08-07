@@ -7,7 +7,7 @@
 package connect4
 
 import (
-	v1 "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go/wasmjs/v1"
+	_ "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go/wasmjs/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -25,25 +25,28 @@ const (
 type GameStatus int32
 
 const (
-	GameStatus_WAITING_FOR_PLAYERS GameStatus = 0
-	GameStatus_IN_PROGRESS         GameStatus = 1
-	GameStatus_FINISHED            GameStatus = 2
-	GameStatus_PAUSED              GameStatus = 3
+	GameStatus_GAME_STATUS_UNSPECIFIED         GameStatus = 0
+	GameStatus_GAME_STATUS_WAITING_FOR_PLAYERS GameStatus = 1
+	GameStatus_GAME_STATUS_IN_PROGRESS         GameStatus = 2
+	GameStatus_GAME_STATUS_FINISHED            GameStatus = 3
+	GameStatus_GAME_STATUS_PAUSED              GameStatus = 4
 )
 
 // Enum value maps for GameStatus.
 var (
 	GameStatus_name = map[int32]string{
-		0: "WAITING_FOR_PLAYERS",
-		1: "IN_PROGRESS",
-		2: "FINISHED",
-		3: "PAUSED",
+		0: "GAME_STATUS_UNSPECIFIED",
+		1: "GAME_STATUS_WAITING_FOR_PLAYERS",
+		2: "GAME_STATUS_IN_PROGRESS",
+		3: "GAME_STATUS_FINISHED",
+		4: "GAME_STATUS_PAUSED",
 	}
 	GameStatus_value = map[string]int32{
-		"WAITING_FOR_PLAYERS": 0,
-		"IN_PROGRESS":         1,
-		"FINISHED":            2,
-		"PAUSED":              3,
+		"GAME_STATUS_UNSPECIFIED":         0,
+		"GAME_STATUS_WAITING_FOR_PLAYERS": 1,
+		"GAME_STATUS_IN_PROGRESS":         2,
+		"GAME_STATUS_FINISHED":            3,
+		"GAME_STATUS_PAUSED":              4,
 	}
 )
 
@@ -167,7 +170,7 @@ func (x *GameState) GetStatus() GameStatus {
 	if x != nil {
 		return x.Status
 	}
-	return GameStatus_WAITING_FOR_PLAYERS
+	return GameStatus_GAME_STATUS_UNSPECIFIED
 }
 
 func (x *GameState) GetWinners() []string {
@@ -653,12 +656,12 @@ func (x *DropPieceRequest) GetColumn() int32 {
 }
 
 type DropPieceResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	Patches       []*v1.MessagePatch     `protobuf:"bytes,3,rep,name=patches,proto3" json:"patches,omitempty"`
-	ChangeNumber  int64                  `protobuf:"varint,4,opt,name=change_number,json=changeNumber,proto3" json:"change_number,omitempty"`
-	Result        *PieceDropResult       `protobuf:"bytes,5,opt,name=result,proto3" json:"result,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Success      bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	// repeated wasmjs.v1.MessagePatch patches = 3;
+	ChangeNumber  int64            `protobuf:"varint,4,opt,name=change_number,json=changeNumber,proto3" json:"change_number,omitempty"`
+	Result        *PieceDropResult `protobuf:"bytes,5,opt,name=result,proto3" json:"result,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -705,13 +708,6 @@ func (x *DropPieceResponse) GetErrorMessage() string {
 		return x.ErrorMessage
 	}
 	return ""
-}
-
-func (x *DropPieceResponse) GetPatches() []*v1.MessagePatch {
-	if x != nil {
-		return x.Patches
-	}
-	return nil
 }
 
 func (x *DropPieceResponse) GetChangeNumber() int64 {
@@ -1230,11 +1226,10 @@ const file_connect4_game_proto_rawDesc = "" +
 	"\x10DropPieceRequest\x12\x17\n" +
 	"\agame_id\x18\x01 \x01(\tR\x06gameId\x12\x1b\n" +
 	"\tplayer_id\x18\x02 \x01(\tR\bplayerId\x12\x16\n" +
-	"\x06column\x18\x03 \x01(\x05R\x06column\"\xdd\x01\n" +
+	"\x06column\x18\x03 \x01(\x05R\x06column\"\xaa\x01\n" +
 	"\x11DropPieceResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
-	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x121\n" +
-	"\apatches\x18\x03 \x03(\v2\x17.wasmjs.v1.MessagePatchR\apatches\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12#\n" +
 	"\rchange_number\x18\x04 \x01(\x03R\fchangeNumber\x121\n" +
 	"\x06result\x18\x05 \x01(\v2\x19.connect4.PieceDropResultR\x06result\"\xab\x01\n" +
 	"\x0fPieceDropResult\x12\x1b\n" +
@@ -1271,14 +1266,14 @@ const file_connect4_game_proto_rawDesc = "" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12\x1b\n" +
 	"\tplayer_id\x18\x03 \x01(\tR\bplayerId\x122\n" +
 	"\n" +
-	"game_state\x18\x04 \x01(\v2\x13.connect4.GameStateR\tgameState*P\n" +
+	"game_state\x18\x04 \x01(\v2\x13.connect4.GameStateR\tgameState*\x9d\x01\n" +
 	"\n" +
-	"GameStatus\x12\x17\n" +
-	"\x13WAITING_FOR_PLAYERS\x10\x00\x12\x0f\n" +
-	"\vIN_PROGRESS\x10\x01\x12\f\n" +
-	"\bFINISHED\x10\x02\x12\n" +
-	"\n" +
-	"\x06PAUSED\x10\x032\xcf\x02\n" +
+	"GameStatus\x12\x1b\n" +
+	"\x17GAME_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fGAME_STATUS_WAITING_FOR_PLAYERS\x10\x01\x12\x1b\n" +
+	"\x17GAME_STATUS_IN_PROGRESS\x10\x02\x12\x18\n" +
+	"\x14GAME_STATUS_FINISHED\x10\x03\x12\x16\n" +
+	"\x12GAME_STATUS_PAUSED\x10\x042\xcf\x02\n" +
 	"\x0fConnect4Service\x128\n" +
 	"\aGetGame\x12\x18.connect4.GetGameRequest\x1a\x13.connect4.GameState\x12N\n" +
 	"\tDropPiece\x12\x1a.connect4.DropPieceRequest\x1a\x1b.connect4.DropPieceResponse\"\b\xb2\xb5\x18\x04\b\x01\x10\x01\x12A\n" +
@@ -1320,7 +1315,6 @@ var file_connect4_game_proto_goTypes = []any{
 	(*CreateGameRequest)(nil),  // 15: connect4.CreateGameRequest
 	(*CreateGameResponse)(nil), // 16: connect4.CreateGameResponse
 	nil,                        // 17: connect4.GameState.PlayerStatsEntry
-	(*v1.MessagePatch)(nil),    // 18: wasmjs.v1.MessagePatch
 }
 var file_connect4_game_proto_depIdxs = []int32{
 	2,  // 0: connect4.GameState.config:type_name -> connect4.GameConfig
@@ -1329,27 +1323,26 @@ var file_connect4_game_proto_depIdxs = []int32{
 	0,  // 3: connect4.GameState.status:type_name -> connect4.GameStatus
 	17, // 4: connect4.GameState.player_stats:type_name -> connect4.GameState.PlayerStatsEntry
 	5,  // 5: connect4.GameBoard.rows:type_name -> connect4.BoardRow
-	18, // 6: connect4.DropPieceResponse.patches:type_name -> wasmjs.v1.MessagePatch
-	10, // 7: connect4.DropPieceResponse.result:type_name -> connect4.PieceDropResult
-	11, // 8: connect4.PieceDropResult.winning_lines:type_name -> connect4.LineInfo
-	12, // 9: connect4.LineInfo.positions:type_name -> connect4.Position
-	1,  // 10: connect4.JoinGameResponse.game_state:type_name -> connect4.GameState
-	2,  // 11: connect4.CreateGameRequest.config:type_name -> connect4.GameConfig
-	1,  // 12: connect4.CreateGameResponse.game_state:type_name -> connect4.GameState
-	6,  // 13: connect4.GameState.PlayerStatsEntry.value:type_name -> connect4.PlayerStats
-	7,  // 14: connect4.Connect4Service.GetGame:input_type -> connect4.GetGameRequest
-	8,  // 15: connect4.Connect4Service.DropPiece:input_type -> connect4.DropPieceRequest
-	13, // 16: connect4.Connect4Service.JoinGame:input_type -> connect4.JoinGameRequest
-	15, // 17: connect4.Connect4Service.CreateGame:input_type -> connect4.CreateGameRequest
-	1,  // 18: connect4.Connect4Service.GetGame:output_type -> connect4.GameState
-	9,  // 19: connect4.Connect4Service.DropPiece:output_type -> connect4.DropPieceResponse
-	14, // 20: connect4.Connect4Service.JoinGame:output_type -> connect4.JoinGameResponse
-	16, // 21: connect4.Connect4Service.CreateGame:output_type -> connect4.CreateGameResponse
-	18, // [18:22] is the sub-list for method output_type
-	14, // [14:18] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	10, // 6: connect4.DropPieceResponse.result:type_name -> connect4.PieceDropResult
+	11, // 7: connect4.PieceDropResult.winning_lines:type_name -> connect4.LineInfo
+	12, // 8: connect4.LineInfo.positions:type_name -> connect4.Position
+	1,  // 9: connect4.JoinGameResponse.game_state:type_name -> connect4.GameState
+	2,  // 10: connect4.CreateGameRequest.config:type_name -> connect4.GameConfig
+	1,  // 11: connect4.CreateGameResponse.game_state:type_name -> connect4.GameState
+	6,  // 12: connect4.GameState.PlayerStatsEntry.value:type_name -> connect4.PlayerStats
+	7,  // 13: connect4.Connect4Service.GetGame:input_type -> connect4.GetGameRequest
+	8,  // 14: connect4.Connect4Service.DropPiece:input_type -> connect4.DropPieceRequest
+	13, // 15: connect4.Connect4Service.JoinGame:input_type -> connect4.JoinGameRequest
+	15, // 16: connect4.Connect4Service.CreateGame:input_type -> connect4.CreateGameRequest
+	1,  // 17: connect4.Connect4Service.GetGame:output_type -> connect4.GameState
+	9,  // 18: connect4.Connect4Service.DropPiece:output_type -> connect4.DropPieceResponse
+	14, // 19: connect4.Connect4Service.JoinGame:output_type -> connect4.JoinGameResponse
+	16, // 20: connect4.Connect4Service.CreateGame:output_type -> connect4.CreateGameResponse
+	17, // [17:21] is the sub-list for method output_type
+	13, // [13:17] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_connect4_game_proto_init() }

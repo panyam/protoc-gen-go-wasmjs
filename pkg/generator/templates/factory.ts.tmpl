@@ -3,7 +3,7 @@
 {{end}}{{end}}
 
 {{end}}{{/* Import all interfaces from single package file */}}
-import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}} } from "./interfaces";
+import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}}{{if and .Messages .Enums}}, {{end}}{{range $i, $enum := .Enums}}{{if $i}}, {{end}}{{$enum.TSName}}{{end}} } from "./interfaces";
 
 {{/* Import all models from single package file */}}
 import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as Concrete{{$msg.TSName}}{{end}} } from "./models";

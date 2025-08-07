@@ -2,6 +2,15 @@
 // DO NOT EDIT - This file is auto-generated
 
 
+export enum GameStatus {
+  GAME_STATUS_UNSPECIFIED = 0,
+  GAME_STATUS_WAITING_FOR_PLAYERS = 1,
+  GAME_STATUS_IN_PROGRESS = 2,
+  GAME_STATUS_FINISHED = 3,
+  GAME_STATUS_PAUSED = 4,
+}
+
+
 
 export interface GameState {
   gameId: string;
@@ -85,7 +94,7 @@ export interface DropPieceRequest {
 export interface DropPieceResponse {
   success: boolean;
   errorMessage: string;
-  patches?: MessagePatch[];
+  /** repeated wasmjs.v1.MessagePatch patches = 3; */
   changeNumber: number;
   result?: PieceDropResult;
 }

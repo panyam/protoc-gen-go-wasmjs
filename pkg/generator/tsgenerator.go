@@ -34,6 +34,7 @@ type ExternalImport struct {
 // InterfaceTemplateData holds data for interface template generation
 type InterfaceTemplateData struct {
 	Messages        []MessageInfo
+	Enums           []EnumInfo
 	BaseName        string
 	ExternalImports []ExternalImport
 }
@@ -41,6 +42,7 @@ type InterfaceTemplateData struct {
 // ModelTemplateData holds data for model template generation  
 type ModelTemplateData struct {
 	Messages        []MessageInfo
+	Enums           []EnumInfo
 	BaseName        string
 	ExternalImports []ExternalImport
 	DeserializerName string // e.g., "LibraryV2Deserializer"
@@ -57,6 +59,7 @@ type FactoryDependency struct {
 // FactoryTemplateData holds data for factory template generation
 type FactoryTemplateData struct {
 	Messages        []MessageInfo
+	Enums           []EnumInfo
 	FactoryName     string
 	Dependencies    []FactoryDependency // Cross-package factory dependencies
 	ExternalImports []ExternalImport
@@ -87,6 +90,11 @@ func (ts *TSGenerator) collectFactoryDependencies(messages []MessageInfo, curren
 					
 					// Skip if it's the same package
 					if fieldPackage == currentPackage {
+						continue
+					}
+					
+					// Skip wasmjs annotation packages - these are framework types
+					if fieldPackage == "wasmjs.v1" {
 						continue
 					}
 					
@@ -143,6 +151,11 @@ func (ts *TSGenerator) collectExternalImports(messages []MessageInfo) []External
 					// Check if this is a cross-package message reference within the project
 					fieldPackage := ts.extractPackageName(field.MessageType)
 					if fieldPackage != currentPackage && fieldPackage != "" {
+						// Skip wasmjs annotation packages - these are framework types
+						if fieldPackage == "wasmjs.v1" {
+							continue
+						}
+						
 						// This is a cross-package reference - generate import for it
 						messageName := ts.extractMessageName(field.MessageType)
 						importPath := ts.buildCrossPackageImportPath(currentPackage, fieldPackage)
@@ -279,48 +292,58 @@ func NewTSGenerator(fileGen *FileGenerator) *TSGenerator {
 }
 
 // GenerateAll generates all TypeScript artifacts (interfaces, models, factory, schemas, deserializer)
-func (ts *TSGenerator) GenerateAll(messages []MessageInfo, packagePath string) error {
-	if len(messages) == 0 {
+func (ts *TSGenerator) GenerateAll(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
+	if len(messages) == 0 && len(enums) == 0 {
 		return nil
 	}
 	
-	// Generate interfaces
-	if err := ts.generateInterfaces(messages, packagePath); err != nil {
+	// Generate interfaces (includes both messages and enums)
+	if err := ts.generateInterfaces(messages, enums, packagePath); err != nil {
 		return err
 	}
 	
-	// Generate model classes
-	if err := ts.generateModels(messages, packagePath); err != nil {
-		return err
+	// Generate model classes (only for messages)
+	if len(messages) > 0 {
+		if err := ts.generateModels(messages, enums, packagePath); err != nil {
+			return err
+		}
 	}
 	
-	// Generate factory
-	if err := ts.generateFactory(messages, packagePath); err != nil {
-		return err
+	// Generate factory (only for messages)
+	if len(messages) > 0 {
+		if err := ts.generateFactory(messages, enums, packagePath); err != nil {
+			return err
+		}
 	}
 	
-	// Generate deserializer schemas (framework types)
-	if err := ts.generateDeserializerSchemas(packagePath); err != nil {
-		return err
+	// Generate deserializer schemas (framework types) - only if we have messages
+	if len(messages) > 0 {
+		if err := ts.generateDeserializerSchemas(packagePath); err != nil {
+			return err
+		}
 	}
 	
-	// Generate schemas
-	if err := ts.generateSchemas(messages, packagePath); err != nil {
-		return err
+	// Generate schemas (only for messages)
+	if len(messages) > 0 {
+		if err := ts.generateSchemas(messages, packagePath); err != nil {
+			return err
+		}
 	}
 	
-	// Generate deserializer
-	if err := ts.generateDeserializers(messages, packagePath); err != nil {
-		return err
+	// Generate deserializer (only for messages)
+	if len(messages) > 0 {
+		if err := ts.generateDeserializers(messages, packagePath); err != nil {
+			return err
+		}
 	}
 	
 	return nil
 }
 
 // generateInterfaces generates a single TypeScript interface file for the entire package
-func (ts *TSGenerator) generateInterfaces(messages []MessageInfo, packagePath string) error {
+func (ts *TSGenerator) generateInterfaces(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
 	// Generate a single interfaces file per package to avoid import issues
-	if err := ts.generatePackageInterfaceFile(messages, packagePath); err != nil {
+	if err := ts.generatePackageInterfaceFile(messages, enums, packagePath); err != nil {
 		return err
 	}
 	
@@ -328,9 +351,9 @@ func (ts *TSGenerator) generateInterfaces(messages []MessageInfo, packagePath st
 }
 
 // generateModels generates a single TypeScript model file for the entire package
-func (ts *TSGenerator) generateModels(messages []MessageInfo, packagePath string) error {
+func (ts *TSGenerator) generateModels(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
 	// Generate a single models file per package to avoid import issues
-	if err := ts.generatePackageModelFile(messages, packagePath); err != nil {
+	if err := ts.generatePackageModelFile(messages, enums, packagePath); err != nil {
 		return err
 	}
 	
@@ -338,8 +361,8 @@ func (ts *TSGenerator) generateModels(messages []MessageInfo, packagePath string
 }
 
 // generateFactory generates a factory file for creating message instances
-func (ts *TSGenerator) generateFactory(messages []MessageInfo, packagePath string) error {
-	return ts.generateFactoryFile(messages, packagePath)
+func (ts *TSGenerator) generateFactory(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
+	return ts.generateFactoryFile(messages, enums, packagePath)
 }
 
 // generateSchemas generates a single schema file for the entire package
@@ -363,11 +386,13 @@ func (ts *TSGenerator) generateDeserializers(messages []MessageInfo, packagePath
 }
 
 // generatePackageInterfaceFile generates a single interfaces file for the entire package
-func (ts *TSGenerator) generatePackageInterfaceFile(messages []MessageInfo, packagePath string) error {
-	// Get package name from first message
+func (ts *TSGenerator) generatePackageInterfaceFile(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
+	// Get package name from first message or enum
 	packageName := ""
 	if len(messages) > 0 {
 		packageName = messages[0].PackageName
+	} else if len(enums) > 0 {
+		packageName = enums[0].PackageName
 	}
 	
 	// Create filename based on package name (e.g., "interfaces.ts")
@@ -377,7 +402,7 @@ func (ts *TSGenerator) generatePackageInterfaceFile(messages []MessageInfo, pack
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
 	
 	// Generate interface content
-	content, err := ts.generatePackageInterfaceContent(messages, packageName)
+	content, err := ts.generatePackageInterfaceContent(messages, enums, packageName)
 	if err != nil {
 		return err
 	}
@@ -387,7 +412,7 @@ func (ts *TSGenerator) generatePackageInterfaceFile(messages []MessageInfo, pack
 }
 
 // generatePackageModelFile generates a single models file for the entire package
-func (ts *TSGenerator) generatePackageModelFile(messages []MessageInfo, packagePath string) error {
+func (ts *TSGenerator) generatePackageModelFile(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
 	// Get package name from first message
 	packageName := ""
 	if len(messages) > 0 {
@@ -401,7 +426,7 @@ func (ts *TSGenerator) generatePackageModelFile(messages []MessageInfo, packageP
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
 	
 	// Generate model content
-	content, err := ts.generatePackageModelContent(messages, packageName)
+	content, err := ts.generatePackageModelContent(messages, enums, packageName)
 	if err != nil {
 		return err
 	}
@@ -509,14 +534,14 @@ func (ts *TSGenerator) generateModelFile(protoFile string, messages []MessageInf
 }
 
 // generateFactoryFile generates a TypeScript factory file
-func (ts *TSGenerator) generateFactoryFile(messages []MessageInfo, packagePath string) error {
+func (ts *TSGenerator) generateFactoryFile(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
 	filename := filepath.Join(packagePath, "factory.ts")
 	
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
 	
 	// Generate factory content
-	content, err := ts.generateFactoryContent(messages)
+	content, err := ts.generateFactoryContent(messages, enums)
 	if err != nil {
 		return err
 	}
@@ -617,7 +642,7 @@ func (ts *TSGenerator) generateModelContent(messages []MessageInfo, baseName str
 }
 
 // generateFactoryContent generates the TypeScript factory file content using templates
-func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo) (string, error) {
+func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo, enums []EnumInfo) (string, error) {
 	// No longer need file-based imports since we use package-level imports in template
 	
 	// Generate factory class name from package
@@ -643,6 +668,7 @@ func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo) (string, e
 	
 	data := FactoryTemplateData{
 		Messages:        messagesWithMethods,
+		Enums:           enums,
 		FactoryName:     factoryName,
 		Dependencies:    dependencies,
 		ExternalImports: ts.collectExternalImports(messages),
@@ -681,9 +707,10 @@ type DeserializerTemplateData struct {
 }
 
 // generatePackageInterfaceContent generates TypeScript interface content for the entire package
-func (ts *TSGenerator) generatePackageInterfaceContent(messages []MessageInfo, packageName string) (string, error) {
+func (ts *TSGenerator) generatePackageInterfaceContent(messages []MessageInfo, enums []EnumInfo, packageName string) (string, error) {
 	data := InterfaceTemplateData{
 		Messages:        messages,
+		Enums:           enums,
 		BaseName:        "interfaces",
 		ExternalImports: ts.collectExternalImports(messages),
 	}
@@ -703,9 +730,10 @@ func (ts *TSGenerator) generatePackageInterfaceContent(messages []MessageInfo, p
 }
 
 // generatePackageModelContent generates TypeScript model content for the entire package
-func (ts *TSGenerator) generatePackageModelContent(messages []MessageInfo, packageName string) (string, error) {
+func (ts *TSGenerator) generatePackageModelContent(messages []MessageInfo, enums []EnumInfo, packageName string) (string, error) {
 	data := ModelTemplateData{
 		Messages:         messages,
+		Enums:            enums,
 		BaseName:         "interfaces", // Changed from "models" to "interfaces" for package-based imports
 		ExternalImports:  ts.collectExternalImports(messages),
 		DeserializerName: ts.buildDeserializerName(packageName),

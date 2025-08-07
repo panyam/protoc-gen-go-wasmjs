@@ -39,6 +39,16 @@
   - **Static Deserializer Method**: `MyDeserializer.from<T>(messageType, data)` for convenient deserialization
   - **Optional Constructor Parameters**: Deserializer constructor with default factory and schema registry
   - **Shared Factory Instance**: Performance-optimized singleton factory to avoid unnecessary instantiation
+
+- ✅ **Bug Fixes & Enum Support**: Latest critical fixes for production stability
+  - **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages using package name detection in main.go (lines 94-97)
+  - **Comprehensive Enum Support**: Implemented complete enum collection and generation system
+    - Added EnumInfo and EnumValueInfo types to represent proto enums
+    - Added collectAllEnums() function to gather enums from all proto files
+    - Updated generation logic to handle packages with enums but no messages
+    - Enhanced TypeScript templates to generate and import enums correctly
+  - **Cross-Package Import Filtering**: Enhanced import detection to exclude wasmjs.v1 from factory dependencies
+  - **Template Import Resolution**: Fixed enum imports in models.ts, factory.ts, and all generated TypeScript files
   
 - [ ] **Enhanced Browser Demo**: Create a complete browser demo showcasing the enhanced factory and deserialization system
   - Demonstrate cross-package factory composition with real dependencies

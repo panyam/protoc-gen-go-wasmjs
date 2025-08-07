@@ -292,13 +292,6 @@ export const DropPieceResponseSchema: MessageSchema = {
       id: 2,
     },
     {
-      name: "patches",
-      type: FieldType.MESSAGE,
-      id: 3,
-      messageType: "wasmjs.v1.MessagePatch",
-      repeated: true,
-    },
-    {
       name: "changeNumber",
       type: FieldType.NUMBER,
       id: 4,

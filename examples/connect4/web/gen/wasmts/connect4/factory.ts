@@ -1,11 +1,10 @@
 
 
-import { GameState as GameStateInterface, GameConfig as GameConfigInterface, Player as PlayerInterface, GameBoard as GameBoardInterface, BoardRow as BoardRowInterface, PlayerStats as PlayerStatsInterface, GetGameRequest as GetGameRequestInterface, DropPieceRequest as DropPieceRequestInterface, DropPieceResponse as DropPieceResponseInterface, PieceDropResult as PieceDropResultInterface, LineInfo as LineInfoInterface, Position as PositionInterface, JoinGameRequest as JoinGameRequestInterface, JoinGameResponse as JoinGameResponseInterface, CreateGameRequest as CreateGameRequestInterface, CreateGameResponse as CreateGameResponseInterface } from "./interfaces";
+import { GameState as GameStateInterface, GameConfig as GameConfigInterface, Player as PlayerInterface, GameBoard as GameBoardInterface, BoardRow as BoardRowInterface, PlayerStats as PlayerStatsInterface, GetGameRequest as GetGameRequestInterface, DropPieceRequest as DropPieceRequestInterface, DropPieceResponse as DropPieceResponseInterface, PieceDropResult as PieceDropResultInterface, LineInfo as LineInfoInterface, Position as PositionInterface, JoinGameRequest as JoinGameRequestInterface, JoinGameResponse as JoinGameResponseInterface, CreateGameRequest as CreateGameRequestInterface, CreateGameResponse as CreateGameResponseInterface, GameStatus } from "./interfaces";
 
 
 import { GameState as ConcreteGameState, GameConfig as ConcreteGameConfig, Player as ConcretePlayer, GameBoard as ConcreteGameBoard, BoardRow as ConcreteBoardRow, PlayerStats as ConcretePlayerStats, GetGameRequest as ConcreteGetGameRequest, DropPieceRequest as ConcreteDropPieceRequest, DropPieceResponse as ConcreteDropPieceResponse, PieceDropResult as ConcretePieceDropResult, LineInfo as ConcreteLineInfo, Position as ConcretePosition, JoinGameRequest as ConcreteJoinGameRequest, JoinGameResponse as ConcreteJoinGameResponse, CreateGameRequest as ConcreteCreateGameRequest, CreateGameResponse as ConcreteCreateGameResponse } from "./models";
 
-import { WasmjsV1Factory } from "../wasmjs/v1/factory";
 
 
 /**
@@ -20,8 +19,6 @@ export interface FactoryResult<T> {
  * Enhanced factory with context-aware object construction
  */
 export class Connect4Factory {
-  // Dependency factory for wasmjs.v1 package
-  private v1Factory = new WasmjsV1Factory();
 
 
   /**
@@ -374,9 +371,6 @@ export class Connect4Factory {
     }
     
     // Delegate to appropriate dependency factory
-    if (packageName === "wasmjs.v1") {
-      return (this.v1Factory as any)[methodName];
-    }
 
     
     return undefined;

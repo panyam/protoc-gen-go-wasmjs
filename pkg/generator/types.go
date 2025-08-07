@@ -115,8 +115,12 @@ func (g *FileGenerator) Generate() error {
 	messages := g.collectAllMessages()
 	hasMessages := len(messages) > 0
 
-	// Skip packages with no services AND no messages
-	if !hasServices && !hasMessages {
+	// Check if package has enums (for TypeScript generation)
+	enums := g.collectAllEnums()
+	hasEnums := len(enums) > 0
+
+	// Skip packages with no services AND no messages AND no enums
+	if !hasServices && !hasMessages && !hasEnums {
 		return nil
 	}
 
@@ -143,15 +147,15 @@ func (g *FileGenerator) Generate() error {
 		}
 
 		// Generate new TypeScript interfaces, models, factory, schemas, deserializers
-		// Generate these for ANY package that has messages (not just services)
-		if hasMessages {
+		// Generate these for ANY package that has messages or enums (not just services)
+		if hasMessages || hasEnums {
 			// Get package name for TypeScript generation
 			packageName := string(g.file.Desc.Package())
 			packagePath := g.buildPackagePath(packageName)
 
-			// Generate TypeScript artifacts for all messages
+			// Generate TypeScript artifacts for all messages and enums
 			tsGen := NewTSGenerator(g)
-			if err := tsGen.GenerateAll(messages, packagePath); err != nil {
+			if err := tsGen.GenerateAll(messages, enums, packagePath); err != nil {
 				return err
 			}
 		}
@@ -351,6 +355,25 @@ type MessageInfo struct {
 	FullyQualifiedName  string      // Fully qualified message type (e.g., "library.v2.Book")
 }
 
+// EnumInfo represents a proto enum for TypeScript generation
+type EnumInfo struct {
+	Name               string           // Enum name (e.g., "GameStatus")
+	TSName             string           // TypeScript enum name (e.g., "GameStatus")
+	Values             []EnumValueInfo  // All values in the enum
+	PackageName        string           // Proto package name
+	ProtoFile          string           // Source proto file path
+	Comment            string           // Leading comment from proto
+	FullyQualifiedName string           // Fully qualified enum type (e.g., "connect4.GameStatus")
+}
+
+// EnumValueInfo represents a proto enum value
+type EnumValueInfo struct {
+	Name    string // Original proto enum value name (e.g., "WAITING_FOR_PLAYERS")
+	TSName  string // TypeScript enum value name (e.g., "WAITING_FOR_PLAYERS")
+	Number  int32  // Enum value number
+	Comment string // Value comment from proto
+}
+
 // FieldInfo represents a proto field for TypeScript generation
 type FieldInfo struct {
 	Name         string // Original proto field name (e.g., "user_id")
@@ -392,6 +415,80 @@ func (g *FileGenerator) collectAllMessages() []MessageInfo {
 	}
 
 	return messages
+}
+
+// collectAllEnums collects all enum definitions from package files
+func (g *FileGenerator) collectAllEnums() []EnumInfo {
+	var enums []EnumInfo
+
+	for _, file := range g.packageFiles {
+		// Collect top-level enums
+		for _, enum := range file.Enums {
+			enumInfo := g.buildEnumInfo(enum, file)
+			enums = append(enums, enumInfo)
+		}
+
+		// Collect nested enums from messages
+		for _, message := range file.Messages {
+			nestedEnums := g.collectNestedEnums(message, file)
+			enums = append(enums, nestedEnums...)
+		}
+	}
+
+	return enums
+}
+
+// buildEnumInfo constructs EnumInfo from a protogen.Enum
+func (g *FileGenerator) buildEnumInfo(enum *protogen.Enum, file *protogen.File) EnumInfo {
+	enumName := string(enum.Desc.Name())
+
+	// Build enum values
+	var values []EnumValueInfo
+	for _, value := range enum.Values {
+		valueInfo := EnumValueInfo{
+			Name:    string(value.Desc.Name()),
+			TSName:  string(value.Desc.Name()), // Keep original name for now
+			Number:  int32(value.Desc.Number()),
+			Comment: strings.TrimSpace(string(value.Comments.Leading)),
+		}
+		values = append(values, valueInfo)
+	}
+
+	// Build fully qualified name (e.g., "connect4.GameStatus")
+	packageName := string(file.Desc.Package())
+	fullyQualifiedName := packageName + "." + enumName
+
+	return EnumInfo{
+		Name:               enumName,
+		TSName:             enumName, // Same as proto name for TypeScript enums
+		Values:             values,
+		PackageName:        packageName,
+		ProtoFile:          file.Desc.Path(),
+		Comment:            strings.TrimSpace(string(enum.Comments.Leading)),
+		FullyQualifiedName: fullyQualifiedName,
+	}
+}
+
+// collectNestedEnums recursively collects nested enum definitions from messages
+func (g *FileGenerator) collectNestedEnums(message *protogen.Message, file *protogen.File) []EnumInfo {
+	var nestedEnums []EnumInfo
+
+	// Collect enums directly nested in this message
+	for _, enum := range message.Enums {
+		enumInfo := g.buildEnumInfo(enum, file)
+		nestedEnums = append(nestedEnums, enumInfo)
+	}
+
+	// Recursively collect enums from nested messages
+	for _, nested := range message.Messages {
+		if nested.Desc.IsMapEntry() {
+			continue // Skip map entry messages
+		}
+		deeplyNestedEnums := g.collectNestedEnums(nested, file)
+		nestedEnums = append(nestedEnums, deeplyNestedEnums...)
+	}
+
+	return nestedEnums
 }
 
 // buildMessageInfo constructs MessageInfo from a protogen.Message

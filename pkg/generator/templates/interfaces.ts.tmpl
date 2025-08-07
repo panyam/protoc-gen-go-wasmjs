@@ -4,6 +4,14 @@
 {{if .ExternalImports}}{{range .ExternalImports}}{{if not .IsNative}}import { {{.TypeName}} } from "{{.ImportSource}}";
 {{end}}{{end}}
 
+{{end}}{{range .Enums}}{{if .Comment}}/**
+ * {{.Comment}}
+ */{{end}}
+export enum {{.TSName}} {
+{{range .Values}}  {{if .Comment}}/** {{.Comment}} */
+  {{end}}{{.TSName}} = {{.Number}},
+{{end}}}
+
 {{end}}{{range .Messages}}
 {{if .Comment}}/**
  * {{.Comment}}

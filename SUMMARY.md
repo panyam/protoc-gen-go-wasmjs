@@ -168,6 +168,15 @@ The project has completed a comprehensive enhanced factory and deserialization s
 - ✅ **External Type Mapping System**: Comprehensive support for external protobuf types with configurable mappings, factory integration, and proper import handling
 - ✅ **Developer Experience Enhancements**: Ergonomic API improvements with MESSAGE_TYPE constants, static deserializer methods, and performance-optimized shared instances
 
+### Latest Bug Fixes & Enum Support (January 2025)
+- ✅ **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages - they are now correctly excluded from generation while remaining visible for proto compilation
+- ✅ **Comprehensive Enum Support**: Implemented complete enum collection, generation, and import system for TypeScript
+  - Enums are generated in interfaces.ts with proper TypeScript enum syntax
+  - All generated TypeScript files (models.ts, factory.ts) now correctly import and reference enums
+  - Cross-package enum references work seamlessly with the import resolution system
+  - Fixed template data structures to include enums in all generation contexts
+- ✅ **Enhanced Cross-Package Import Detection**: Improved import resolution to filter out wasmjs.v1 dependencies in factory composition
+
 **Major Architecture Achievements**: 
 1. **Factory Composition System**: Implemented sophisticated cross-package factory delegation enabling seamless object creation across package boundaries with automatic dependency injection
 2. **Schema-Aware Architecture**: Built complete schema generation and deserialization system with field metadata, proto field IDs, and oneof support for type-safe runtime processing

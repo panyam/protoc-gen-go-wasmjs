@@ -7,6 +7,28 @@ import "wasmjs/v1/patches.proto";
 
 option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/proto/connect4";
 
+enum GameStatus {
+  GAME_STATUS_UNSPECIFIED = 0;
+  GAME_STATUS_WAITING_FOR_PLAYERS = 1;
+  GAME_STATUS_IN_PROGRESS = 2;
+  GAME_STATUS_FINISHED = 3;
+  GAME_STATUS_PAUSED = 4;
+}
+
+message GameState {
+  string game_id = 1;
+  GameConfig config = 2;
+  repeated Player players = 3;
+  GameBoard board = 4;
+  string current_player_id = 5;
+  int32 turn_number = 6;
+  GameStatus status = 7;
+  repeated string winners = 8; // Player IDs who achieved connect-4
+  map<string, PlayerStats> player_stats = 9;
+  int64 last_move_time = 10;
+  int32 move_timeout_seconds = 11; // Auto-skip after timeout
+}
+
 service Connect4Service {
   option (wasmjs.v1.wasm_service_name) = "connect4";
   option (wasmjs.v1.stateful) = {
@@ -31,20 +53,6 @@ service Connect4Service {
   
   // Create a new game with custom settings
   rpc CreateGame(CreateGameRequest) returns (CreateGameResponse);
-}
-
-message GameState {
-  string game_id = 1;
-  GameConfig config = 2;
-  repeated Player players = 3;
-  GameBoard board = 4;
-  string current_player_id = 5;
-  int32 turn_number = 6;
-  GameStatus status = 7;
-  repeated string winners = 8; // Player IDs who achieved connect-4
-  map<string, PlayerStats> player_stats = 9;
-  int64 last_move_time = 10;
-  int32 move_timeout_seconds = 11; // Auto-skip after timeout
 }
 
 message GameConfig {
@@ -84,13 +92,6 @@ message PlayerStats {
   int64 total_move_time = 4; // Milliseconds
 }
 
-enum GameStatus {
-  WAITING_FOR_PLAYERS = 0;
-  IN_PROGRESS = 1;
-  FINISHED = 2;
-  PAUSED = 3;
-}
-
 // Request/Response messages
 message GetGameRequest {
   string game_id = 1;
@@ -105,7 +106,7 @@ message DropPieceRequest {
 message DropPieceResponse {
   bool success = 1;
   string error_message = 2;
-  repeated wasmjs.v1.MessagePatch patches = 3;
+  // repeated wasmjs.v1.MessagePatch patches = 3;
   int64 change_number = 4;
   PieceDropResult result = 5;
 }

@@ -1,4 +1,4 @@
-import { GameState as GameStateInterface, GameConfig as GameConfigInterface, Player as PlayerInterface, GameBoard as GameBoardInterface, BoardRow as BoardRowInterface, PlayerStats as PlayerStatsInterface, GetGameRequest as GetGameRequestInterface, DropPieceRequest as DropPieceRequestInterface, DropPieceResponse as DropPieceResponseInterface, PieceDropResult as PieceDropResultInterface, LineInfo as LineInfoInterface, Position as PositionInterface, JoinGameRequest as JoinGameRequestInterface, JoinGameResponse as JoinGameResponseInterface, CreateGameRequest as CreateGameRequestInterface, CreateGameResponse as CreateGameResponseInterface } from "./interfaces";
+import { GameState as GameStateInterface, GameConfig as GameConfigInterface, Player as PlayerInterface, GameBoard as GameBoardInterface, BoardRow as BoardRowInterface, PlayerStats as PlayerStatsInterface, GetGameRequest as GetGameRequestInterface, DropPieceRequest as DropPieceRequestInterface, DropPieceResponse as DropPieceResponseInterface, PieceDropResult as PieceDropResultInterface, LineInfo as LineInfoInterface, Position as PositionInterface, JoinGameRequest as JoinGameRequestInterface, JoinGameResponse as JoinGameResponseInterface, CreateGameRequest as CreateGameRequestInterface, CreateGameResponse as CreateGameResponseInterface, GameStatus } from "./interfaces";
 import { Connect4Deserializer } from "./deserializer";
 
 
@@ -202,7 +202,7 @@ export class DropPieceResponse implements DropPieceResponseInterface {
 
   success: boolean = false;
   errorMessage: string = "";
-  patches: MessagePatch[] = [];
+  /** repeated wasmjs.v1.MessagePatch patches = 3; */
   changeNumber: number = 0;
   result?: PieceDropResult;
 
