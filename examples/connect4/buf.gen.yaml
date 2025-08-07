@@ -48,8 +48,9 @@ plugins:
   # =================================================================
   
   # Generate stateful TypeScript proxies for real-time collaboration
-  - local: ../../bin/protoc-gen-go-wasmjs-stateful
-    out: ./web/gen
-    opt: 
-      - paths=source_relative
-      - client_import_path=../static/gen/multiplayer/wasmjs/v1
+  # Disabling for now till we figure out how to handle the imports of Patches and Diffs
+  # - local: ../../bin/protoc-gen-go-wasmjs-stateful
+    # out: ./web/gen
+    # opt: 
+      # - paths=source_relative
+      # - client_import_path=../static/gen/multiplayer/wasmjs/v1
