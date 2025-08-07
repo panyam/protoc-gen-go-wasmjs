@@ -3,16 +3,14 @@
 
 import Connect4Client from '../gen/wasmts/multiplayer_connect4Client.client';
 import { GameState, GameConfig, Player } from '../gen/wasmts/connect4/models';
-
-// Note: StatefulProxy will be available globally from the included script
-declare var StatefulProxy: any;
+import { StatefulTransport, TransportFactory, IndexedDBTransport } from './transport';
 
 // Game interface state
 interface GameUI {
     gameId: string;
     playerId: string;
     gameState: GameState | null;
-    statefulProxy: any;
+    transport: StatefulTransport | null;
     connect4Client: Connect4Client | null;
 }
 
@@ -29,7 +27,7 @@ class GameViewer {
             gameId,
             playerId: '',
             gameState: null,
-            statefulProxy: null,
+            transport: null,
             connect4Client: null
         };
 
@@ -41,11 +39,11 @@ class GameViewer {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.initializeUI());
         } else {
-            this.initializeUI();
+            await this.initializeUI();
         }
     }
 
-    private initializeUI(): void {
+    private async initializeUI(): Promise<void> {
         // Get UI elements
         this.elements = {
             joinGameForm: document.getElementById('joinGameForm'),
@@ -84,7 +82,7 @@ class GameViewer {
 
         // Initialize game components
         this.initializeWasmClient();
-        this.initializeStatefulProxy();
+        await this.initializeStatefulProxy();
         this.loadStoredGameState();
     }
 
@@ -101,20 +99,25 @@ class GameViewer {
         }
     }
 
-    private initializeStatefulProxy(): void {
+    private async initializeStatefulProxy(): Promise<void> {
         try {
-            // Initialize stateful proxy with IndexedDB transport for cross-page persistence
-            this.ui.statefulProxy = new StatefulProxy(this.ui.gameId, 'indexeddb');
+            // Initialize transport with IndexedDB for cross-page persistence
+            this.ui.transport = TransportFactory.create(this.ui.gameId, 'indexeddb');
+            
+            // Initialize IndexedDB if using IndexedDBTransport
+            if (this.ui.transport instanceof IndexedDBTransport) {
+                await this.ui.transport.init();
+            }
             
             // Set up state change listener
-            this.ui.statefulProxy.onStateChange((patches: any[]) => {
+            this.ui.transport.subscribe((patches: any[]) => {
                 console.log('Received state patches:', patches);
                 this.applyPatches(patches);
             });
 
-            console.log('Stateful proxy initialized');
+            console.log('Stateful transport initialized');
         } catch (error) {
-            console.error('Failed to initialize stateful proxy:', error);
+            console.error('Failed to initialize stateful transport:', error);
         }
     }
 
@@ -249,9 +252,9 @@ class GameViewer {
                 this.storeGameState();
                 this.updateGameDisplay();
                 
-                // Send state update through stateful proxy
-                if (this.ui.statefulProxy) {
-                    this.ui.statefulProxy.sendPatches([{
+                // Send state update through stateful transport
+                if (this.ui.transport) {
+                    await this.ui.transport.sendPatches([{
                         operation: 'update',
                         path: '',
                         value: this.ui.gameState,
