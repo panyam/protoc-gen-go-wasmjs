@@ -25,7 +25,7 @@ plugins:
   # =================================================================
   
   # Default target - All services (backwards compatibility)
-  - local: ../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs
     out: ./gen/wasm/all-services
     opt:
       - js_structure=namespaced
