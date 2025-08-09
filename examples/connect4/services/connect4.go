@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
+	"syscall/js"
 	"time"
 
 	pb "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go/connect4"
@@ -17,6 +19,12 @@ type Connect4Service struct {
 	games         map[string]*pb.GameState
 	changeCounter int64
 	mu            sync.RWMutex
+
+	// Storage callbacks from browser
+	saveCallback js.Value
+	loadCallback js.Value
+	pollCallback js.Value
+	callbacksSet bool
 }
 
 // NewConnect4Service creates a new Connect4 service instance
@@ -92,6 +100,9 @@ func (s *Connect4Service) CreateGame(ctx context.Context, req *pb.CreateGameRequ
 	}
 
 	s.games[gameId] = game
+	
+	// Save to storage via callback
+	s.saveGameToStorage(gameId, game)
 
 	return &pb.CreateGameResponse{
 		Success:   true,
@@ -158,6 +169,9 @@ func (s *Connect4Service) JoinGame(ctx context.Context, req *pb.JoinGameRequest)
 		game.Status = pb.GameStatus_GAME_STATUS_IN_PROGRESS
 	}
 
+	// Save updated game to storage
+	s.saveGameToStorage(req.GameId, game)
+
 	return &pb.JoinGameResponse{
 		Success:       true,
 		PlayerId:      player.Id,
@@ -168,11 +182,17 @@ func (s *Connect4Service) JoinGame(ctx context.Context, req *pb.JoinGameRequest)
 
 // GetGame retrieves the current state of a game
 func (s *Connect4Service) GetGame(ctx context.Context, req *pb.GetGameRequest) (*pb.GameState, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock() // Use write lock since we might load from storage
+	defer s.mu.Unlock()
 
 	game, exists := s.games[req.GameId]
 	if !exists {
+		// Try to load from storage
+		if loadedGame := s.loadGameFromStorage(req.GameId); loadedGame != nil {
+			// Store in memory for future access
+			s.games[req.GameId] = loadedGame
+			return loadedGame, nil
+		}
 		return nil, fmt.Errorf("game not found: %s", req.GameId)
 	}
 
@@ -323,6 +343,9 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 		stats.PiecesPlayed++
 	}
 
+	// Save updated game state to storage
+	s.saveGameToStorage(req.GameId, game)
+
 	return &pb.DropPieceResponse{
 		Success:      true,
 		ChangeNumber: s.changeCounter,
@@ -383,4 +406,86 @@ func (s *Connect4Service) findLineInDirection(game *pb.GameState, row, col, dr, 
 	}
 
 	return positions
+}
+
+// SetStorageCallbacks configures the browser storage callbacks
+func (s *Connect4Service) SetStorageCallbacks(saveCallback, loadCallback, pollCallback js.Value) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.saveCallback = saveCallback
+	s.loadCallback = loadCallback  
+	s.pollCallback = pollCallback
+	s.callbacksSet = true
+
+	fmt.Println("Storage callbacks configured successfully")
+}
+
+// HandleExternalStorageChange processes external changes to game state
+func (s *Connect4Service) HandleExternalStorageChange(gameId, gameStateJson string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Parse the updated game state
+	var gameState pb.GameState
+	if err := json.Unmarshal([]byte(gameStateJson), &gameState); err != nil {
+		fmt.Printf("Failed to unmarshal external game state for %s: %v\n", gameId, err)
+		return
+	}
+
+	// Update our internal state
+	s.games[gameId] = &gameState
+	fmt.Printf("Updated game %s from external storage change\n", gameId)
+}
+
+// saveGameToStorage saves game state to browser storage via callback
+func (s *Connect4Service) saveGameToStorage(gameId string, game *pb.GameState) {
+	if !s.callbacksSet || s.saveCallback.IsUndefined() {
+		return // No callback configured
+	}
+
+	// Convert game state to JSON
+	gameStateJson, err := json.Marshal(game)
+	if err != nil {
+		fmt.Printf("Failed to marshal game state for %s: %v\n", gameId, err)
+		return
+	}
+
+	// Call browser save callback asynchronously
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Panic in saveGameToStorage for %s: %v\n", gameId, r)
+			}
+		}()
+		
+		s.saveCallback.Invoke(gameId, string(gameStateJson))
+	}()
+}
+
+// loadGameFromStorage loads game state from browser storage via callback  
+func (s *Connect4Service) loadGameFromStorage(gameId string) *pb.GameState {
+	if !s.callbacksSet || s.loadCallback.IsUndefined() {
+		return nil // No callback configured
+	}
+
+	// Call browser load callback (synchronous)
+	result := s.loadCallback.Invoke(gameId)
+	if result.IsNull() || result.IsUndefined() {
+		return nil
+	}
+
+	gameStateJson := result.String()
+	if gameStateJson == "" {
+		return nil
+	}
+
+	// Parse the JSON
+	var gameState pb.GameState
+	if err := json.Unmarshal([]byte(gameStateJson), &gameState); err != nil {
+		fmt.Printf("Failed to unmarshal loaded game state for %s: %v\n", gameId, err)
+		return nil
+	}
+
+	return &gameState
 }

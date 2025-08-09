@@ -18,6 +18,7 @@ class GameViewer {
     private ui: GameUI;
     private elements: { [key: string]: HTMLElement | null } = {};
     private selectedSlot: number = -1;
+    private storageTransport: IndexedDBTransport | null = null;
 
     constructor() {
         // Extract game ID from URL path
@@ -52,6 +53,7 @@ class GameViewer {
             joinSlotModal: document.getElementById('joinSlotModal'),
             joinSlotForm: document.getElementById('joinSlotForm'),
             gameInterface: document.getElementById('gameInterface'),
+            gameControls: document.getElementById('gameControls'),
             errorState: document.getElementById('errorState'),
             gameBoard: document.getElementById('gameBoard'),
             gameStatus: document.getElementById('gameStatus'),
@@ -93,12 +95,88 @@ class GameViewer {
         try {
             console.log('Loading WASM module...');
             this.ui.connect4Client = new Connect4Client();
+            
+            // Initialize storage transport for this specific game
+            this.storageTransport = new IndexedDBTransport(this.ui.gameId);
+            await this.storageTransport.init();
+            
+            // Set up storage callbacks before loading WASM
+            await this.setupStorageCallbacks();
+            
             await this.ui.connect4Client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
             await this.ui.connect4Client.waitUntilReady();
             console.log('WASM module loaded successfully!');
         } catch (error) {
             console.error('Failed to load WASM:', error);
             this.showError('Failed to load game engine');
+        }
+    }
+
+    private async setupStorageCallbacks(): Promise<void> {
+        if (!this.storageTransport || !(window as any).setWasmStorageCallbacks) {
+            console.warn('Storage transport or WASM callbacks not available');
+            return;
+        }
+
+        // Create callback functions for WASM to use
+        const saveCallback = async (gameId: string, gameStateJson: string) => {
+            try {
+                const gameState = JSON.parse(gameStateJson);
+                await this.storageTransport!.saveGameState(gameId, gameState);
+                console.log(`Saved game state for ${gameId} to IndexedDB`);
+            } catch (error) {
+                console.error('Failed to save game state:', error);
+            }
+        };
+
+        const loadCallback = async (gameId: string): Promise<string | null> => {
+            try {
+                const gameState = await this.storageTransport!.loadGameState(gameId);
+                if (gameState) {
+                    console.log(`Loaded game state for ${gameId} from IndexedDB`);
+                    return JSON.stringify(gameState);
+                }
+                return null;
+            } catch (error) {
+                console.error('Failed to load game state:', error);
+                return null;
+            }
+        };
+
+        const pollCallback = (gameId: string) => {
+            // Set up polling for external changes to this game
+            this.storageTransport!.onGameStateChanged((gameState: any) => {
+                // Update UI when external changes are detected
+                this.handleExternalGameStateChange(gameState);
+                
+                // Notify WASM of external change
+                if ((window as any).wasmOnExternalStorageChange) {
+                    (window as any).wasmOnExternalStorageChange(gameId, JSON.stringify(gameState));
+                }
+            });
+        };
+
+        // Configure WASM with these callbacks
+        const result = (window as any).setWasmStorageCallbacks(
+            saveCallback,
+            loadCallback, 
+            pollCallback
+        );
+        
+        if (result && result.success) {
+            console.log('Storage callbacks configured successfully');
+        } else {
+            console.error('Failed to configure storage callbacks:', result);
+        }
+    }
+
+    private handleExternalGameStateChange(gameState: any): void {
+        try {
+            this.ui.gameState = GameState.from(gameState);
+            this.updateGameDisplay();
+            console.log('Updated UI from external game state change');
+        } catch (error) {
+            console.error('Failed to handle external game state change:', error);
         }
     }
 
@@ -126,7 +204,8 @@ class GameViewer {
 
     private async loadGameState(): Promise<void> {
         try {
-            // Try to get game state from server first
+            // WASM will now handle loading from storage automatically via callbacks
+            // Just try to get the game state - WASM will load from IndexedDB if not in memory
             if (this.ui.connect4Client) {
                 // Ensure WASM is ready before making calls
                 await this.ui.connect4Client.waitUntilReady();
@@ -137,7 +216,7 @@ class GameViewer {
 
                 if (response.success) {
                     this.ui.gameState = GameState.from(response.data);
-                    console.log('Loaded game state from server:', this.ui.gameState);
+                    console.log('Loaded game state (WASM handled storage):', this.ui.gameState);
                     
                     // Check if we have a stored player ID for this game
                     const storedPlayerId = localStorage.getItem(`connect4_player_${this.ui.gameId}`);
@@ -153,33 +232,11 @@ class GameViewer {
                 }
             }
         } catch (error) {
-            console.error('Failed to load game state from server:', error);
+            console.error('Failed to load game state:', error);
         }
 
-        // Try to load from localStorage as fallback
-        try {
-            const stored = localStorage.getItem(`connect4_game_${this.ui.gameId}`);
-            if (stored) {
-                const parsedState = JSON.parse(stored);
-                this.ui.gameState = GameState.from(parsedState);
-                console.log('Loaded stored game state:', this.ui.gameState);
-                
-                const storedPlayerId = localStorage.getItem(`connect4_player_${this.ui.gameId}`);
-                if (storedPlayerId) {
-                    this.ui.playerId = storedPlayerId;
-                    this.showGameInterface();
-                    this.updateGameDisplay();
-                } else {
-                    this.showPlayerSlots();
-                }
-                return;
-            }
-        } catch (error) {
-            console.error('Failed to parse stored game state:', error);
-        }
-
-        // No game found
-        this.showError('Game not found');
+        // If WASM couldn't find/load the game, show error
+        this.showError('Game not found - please check the game ID or create a new game');
     }
 
     private async handleJoinGame(event: Event): Promise<void> {
@@ -328,6 +385,9 @@ class GameViewer {
         if (this.elements.gameInterface) {
             this.elements.gameInterface.classList.add('hidden');
         }
+        if (this.elements.gameControls) {
+            this.elements.gameControls.classList.add('hidden');
+        }
         if (this.elements.errorState) {
             this.elements.errorState.classList.add('hidden');
         }
@@ -339,11 +399,15 @@ class GameViewer {
     }
 
     private showGameInterface(): void {
+        // Show both left panel and center panel
         if (this.elements.playerSlots) {
-            this.elements.playerSlots.classList.add('hidden');
+            this.elements.playerSlots.classList.remove('hidden');
         }
         if (this.elements.gameInterface) {
             this.elements.gameInterface.classList.remove('hidden');
+        }
+        if (this.elements.gameControls) {
+            this.elements.gameControls.classList.remove('hidden');
         }
         if (this.elements.errorState) {
             this.elements.errorState.classList.add('hidden');
@@ -352,6 +416,7 @@ class GameViewer {
             this.elements.joinSlotModal.classList.add('hidden');
         }
         
+        this.generatePlayerSlots();
         this.initializeGameBoard();
     }
 
@@ -361,6 +426,9 @@ class GameViewer {
         }
         if (this.elements.gameInterface) {
             this.elements.gameInterface.classList.add('hidden');
+        }
+        if (this.elements.gameControls) {
+            this.elements.gameControls.classList.add('hidden');
         }
         if (this.elements.errorState) {
             this.elements.errorState.classList.remove('hidden');

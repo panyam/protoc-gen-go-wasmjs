@@ -456,39 +456,74 @@ body {
     100% { opacity: 1; }
 }
 
-/* Player Slots Styles */
-.player-slots {
-    margin: 30px 0;
+/* Game Layout */
+.game-layout {
+    display: flex;
+    gap: 20px;
+    min-height: 600px;
+    margin-top: 20px;
+}
+
+/* Left Panel: Player Slots */
+.left-panel {
+    width: 280px;
     padding: 20px;
     background: #f8f9fa;
     border-radius: 15px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
 }
 
-.player-slots h3 {
+.left-panel h3 {
     text-align: center;
     margin-bottom: 20px;
     color: #374151;
-    font-size: 1.5rem;
+    font-size: 1.3rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 10px;
+}
+
+.left-panel h4 {
+    margin-bottom: 15px;
+    color: #374151;
+    font-size: 1.1rem;
 }
 
 .slots-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    max-width: 800px;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+/* Center Panel: Game Board */
+.center-panel {
+    flex: 1;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.game-controls {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
 }
 
 .player-slot {
     background: white;
     border: 2px solid #e5e7eb;
     border-radius: 12px;
-    padding: 20px;
+    padding: 15px;
     text-align: center;
     transition: all 0.3s ease;
     position: relative;
-    min-height: 140px;
+    min-height: 100px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;

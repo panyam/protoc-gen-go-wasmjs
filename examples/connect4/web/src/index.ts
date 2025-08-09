@@ -2,6 +2,7 @@
 // Handles game discovery, creation, and navigation
 
 import Connect4Client from '../gen/wasmts/multiplayer_connect4Client.client';
+import { IndexedDBTransport } from './transport';
 
 // Types for game storage
 interface StoredGame {
@@ -19,6 +20,7 @@ class GamesListManager {
     private boardWidthInput: HTMLInputElement | null = null;
     private boardHeightInput: HTMLInputElement | null = null;
     private dimensionsDisplay: HTMLElement | null = null;
+    private storageTransport: IndexedDBTransport | null = null;
 
     constructor() {
         this.init();
@@ -66,11 +68,73 @@ class GamesListManager {
         try {
             console.log('Initializing WASM client for games list...');
             this.connect4Client = new Connect4Client();
+            
+            // Initialize storage transport for global game state management
+            this.storageTransport = new IndexedDBTransport('global');
+            await this.storageTransport.init();
+            
+            // Set up storage callbacks before loading WASM
+            await this.setupStorageCallbacks();
+            
             await this.connect4Client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
             await this.connect4Client.waitUntilReady();
             console.log('WASM client ready for game operations');
         } catch (error) {
             console.error('Failed to initialize WASM client:', error);
+        }
+    }
+
+    private async setupStorageCallbacks(): Promise<void> {
+        if (!this.storageTransport || !(window as any).setWasmStorageCallbacks) {
+            console.warn('Storage transport or WASM callbacks not available');
+            return;
+        }
+
+        // Create callback functions for WASM to use
+        const saveCallback = async (gameId: string, gameStateJson: string) => {
+            try {
+                const gameState = JSON.parse(gameStateJson);
+                await this.storageTransport!.saveGameState(gameId, gameState);
+                console.log(`Saved game state for ${gameId} to IndexedDB`);
+            } catch (error) {
+                console.error('Failed to save game state:', error);
+            }
+        };
+
+        const loadCallback = async (gameId: string): Promise<string | null> => {
+            try {
+                const gameState = await this.storageTransport!.loadGameState(gameId);
+                if (gameState) {
+                    console.log(`Loaded game state for ${gameId} from IndexedDB`);
+                    return JSON.stringify(gameState);
+                }
+                return null;
+            } catch (error) {
+                console.error('Failed to load game state:', error);
+                return null;
+            }
+        };
+
+        const pollCallback = (gameId: string) => {
+            // Set up polling for external changes to this game
+            this.storageTransport!.onGameStateChanged((gameState: any) => {
+                if ((window as any).wasmOnExternalStorageChange) {
+                    (window as any).wasmOnExternalStorageChange(gameId, JSON.stringify(gameState));
+                }
+            });
+        };
+
+        // Configure WASM with these callbacks
+        const result = (window as any).setWasmStorageCallbacks(
+            saveCallback,
+            loadCallback, 
+            pollCallback
+        );
+        
+        if (result && result.success) {
+            console.log('Storage callbacks configured successfully');
+        } else {
+            console.error('Failed to configure storage callbacks:', result);
         }
     }
 
