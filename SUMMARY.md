@@ -39,6 +39,24 @@ protoc-gen-go-wasmjs is a Protocol Buffers compiler plugin that generates WASM b
 - Self-contained generation with no external dependencies
 - Template-based customization system
 
+## Examples & Demonstrations
+
+### Connect4 Multiplayer Game (`examples/connect4/`)
+A fully working real-time multiplayer Connect4 game demonstrating:
+- **WASM Integration**: Complete Go service compiled to WebAssembly
+- **Pluggable Transports**: IndexedDB+polling and BroadcastChannel for cross-tab multiplayer
+- **State Persistence**: Games survive browser restarts via localStorage + IndexedDB  
+- **TypeScript Client**: Generated client with full type safety calling WASM methods
+- **Independent Module**: Standalone go.mod with parent module replacement for development
+- **Production-Ready**: Working demo with proper build system (webpack + TypeScript)
+
+### Library Management (`examples/library/`)  
+Complex multi-package examples showing:
+- **Cross-Package Dependencies**: Services spanning multiple proto packages
+- **Enhanced Factory Patterns**: Context-aware object creation with parent tracking
+- **Schema-Aware Deserialization**: Type-safe runtime processing with field metadata
+- **Multi-Service Bundling**: Different WASM bundles for different use cases
+
 ## Project Structure
 
 ```
@@ -58,7 +76,9 @@ protoc-gen-go-wasmjs is a Protocol Buffers compiler plugin that generates WASM b
 │   ├── tsgenerator.go          # TypeScript-specific generation
 │   └── types.go                 # Template data structures
 ├── proto/wasmjs/v1/             # WASM annotations
-├── example/                     # Complete example
+├── examples/
+│   ├── connect4/                # Working multiplayer Connect4 demo
+│   └── library/                 # Library management examples
 └── PROTO_CONVERSION.md          # Conversion documentation
 ```
 

@@ -1,6 +1,15 @@
 # Next Steps
 
 ## Recently Completed (January 2025)
+
+- ✅ **Connect4 Example Restoration & Documentation Overhaul**: Fixed corrupted demo and aligned docs with reality
+  - **Independent Module Setup**: Added go.mod for standalone Connect4 example with proper parent module replacement
+  - **WASM Integration Fixes**: Corrected protobuf enum constants, import paths, and struct references for working WASM compilation
+  - **Documentation Accuracy**: Major rewrite of all .md files to reflect actual working implementation vs outdated claims
+  - **Transport Architecture Reality**: Updated docs to show working IndexedDB+polling and BroadcastChannel vs non-existent WebSocket server
+  - **Build Process Alignment**: Fixed all Makefiles, build instructions, and file path references to match webpack+TypeScript reality
+  - **Working Demo**: Cross-tab multiplayer Connect4 with state persistence and pluggable transports now fully functional
+
 - ✅ **Enhanced Factory & Deserialization System**: Completed comprehensive factory composition and schema-aware deserialization
   - **Context-Aware Factory Methods**: Implemented parent object tracking, attribute names, and container keys for granular control
   - **Cross-Package Factory Composition**: Automatic dependency detection, import generation, and factory delegation across package boundaries
@@ -74,11 +83,13 @@
   - Compare cross-package delegation efficiency
   - Document complex object creation performance characteristics
 
-- [ ] **Documentation Refresh**: Update all documentation to reflect enhanced architecture
-  - Update README with enhanced factory examples and cross-package composition
-  - Refresh architecture diagrams to show factory delegation and schema system
-  - Create migration guide for adopting enhanced factory patterns
-  - Document the enhanced interface/model/factory/schema/deserializer ecosystem
+- [x] **Documentation Refresh**: Updated documentation to reflect current architecture and capabilities
+  - ✅ Connect4 example docs completely rewritten to show actual working implementation
+  - ✅ Fixed all architecture diagrams to match IndexedDB+polling transport reality  
+  - ✅ Corrected all build instructions and file path references
+  - ✅ Updated README examples to show actual TypeScript client usage patterns
+  - [ ] Create comprehensive examples showing enhanced factory patterns and cross-package composition
+  - [ ] Document the complete interface/model/factory/schema/deserializer ecosystem with real examples
 
 ## Short Term (Next Month)
 - [ ] **Streaming Support**: Research and implement streaming RPC support for WASM
