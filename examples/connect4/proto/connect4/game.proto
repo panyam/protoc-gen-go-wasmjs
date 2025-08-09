@@ -5,7 +5,7 @@ package connect4;
 import "wasmjs/v1/annotations.proto";
 import "wasmjs/v1/patches.proto";
 
-option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/proto/connect4";
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go/connect4";
 
 enum GameStatus {
   GAME_STATUS_UNSPECIFIED = 0;

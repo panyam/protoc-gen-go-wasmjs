@@ -8,65 +8,75 @@ This Connect4 example demonstrates a **pluggable stateful proxy system** that ca
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Browser Tab A │    │   Browser Tab B │    │   Server/WASM   │
+│   Browser Tab A │    │   Browser Tab B │    │   HTTP Server   │
 │                 │    │                 │    │                 │
 │ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
-│ │StatefulProxy│ │    │ │StatefulProxy│ │    │ │   Service   │ │
-│ │             │ │    │ │             │ │    │ │   Logic     │ │
-│ │ Transport:  │ │    │ │ Transport:  │ │    │ │             │ │
-│ │ BroadCast   │◄────►│ │ BroadCast   │ │    │ │ Generates   │ │
-│ │ Channel     │ │    │ │ Channel     │ │    │ │ Patches     │ │
+│ │ Transport   │ │    │ │ Transport   │ │    │ │   Static    │ │
+│ │ Layer       │ │    │ │ Layer       │ │    │ │   Files +   │ │
+│ │             │ │    │ │             │ │    │ │   Templates │ │
+│ │ IndexedDB + │◄────►│ │ IndexedDB + │ │    │ │             │ │
+│ │ Polling     │ │    │ │ Polling     │ │    │ │ (Go server) │ │
 │ └─────────────┘ │    │ └─────────────┘ │    │ └─────────────┘ │
-│       ▲         │    │       ▲         │    │       ▲         │
-│       │ Patches │    │       │ Patches │    │       │ Calls   │
-│       ▼         │    │       ▼         │    │       ▼         │
-│ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
-│ │   Game UI   │ │    │ │   Game UI   │ │    │ │  WASM API   │ │
-│ └─────────────┘ │    │ └─────────────┘ │    │ └─────────────┘ │
+│       ▲         │    │       ▲         │    │                 │
+│       │ State   │    │       │ State   │    │                 │
+│       ▼         │    │       ▼         │    │                 │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │    │                 │
+│ │  WASM Game  │ │    │ │  WASM Game  │ │    │                 │
+│ │  Service    │ │    │ │  Service    │ │    │                 │
+│ └─────────────┘ │    │ └─────────────┘ │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ## Transport Options
 
-### 1. BroadcastChannel (Default)
-- **Use Case**: Cross-tab collaboration within same browser
-- **URL**: `http://localhost:8000/game.html?gameId=test123`
-- **Pros**: Zero-latency, perfect for local multiplayer
-- **Cons**: Limited to same browser/origin
+### 1. IndexedDB + Polling (Default)
+- **Use Case**: Cross-tab collaboration with persistence
+- **URL**: `http://localhost:8080/{gameId}` (automatic)
+- **Pros**: Persistent across browser sessions, works offline
+- **Cons**: ~1 second polling delay
 
-### 2. WebSocket
+### 2. BroadcastChannel
+- **Use Case**: Fast cross-tab collaboration within same browser
+- **Switch**: `switchTransport('broadcast')` in console
+- **Pros**: Zero-latency, instant updates
+- **Cons**: Limited to same browser/origin, no persistence
+
+### 3. WebSocket (Ready, needs server)
 - **Use Case**: Real-time server-based collaboration
-- **URL**: `http://localhost:8000/game.html?gameId=test123&transport=websocket`
+- **Switch**: `switchTransport('websocket')` in console
 - **Pros**: True real-time across browsers/devices
-- **Cons**: Requires WebSocket server
+- **Cons**: Requires WebSocket server endpoint
 
-### 3. Server-Sent Events (SSE)
+### 4. Server-Sent Events (Ready, needs server)
 - **Use Case**: One-way server push with HTTP fallback
-- **URL**: `http://localhost:8000/game.html?gameId=test123&transport=sse`
+- **Switch**: `switchTransport('sse')` in console
 - **Pros**: Simpler than WebSocket, works through proxies
 - **Cons**: One-way only (sends via HTTP POST)
 
 ## Testing the System
 
 ### 1. Basic Cross-Tab Communication
-1. Open: `http://localhost:8000/games.html`
-2. Create a new game
-3. Open the same game URL in multiple tabs
-4. Watch real-time updates via BroadcastChannel
+1. **Start server**: `make all` or `make web`
+2. **Open**: `http://localhost:8080/`
+3. **Create game**: Enter Game ID "test-game", Player Name "Player1"
+4. **Open same game in new tab**: Navigate to `http://localhost:8080/test-game`
+5. **Join as Player2**: Enter Player Name "Player2"
+6. **Test moves**: Drop pieces and watch real-time sync via IndexedDB
 
 ### 2. Runtime Transport Switching
 ```javascript
-// In browser console:
-switchTransport('websocket');  // Switch to WebSocket
-switchTransport('broadcast');  // Switch back to BroadcastChannel
-switchTransport('sse');        // Switch to Server-Sent Events
+// In browser console (F12):
+showTransportStatus();           // Show current transport
+switchTransport('broadcast');    // Switch to BroadcastChannel (faster)
+switchTransport('indexeddb');    // Switch back to IndexedDB (persistent)
+switchTransport('websocket');    // Switch to WebSocket (needs server)
 ```
 
-### 3. Manual Patch Testing
+### 3. Testing Game Persistence
 ```javascript
-// Test patch application directly:
-testPatch(0, 'currentPlayerId', '"player_123"');  // SET operation
-testPatch(1, 'winners', '"player_456"');          // INSERT_LIST operation
+// Create a game, make moves, then:
+localStorage.getItem('connect4_game_test-game'); // View stored state
+// Refresh page - game should resume automatically
 ```
 
 ## Key Features
@@ -94,30 +104,44 @@ testPatch(1, 'winners', '"player_456"');          // INSERT_LIST operation
 const proxy = new StatefulProxy(gameId, 'broadcast');
 ```
 
-### For Production
+### For Production (Future)
 ```javascript
-// Use WebSocket for real-time collaboration
-const proxy = new StatefulProxy(gameId, 'websocket');
+// Use WebSocket for real-time collaboration across browsers
+const transport = TransportFactory.create(gameId, 'websocket');
 ```
 
 ### For Offline-First Apps
 ```javascript
-// Start with local storage, upgrade to WebSocket when online
-let proxy = new StatefulProxy(gameId, 'broadcast');
+// Start with IndexedDB, upgrade to WebSocket when online
+let transport = TransportFactory.create(gameId, 'indexeddb');
 if (navigator.onLine) {
-    await proxy.switchTransport('websocket');
+    await transport.switchTransport('websocket');
 }
 ```
 
-## WASM Integration
+## WASM Integration Flow
 
 The system integrates seamlessly with the WASM service:
 
-1. **User Action** → `dropPiece(column)`
-2. **WASM Call** → `connect4Client.connect4Service.dropPiece(...)`
-3. **Patch Generation** → Service returns patches array
-4. **Proxy Application** → `statefulProxy.applyPatchesFromWasm(patches)`
-5. **Transport Broadcast** → Other tabs receive patches automatically
-6. **UI Update** → All UIs reflect the change instantly
+1. **User Action** → Click column in UI
+2. **TypeScript** → `gameViewer.dropPiece(column)`
+3. **WASM Call** → `connect4Client.callMethod('connect4Service.dropPiece', {gameId, playerId, column})`
+4. **Go Service** → Validates move, updates game state, returns response
+5. **State Update** → Update local game state from WASM response
+6. **Transport Broadcast** → `transport.sendPatches([...patches])`
+7. **Cross-Tab Sync** → Other tabs receive patches via IndexedDB polling
+8. **UI Update** → All game UIs reflect the change with ~1 second delay
 
-This creates a seamless real-time collaborative experience with the game logic running in WASM but the state synchronization handled by the pluggable transport layer.
+## Current vs Future Architecture
+
+**Current (Working)**:
+- **Local multiplayer**: Cross-tab via IndexedDB + polling
+- **State persistence**: Survives browser restarts
+- **WASM integration**: Full game logic in WebAssembly
+- **Transport switching**: Runtime pluggable transports
+
+**Future (Server Required)**:
+- **Cross-browser multiplayer**: WebSocket server coordination
+- **Real-time updates**: <100ms latency via WebSocket
+- **Conflict resolution**: Server-side authoritative state
+- **Spectator mode**: Watch games without joining

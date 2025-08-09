@@ -78,7 +78,7 @@ func (s *Connect4Service) CreateGame(ctx context.Context, req *pb.CreateGameRequ
 		Board:           board,
 		Players:         []*pb.Player{player},
 		CurrentPlayerId: player.Id,
-		Status:          pb.GameStatus_WAITING_FOR_PLAYERS,
+		Status:          pb.GameStatus_GAME_STATUS_WAITING_FOR_PLAYERS,
 		TurnNumber:      0,
 		PlayerStats:     make(map[string]*pb.PlayerStats),
 	}
@@ -155,7 +155,7 @@ func (s *Connect4Service) JoinGame(ctx context.Context, req *pb.JoinGameRequest)
 
 	// Start game if we have enough players
 	if len(game.Players) >= int(game.Config.MinPlayers) {
-		game.Status = pb.GameStatus_IN_PROGRESS
+		game.Status = pb.GameStatus_GAME_STATUS_IN_PROGRESS
 	}
 
 	return &pb.JoinGameResponse{
@@ -193,7 +193,7 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 	}
 
 	// Validate move
-	if game.Status != pb.GameStatus_IN_PROGRESS {
+	if game.Status != pb.GameStatus_GAME_STATUS_IN_PROGRESS {
 		return &pb.DropPieceResponse{
 			Success:      false,
 			ErrorMessage: "Game is not in progress",
@@ -262,7 +262,7 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 
 	if len(winningLines) > 0 {
 		// Player wins!
-		game.Status = pb.GameStatus_FINISHED
+		game.Status = pb.GameStatus_GAME_STATUS_FINISHED
 		game.Winners = append(game.Winners, req.PlayerId)
 
 		// Update player stats
@@ -274,7 +274,7 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 		patches = append(patches, &wasmjs.MessagePatch{
 			Operation:    wasmjs.PatchOperation_SET,
 			FieldPath:    "status",
-			ValueJson:    fmt.Sprintf("%d", int(pb.GameStatus_FINISHED)),
+			ValueJson:    fmt.Sprintf("%d", int(pb.GameStatus_GAME_STATUS_FINISHED)),
 			ChangeNumber: s.changeCounter,
 			Timestamp:    time.Now().UnixMicro(),
 		})
@@ -325,7 +325,6 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 
 	return &pb.DropPieceResponse{
 		Success:      true,
-		Patches:      patches,
 		ChangeNumber: s.changeCounter,
 		Result:       result,
 	}, nil

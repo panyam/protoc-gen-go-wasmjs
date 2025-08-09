@@ -4,7 +4,7 @@
 .PHONY: all generate wasm web clean test 
 
 # Run generate seperately for now
-all: parent web wasm web
+all: parent generate wasm web
 
 parent:
 	cd ../../ && make
@@ -60,6 +60,7 @@ clean:
 	rm -rf gen/
 	rm -rf web/gen/
 	rm -rf static/gen/
+	rm -Rf web/static/gen
 	rm -f web/*.wasm
 
 # Test the stateful proxy generation

@@ -1,80 +1,72 @@
 # Connect4 with Stateful Proxies
 
-This example demonstrates the **stateful proxy extension** for `protoc-gen-go-wasmjs`, which enables real-time collaborative applications with efficient differential updates.
+This example demonstrates the **stateful proxy extension** for `protoc-gen-go-wasmjs`, which enables real-time collaborative applications with pluggable transport mechanisms.
 
 ## What are Stateful Proxies?
 
 Stateful proxies provide:
 
 1. **Differential Updates**: Instead of sending entire game states, only changes (patches) are transmitted
-2. **Conflict Resolution**: Built-in strategies for handling concurrent modifications
-3. **Transport Agnostic**: Works with WebSockets, WebRTC, or any real-time transport
-4. **Type Safety**: Generated TypeScript proxies with full type checking
-5. **Optimized WASM Boundaries**: Minimal serialization overhead between WASM and JavaScript
+2. **Pluggable Transports**: IndexedDB + polling, BroadcastChannel, WebSocket, or SSE
+3. **Conflict Resolution**: Built-in strategies for handling concurrent modifications  
+4. **Type Safety**: Generated TypeScript clients with full type checking
+5. **Persistent State**: LocalStorage + IndexedDB for cross-session continuity
 
 ## 🎮 Game Features
 
-- **2-10 players** with unique colors
-- **Configurable board** sizes (7x7 to 20x20)
-- **Real-time collaboration** via stateful proxies
+- **2 players** with unique colors (configurable for more)
+- **Standard 7x6 board** (configurable sizes)
+- **Real-time collaboration** via pluggable transport system
 - **Gravity-based piece placement**
-- **Multiple winners** support
 - **Turn-based gameplay** with validation
 - **Line detection** (horizontal, vertical, diagonal)
+- **Game persistence** across browser sessions
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐    WebSocket    ┌─────────────────┐
-│   Browser A     │ ◄──────────────► │   Browser B     │
-│                 │                  │                 │
+┌─────────────────┐    IndexedDB     ┌─────────────────┐
+│   Browser Tab A │    + Polling     │   Browser Tab B │
+│                 │ ◄──────────────► │                 │
 │ ┌─────────────┐ │                  │ ┌─────────────┐ │
-│ │ Stateful    │ │                  │ │ Stateful    │ │
-│ │ Proxy       │ │                  │ │ Proxy       │ │
-│ │ (TypeScript)│ │                  │ │ (TypeScript)│ │
+│ │ Transport   │ │                  │ │ Transport   │ │
+│ │ Layer       │ │   BroadcastCh    │ │ Layer       │ │
+│ │ (Pluggable) │ │ ◄──────────────► │ │ (Pluggable) │ │
 │ └─────────────┘ │                  │ └─────────────┘ │
 │        │        │                  │        │        │
 │ ┌─────────────┐ │                  │ ┌─────────────┐ │
-│ │ WASM        │ │    HTTP/gRPC     │ │ WASM        │ │
-│ │ Service     │ │ ◄──────────────► │ │ Service     │ │
+│ │ WASM        │ │                  │ │ WASM        │ │
+│ │ Service     │ │                  │ │ Service     │ │
 │ │ (Go)        │ │                  │ │ (Go)        │ │
 │ └─────────────┘ │                  │ └─────────────┘ │
 └─────────────────┘                  └─────────────────┘
                             │
                    ┌─────────────────┐
-                   │ Game Server     │
-                   │ (Authoritative) │
+                   │ HTTP Server     │
+                   │ (Go templates)  │
                    └─────────────────┘
-```
-                            │ • WebSocket      │
-                            │ • Server Events  │
-                            │ • Polling        │
-                            └──────────────────┘
 ```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Go 1.21+
-- Node.js (for development server)
+- Go 1.23+
+- Node.js 18+ and pnpm
 - Buf CLI (`brew install bufbuild/buf/buf`)
 
 ### Build & Run
 
-1. **Generate protobuf code:**
+1. **Build everything and start server:**
    ```bash
-   make generate
+   make all
+   # Opens http://localhost:8080
    ```
 
-2. **Build WASM service:**
+2. **Or step by step:**
    ```bash
-   make wasm
-   ```
-
-3. **Start development server:**
-   ```bash
-   make web
-   # Open http://localhost:8080
+   make generate  # Generate protobuf + WASM bindings
+   make wasm      # Build WASM binary
+   make web       # Build frontend + start server
    ```
 
 ### Test Stateful Proxy Generation
@@ -89,16 +81,20 @@ make test
 examples/connect4/
 ├── proto/connect4/
 │   └── game.proto              # Service definitions with stateful annotations
-├── wasm/
-│   └── service.go              # Go WASM service implementation
-├── web/
-│   ├── index.html              # Game UI
-│   ├── game.js                 # Client-side game logic
-│   └── gen/                    # Generated stateful proxies
-├── gen/                        # Generated protobuf code
-├── buf.yaml                    # Buf configuration
-├── buf.gen.yaml               # Code generation config
-└── Makefile                   # Build automation
+├── cmd/
+│   ├── wasm/main.go           # WASM binary entry point
+│   └── serve/main.go          # HTTP server
+├── services/
+│   └── connect4.go            # Go service implementation
+├── web/                       # Frontend (TypeScript + Webpack)
+│   ├── src/                   # TypeScript source files
+│   ├── static/gen/js/         # Compiled JavaScript bundles
+│   ├── static/wasm/           # WASM binaries and loader
+│   └── gen/wasmts/            # Generated TypeScript clients
+├── gen/                       # Generated protobuf Go code
+├── buf.yaml                   # Buf configuration
+├── buf.gen.yaml              # Code generation config
+└── Makefile                  # Build automation
 ```
 
 ## 🎯 Key Stateful Features
@@ -121,29 +117,39 @@ service Connect4Service {
 }
 ```
 
-### Generated Stateful Proxy
+### Generated TypeScript Client
 ```typescript
-// Auto-generated by protoc-gen-go-wasmjs-stateful
-export class StatefulConnect4ServiceProxy {
-  applyPatches(patches: MessagePatch[], changeNumber: number): boolean;
-  getState(): GameState | null;
-  subscribe(callback: (state: GameState) => void): () => void;
-}
+// Auto-generated WASM client
+import Connect4Client from './gen/wasmts/multiplayer_connect4Client.client';
+
+const client = new Connect4Client();
+await client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
+
+// Direct method calls to WASM service
+const response = await client.callMethod('connect4Service.dropPiece', {
+  gameId: 'my-game',
+  playerId: 'player_123',
+  column: 3
+});
 ```
 
 ### Real-time Updates
 ```typescript
-// All players see moves instantly
-gameProxy.subscribe((gameState) => {
-  renderBoard(gameState.board);
-  updatePlayerList(gameState.players);
-  highlightCurrentPlayer(gameState.currentPlayerId);
+// Pluggable transport system
+const transport = TransportFactory.create(gameId, 'indexeddb');
+
+transport.subscribe((patches) => {
+  // Apply incoming state changes
+  statefulProxy.applyPatches(patches);
+  updateGameUI();
 });
 
-// Transport-agnostic patch application
-transport.onChanges((patches) => {
-  gameProxy.applyPatches(patches, changeNumber);
-});
+// Send state changes to other clients
+await transport.sendPatches([{
+  operation: 'update',
+  path: 'board.rows[2].cells[3]',
+  value: 'player_123'
+}]);
 ```
 
 ## 🧪 Game Rules & Validation
@@ -166,25 +172,32 @@ transport.onChanges((patches) => {
 
 ## 📊 Performance Benefits
 
-- **Optimistic Updates** - Instant UI feedback
-- **Differential Patches** - Only send changes, not full state
-- **Transport Flexibility** - WebSocket, SSE, or polling
-- **Conflict Resolution** - Change-number based ordering
-- **WASM Validation** - Complex game logic in performant WASM
+- **Local-First** - Instant UI feedback with localStorage persistence
+- **Differential Patches** - Only send changes, not full state  
+- **Transport Flexibility** - IndexedDB polling, BroadcastChannel, or WebSocket ready
+- **Cross-Session Persistence** - Resume games across browser restarts
+- **WASM Performance** - Game logic runs in compiled WebAssembly
 
 ## 🔧 Development
-
-### Generate Only Stateful Proxies
-```bash
-make stateful
-```
 
 ### Clean Generated Files
 ```bash
 make clean
 ```
 
-### Customize Board Size
-Edit `game.proto` and modify `GameConfig` defaults, then regenerate.
+### Development Mode (with local plugin changes)
+```bash
+make generate-dev  # Uses local wasmjs proto dependencies
+```
 
-This example showcases how stateful proxies enable **real-time collaborative applications** with minimal client-side complexity!
+### Frontend Development
+```bash
+cd web
+pnpm install
+npm run dev        # Webpack dev server with hot reload
+```
+
+### Customize Board Size
+Edit `game.proto` and modify `GameConfig` defaults, then run `make generate`.
+
+This example showcases how the **protoc-gen-go-wasmjs** plugin enables **real-time collaborative applications** with pluggable transport mechanisms!

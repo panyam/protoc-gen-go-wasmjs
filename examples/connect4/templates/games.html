@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect4 - Active Games</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>🔴 Connect4 Multiplayer</h1>
+        <p>Real-time collaborative gaming with stateful proxies</p>
+    </div>
+
+    <div class="container">
+        <div class="form-section">
+            <h3>Create New Game</h3>
+            <form id="createGameForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="gameName">Game Name:</label>
+                        <input 
+                            type="text" 
+                            id="gameName" 
+                            name="gameId"
+                            placeholder="Enter game name" 
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="playerName">Your Name:</label>
+                        <input 
+                            type="text" 
+                            id="playerName" 
+                            name="playerName"
+                            placeholder="Enter your name" 
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="controls">
+                    <button type="submit" class="btn btn-primary">Create & Join Game</button>
+                </div>
+            </form>
+                <button class="btn btn-primary" onclick="createNewGame()">Create & Join Game</button>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Active Games</h3>
+            <div id="gamesList" class="games-list">
+                <!-- Games will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/gen/index.js"></script>
+</body>
+</html>
