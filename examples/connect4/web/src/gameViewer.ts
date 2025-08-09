@@ -84,7 +84,7 @@ class GameViewer {
         }
 
         // Initialize game components
-        this.initializeWasmClient();
+        await this.initializeWasmClient();
         await this.initializeStatefulProxy();
         await this.loadGameState();
     }
@@ -128,6 +128,9 @@ class GameViewer {
         try {
             // Try to get game state from server first
             if (this.ui.connect4Client) {
+                // Ensure WASM is ready before making calls
+                await this.ui.connect4Client.waitUntilReady();
+                
                 const response = await this.ui.connect4Client.connect4Service.getGame({
                     gameId: this.ui.gameId
                 });
