@@ -15,6 +15,10 @@ class GamesListManager {
     private gamesContainer: HTMLElement | null = null;
     private createForm: HTMLFormElement | null = null;
     private connect4Client: Connect4Client | null = null;
+    private numPlayersSelect: HTMLSelectElement | null = null;
+    private boardWidthInput: HTMLInputElement | null = null;
+    private boardHeightInput: HTMLInputElement | null = null;
+    private dimensionsDisplay: HTMLElement | null = null;
 
     constructor() {
         this.init();
@@ -32,11 +36,28 @@ class GamesListManager {
     private initializeUI(): void {
         this.gamesContainer = document.getElementById('gamesList');
         this.createForm = document.getElementById('createGameForm') as HTMLFormElement;
+        this.numPlayersSelect = document.getElementById('numPlayers') as HTMLSelectElement;
+        this.boardWidthInput = document.getElementById('boardWidth') as HTMLInputElement;
+        this.boardHeightInput = document.getElementById('boardHeight') as HTMLInputElement;
+        this.dimensionsDisplay = document.getElementById('dimensionsDisplay');
 
         if (this.createForm) {
             this.createForm.addEventListener('submit', (e) => this.handleCreateGame(e));
         }
 
+        if (this.numPlayersSelect) {
+            this.numPlayersSelect.addEventListener('change', () => this.updateBoardDimensions());
+        }
+
+        if (this.boardWidthInput) {
+            this.boardWidthInput.addEventListener('input', () => this.updateDimensionsDisplay());
+        }
+
+        if (this.boardHeightInput) {
+            this.boardHeightInput.addEventListener('input', () => this.updateDimensionsDisplay());
+        }
+
+        this.updateBoardDimensions();
         this.loadExistingGames();
         this.initializeWasmClient();
     }
@@ -89,6 +110,8 @@ class GamesListManager {
         const formData = new FormData(event.target as HTMLFormElement);
         const gameId = formData.get('gameId') as string;
         const numPlayers = parseInt(formData.get('numPlayers') as string) || 2;
+        const boardWidth = parseInt(formData.get('boardWidth') as string) || 7;
+        const boardHeight = parseInt(formData.get('boardHeight') as string) || 6;
 
         if (!gameId) {
             alert('Please enter a game name');
@@ -112,8 +135,8 @@ class GamesListManager {
                 gameId: gameId,
                 creatorName: 'Creator', // Placeholder, will be set when joining slot
                 config: {
-                    boardWidth: 7,
-                    boardHeight: 6,
+                    boardWidth: boardWidth,
+                    boardHeight: boardHeight,
                     connectLength: 4,
                     maxPlayers: numPlayers,
                     minPlayers: 2,
@@ -188,6 +211,46 @@ class GamesListManager {
         
         // Allow alphanumeric characters and hyphens
         return /^[a-zA-Z0-9-]+$/.test(gameId);
+    }
+
+    private calculateDefaultDimensions(numPlayers: number): { width: number, height: number } {
+        // Base dimensions for 2 players: 7x6
+        // Scale proportionally for more players
+        switch (numPlayers) {
+            case 2:
+                return { width: 7, height: 6 };
+            case 3:
+                return { width: 8, height: 7 };
+            case 4:
+                return { width: 9, height: 8 };
+            case 5:
+                return { width: 10, height: 9 };
+            case 6:
+                return { width: 11, height: 10 };
+            default:
+                return { width: 7, height: 6 };
+        }
+    }
+
+    private updateBoardDimensions(): void {
+        if (!this.numPlayersSelect || !this.boardWidthInput || !this.boardHeightInput) return;
+
+        const numPlayers = parseInt(this.numPlayersSelect.value);
+        const defaultDimensions = this.calculateDefaultDimensions(numPlayers);
+        
+        this.boardWidthInput.value = defaultDimensions.width.toString();
+        this.boardHeightInput.value = defaultDimensions.height.toString();
+        
+        this.updateDimensionsDisplay();
+    }
+
+    private updateDimensionsDisplay(): void {
+        if (!this.boardWidthInput || !this.boardHeightInput || !this.dimensionsDisplay) return;
+
+        const width = this.boardWidthInput.value || '7';
+        const height = this.boardHeightInput.value || '6';
+        
+        this.dimensionsDisplay.textContent = `${width}×${height}`;
     }
 }
 

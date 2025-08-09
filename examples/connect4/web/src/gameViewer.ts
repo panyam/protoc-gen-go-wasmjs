@@ -47,7 +47,10 @@ class GameViewer {
     private async initializeUI(): Promise<void> {
         // Get UI elements
         this.elements = {
-            joinGameForm: document.getElementById('joinGameForm'),
+            playerSlots: document.getElementById('playerSlots'),
+            slotsContainer: document.getElementById('slotsContainer'),
+            joinSlotModal: document.getElementById('joinSlotModal'),
+            joinSlotForm: document.getElementById('joinSlotForm'),
             gameInterface: document.getElementById('gameInterface'),
             errorState: document.getElementById('errorState'),
             gameBoard: document.getElementById('gameBoard'),
@@ -76,15 +79,14 @@ class GameViewer {
         }
 
         // Set up form handlers
-        const joinForm = document.getElementById('joinGameForm');
-        if (joinForm) {
-            joinForm.addEventListener('submit', (e) => this.handleJoinGame(e));
+        if (this.elements.joinSlotForm) {
+            this.elements.joinSlotForm.addEventListener('submit', (e) => this.handleJoinSlot(e));
         }
 
         // Initialize game components
         this.initializeWasmClient();
         await this.initializeStatefulProxy();
-        this.loadStoredGameState();
+        await this.loadGameState();
     }
 
     private async initializeWasmClient(): Promise<void> {
@@ -122,7 +124,36 @@ class GameViewer {
         }
     }
 
-    private loadStoredGameState(): void {
+    private async loadGameState(): Promise<void> {
+        try {
+            // Try to get game state from server first
+            if (this.ui.connect4Client) {
+                const response = await this.ui.connect4Client.connect4Service.getGame({
+                    gameId: this.ui.gameId
+                });
+
+                if (response.success) {
+                    this.ui.gameState = GameState.from(response.data);
+                    console.log('Loaded game state from server:', this.ui.gameState);
+                    
+                    // Check if we have a stored player ID for this game
+                    const storedPlayerId = localStorage.getItem(`connect4_player_${this.ui.gameId}`);
+                    if (storedPlayerId) {
+                        this.ui.playerId = storedPlayerId;
+                        this.showGameInterface();
+                        this.updateGameDisplay();
+                    } else {
+                        // Show player slots for joining
+                        this.showPlayerSlots();
+                    }
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load game state from server:', error);
+        }
+
+        // Try to load from localStorage as fallback
         try {
             const stored = localStorage.getItem(`connect4_game_${this.ui.gameId}`);
             if (stored) {
@@ -130,24 +161,22 @@ class GameViewer {
                 this.ui.gameState = GameState.from(parsedState);
                 console.log('Loaded stored game state:', this.ui.gameState);
                 
-                // Check if we can resume the game
-                if (this.ui.gameState && this.ui.gameState.players.length > 0) {
-                    // Try to find stored player ID
-                    const storedPlayerId = localStorage.getItem(`connect4_player_${this.ui.gameId}`);
-                    if (storedPlayerId) {
-                        this.ui.playerId = storedPlayerId;
-                        this.showGameInterface();
-                        this.updateGameDisplay();
-                        return;
-                    }
+                const storedPlayerId = localStorage.getItem(`connect4_player_${this.ui.gameId}`);
+                if (storedPlayerId) {
+                    this.ui.playerId = storedPlayerId;
+                    this.showGameInterface();
+                    this.updateGameDisplay();
+                } else {
+                    this.showPlayerSlots();
                 }
+                return;
             }
         } catch (error) {
             console.error('Failed to parse stored game state:', error);
         }
 
-        // Show join form if no valid stored state
-        this.showJoinForm();
+        // No game found
+        this.showError('Game not found');
     }
 
     private async handleJoinGame(event: Event): Promise<void> {
@@ -289,9 +318,9 @@ class GameViewer {
         }
     }
 
-    private showJoinForm(): void {
-        if (this.elements.joinGameForm) {
-            this.elements.joinGameForm.classList.remove('hidden');
+    private showPlayerSlots(): void {
+        if (this.elements.playerSlots) {
+            this.elements.playerSlots.classList.remove('hidden');
         }
         if (this.elements.gameInterface) {
             this.elements.gameInterface.classList.add('hidden');
@@ -299,11 +328,16 @@ class GameViewer {
         if (this.elements.errorState) {
             this.elements.errorState.classList.add('hidden');
         }
+        if (this.elements.joinSlotModal) {
+            this.elements.joinSlotModal.classList.add('hidden');
+        }
+        
+        this.generatePlayerSlots();
     }
 
     private showGameInterface(): void {
-        if (this.elements.joinGameForm) {
-            this.elements.joinGameForm.classList.add('hidden');
+        if (this.elements.playerSlots) {
+            this.elements.playerSlots.classList.add('hidden');
         }
         if (this.elements.gameInterface) {
             this.elements.gameInterface.classList.remove('hidden');
@@ -311,13 +345,16 @@ class GameViewer {
         if (this.elements.errorState) {
             this.elements.errorState.classList.add('hidden');
         }
+        if (this.elements.joinSlotModal) {
+            this.elements.joinSlotModal.classList.add('hidden');
+        }
         
         this.initializeGameBoard();
     }
 
     private showError(message: string): void {
-        if (this.elements.joinGameForm) {
-            this.elements.joinGameForm.classList.add('hidden');
+        if (this.elements.playerSlots) {
+            this.elements.playerSlots.classList.add('hidden');
         }
         if (this.elements.gameInterface) {
             this.elements.gameInterface.classList.add('hidden');
@@ -329,6 +366,9 @@ class GameViewer {
                 errorMessage.textContent = message;
             }
         }
+        if (this.elements.joinSlotModal) {
+            this.elements.joinSlotModal.classList.add('hidden');
+        }
     }
 
     private initializeGameBoard(): void {
@@ -336,19 +376,24 @@ class GameViewer {
 
         const rows = this.ui.gameState.config?.boardHeight || 6;
         const cols = this.ui.gameState.config?.boardWidth || 7;
+        const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
 
         let boardHTML = '';
         for (let row = 0; row < rows; row++) {
             boardHTML += '<div class="board-row">';
             for (let col = 0; col < cols; col++) {
                 const cellValue = this.ui.gameState.board.rows[row]?.cells[col] || '';
-                const pieceClass = cellValue ? `piece-${cellValue}` : '';
+                const player = this.ui.gameState.players.find(p => p.id === cellValue);
+                const playerIndex = player ? this.ui.gameState.players.indexOf(player) : -1;
+                const pieceColor = playerIndex >= 0 ? playerColors[playerIndex] : '';
+                
                 boardHTML += `
-                    <div class="board-cell ${pieceClass}" 
+                    <div class="board-cell ${cellValue ? 'occupied' : 'empty'}" 
                          data-row="${row}" 
                          data-col="${col}"
-                         onclick="gameViewer.dropPiece(${col})">
-                        ${cellValue ? '●' : ''}
+                         onclick="gameViewer.dropPiece(${col})"
+                         style="cursor: pointer;">
+                        ${cellValue ? `<span class="piece" style="color: ${pieceColor}">●</span>` : ''}
                     </div>
                 `;
             }
@@ -370,6 +415,16 @@ class GameViewer {
         const currentPlayer = this.ui.gameState.players.find(p => p.id === this.ui.gameState!.currentPlayerId);
         if (this.elements.currentPlayerName && currentPlayer) {
             this.elements.currentPlayerName.textContent = currentPlayer.name;
+            
+            // Update current player color
+            if (this.elements.currentPlayerColor) {
+                const playerIndex = this.ui.gameState.players.indexOf(currentPlayer);
+                const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
+                const playerColor = playerColors[playerIndex] || '#e74c3c';
+                this.elements.currentPlayerColor.style.backgroundColor = playerColor;
+                this.elements.currentPlayerColor.innerHTML = '●';
+                this.elements.currentPlayerColor.style.color = playerColor;
+            }
         }
 
         // Update game status
@@ -387,12 +442,16 @@ class GameViewer {
 
         // Update players list
         if (this.elements.playersList) {
-            this.elements.playersList.innerHTML = this.ui.gameState.players.map(player => `
-                <div class="player-item ${player.id === this.ui.gameState!.currentPlayerId ? 'current' : ''}">
-                    <span class="player-name">${player.name}</span>
-                    <span class="player-color player-color-${player.color || 'red'}">●</span>
-                </div>
-            `).join('');
+            const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
+            this.elements.playersList.innerHTML = this.ui.gameState.players.map((player, index) => {
+                const playerColor = playerColors[index] || '#e74c3c';
+                return `
+                    <div class="player-item ${player.id === this.ui.gameState!.currentPlayerId ? 'current' : ''}">
+                        <span class="player-name">${player.name}</span>
+                        <span class="player-color" style="color: ${playerColor}">●</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         // Update board
@@ -425,6 +484,121 @@ class GameViewer {
         return /^[a-zA-Z0-9-]+$/.test(gameId);
     }
 
+    private getPlayerColors(maxPlayers: number): string[] {
+        const defaultColors = [
+            '#e74c3c', // Red
+            '#3498db', // Blue  
+            '#2ecc71', // Green
+            '#f39c12', // Orange
+            '#9b59b6', // Purple
+            '#1abc9c'  // Teal
+        ];
+        
+        return defaultColors.slice(0, maxPlayers);
+    }
+
+    private generatePlayerSlots(): void {
+        if (!this.elements.slotsContainer || !this.ui.gameState) return;
+
+        const maxPlayers = this.ui.gameState.config?.maxPlayers || 2;
+        const currentPlayers = this.ui.gameState.players || [];
+        const playerColors = this.getPlayerColors(maxPlayers);
+
+        let slotsHTML = '';
+        for (let slotIndex = 0; slotIndex < maxPlayers; slotIndex++) {
+            const player = currentPlayers.find((p, index) => index === slotIndex);
+            const slotColor = playerColors[slotIndex];
+            
+            if (player) {
+                // Occupied slot
+                slotsHTML += `
+                    <div class="player-slot occupied" data-slot="${slotIndex}" style="border-left: 4px solid ${slotColor}">
+                        <div class="slot-header">Player ${slotIndex + 1}</div>
+                        <div class="player-info">
+                            <span class="player-name">${player.name}</span>
+                            <span class="player-color" style="color: ${slotColor}">●</span>
+                        </div>
+                        <div class="slot-status">Joined</div>
+                    </div>
+                `;
+            } else {
+                // Empty slot
+                slotsHTML += `
+                    <div class="player-slot empty" data-slot="${slotIndex}" onclick="gameViewer.openJoinModal(${slotIndex})" style="border-left: 4px solid ${slotColor}">
+                        <div class="slot-header">Player ${slotIndex + 1}</div>
+                        <div class="empty-message">
+                            <span class="player-color" style="color: ${slotColor}">●</span>
+                            Click to join
+                        </div>
+                        <div class="slot-status">Available</div>
+                    </div>
+                `;
+            }
+        }
+
+        this.elements.slotsContainer.innerHTML = slotsHTML;
+    }
+
+    public openJoinModal(slotIndex: number): void {
+        this.selectedSlot = slotIndex;
+        
+        if (this.elements.joinSlotModal) {
+            this.elements.joinSlotModal.classList.remove('hidden');
+            
+            // Update slot number in modal
+            const slotNumberElement = this.elements.joinSlotModal.querySelector('#slotNumber');
+            if (slotNumberElement) {
+                slotNumberElement.textContent = (slotIndex + 1).toString();
+            }
+            
+            // Focus on the name input
+            const nameInput = this.elements.joinSlotModal.querySelector('#playerName') as HTMLInputElement;
+            if (nameInput) {
+                nameInput.focus();
+            }
+        }
+    }
+
+    private async handleJoinSlot(event: Event): Promise<void> {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target as HTMLFormElement);
+        const playerName = formData.get('playerName') as string;
+
+        if (!playerName.trim()) {
+            alert('Please enter your name');
+            return;
+        }
+
+        if (this.selectedSlot < 0) {
+            alert('No slot selected');
+            return;
+        }
+
+        this.ui.playerId = `player_${Date.now()}`;
+        
+        try {
+            const response = await this.ui.connect4Client!.connect4Service.joinGame({
+                gameId: this.ui.gameId,
+                playerId: this.ui.playerId,
+                playerName: playerName
+            });
+
+            if (response.success) {
+                this.ui.gameState = GameState.from(response.data);
+                this.storeGameState();
+                this.showGameInterface();
+                this.updateGameDisplay();
+                this.addLogEntry(`${playerName} joined as Player ${this.selectedSlot + 1}`);
+            } else {
+                alert(`Failed to join slot: ${response.message}`);
+            }
+        } catch (error) {
+            console.error('Error joining slot:', error);
+            alert('Failed to join slot. Please try again.');
+        }
+    }
+
     // Public methods for HTML onclick handlers
     public resetGame(): void {
         if (confirm('Are you sure you want to start a new game?')) {
@@ -439,6 +613,19 @@ class GameViewer {
             localStorage.removeItem(`connect4_game_${this.ui.gameId}`);
             localStorage.removeItem(`connect4_player_${this.ui.gameId}`);
             window.location.href = '/';
+        }
+    }
+
+    public closeJoinModal(): void {
+        if (this.elements.joinSlotModal) {
+            this.elements.joinSlotModal.classList.add('hidden');
+        }
+        this.selectedSlot = -1;
+        
+        // Clear the form
+        const form = this.elements.joinSlotForm as HTMLFormElement;
+        if (form) {
+            form.reset();
         }
     }
 }
