@@ -28,22 +28,20 @@
                         >
                     </div>
                     <div class="form-group">
-                        <label for="playerName">Your Name:</label>
-                        <input 
-                            type="text" 
-                            id="playerName" 
-                            name="playerName"
-                            placeholder="Enter your name" 
-                            required
-                        >
+                        <label for="numPlayers">Max Players:</label>
+                        <select id="numPlayers" name="numPlayers">
+                            <option value="2" selected>2 Players</option>
+                            <option value="3">3 Players</option>
+                            <option value="4">4 Players</option>
+                            <option value="5">5 Players</option>
+                            <option value="6">6 Players</option>
+                        </select>
                     </div>
                 </div>
                 <div class="controls">
-                    <button type="submit" class="btn btn-primary">Create & Join Game</button>
+                    <button type="submit" class="btn btn-primary">Create Game</button>
                 </div>
             </form>
-                <button class="btn btn-primary" onclick="createNewGame()">Create & Join Game</button>
-            </div>
         </div>
 
         <div class="form-section">
@@ -54,6 +52,6 @@
         </div>
     </div>
 
-    <script type="module" src="/static/gen/index.js"></script>
+    <script type="module" src="/static/gen/js/index.js"></script>
 </body>
 </html>

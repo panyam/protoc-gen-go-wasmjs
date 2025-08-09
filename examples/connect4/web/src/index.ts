@@ -88,10 +88,10 @@ class GamesListManager {
         
         const formData = new FormData(event.target as HTMLFormElement);
         const gameId = formData.get('gameId') as string;
-        const playerName = formData.get('playerName') as string;
+        const numPlayers = parseInt(formData.get('numPlayers') as string) || 2;
 
-        if (!gameId || !playerName) {
-            alert('Please fill in all fields');
+        if (!gameId) {
+            alert('Please enter a game name');
             return;
         }
 
@@ -102,16 +102,40 @@ class GamesListManager {
                 return;
             }
 
-            // Store the game locally
-            this.storeGame({
-                gameId,
-                playerName,
-                lastPlayed: Date.now(),
-                gameStatus: 'Created'
+            // Create the game using WASM client
+            if (!this.connect4Client) {
+                alert('Game engine not loaded yet, please wait and try again');
+                return;
+            }
+
+            const response = await this.connect4Client.connect4Service.createGame({
+                gameId: gameId,
+                creatorName: 'Creator', // Placeholder, will be set when joining slot
+                config: {
+                    boardWidth: 7,
+                    boardHeight: 6,
+                    connectLength: 4,
+                    maxPlayers: numPlayers,
+                    minPlayers: 2,
+                    allowMultipleWinners: false,
+                    moveTimeoutSeconds: 30
+                }
             });
 
-            // Navigate to the game
-            window.location.href = `/${gameId}`;
+            if (response.success) {
+                // Store the game locally
+                this.storeGame({
+                    gameId,
+                    playerName: '', // Will be set when joining a slot
+                    lastPlayed: Date.now(),
+                    gameStatus: 'Created'
+                });
+
+                // Navigate to the game
+                window.location.href = `/${gameId}`;
+            } else {
+                alert(`Failed to create game: ${response.message}`);
+            }
         } catch (error) {
             console.error('Error creating game:', error);
             alert('Failed to create game. Please try again.');

@@ -17,6 +17,7 @@ interface GameUI {
 class GameViewer {
     private ui: GameUI;
     private elements: { [key: string]: HTMLElement | null } = {};
+    private selectedSlot: number = -1;
 
     constructor() {
         // Extract game ID from URL path
@@ -198,7 +199,7 @@ class GameViewer {
             throw new Error('WASM client not initialized');
         }
 
-        return await this.ui.connect4Client.callMethod('connect4Service.joinGame', {
+        return await this.ui.connect4Client.connect4Service.joinGame({
             gameId: this.ui.gameId,
             playerId: this.ui.playerId,
             playerName: playerName
@@ -220,7 +221,7 @@ class GameViewer {
             moveTimeoutSeconds: 30
         };
 
-        const response = await this.ui.connect4Client.callMethod('connect4Service.createGame', {
+        const response = await this.ui.connect4Client.connect4Service.createGame({
             gameId: this.ui.gameId,
             playerId: this.ui.playerId,
             playerName: playerName,
@@ -241,7 +242,7 @@ class GameViewer {
         }
 
         try {
-            const response = await this.ui.connect4Client.callMethod('connect4Service.dropPiece', {
+            const response = await this.ui.connect4Client.connect4Service.dropPiece({
                 gameId: this.ui.gameId,
                 playerId: this.ui.playerId,
                 column: column
@@ -447,12 +448,6 @@ const gameViewer = new GameViewer();
 
 // Make it globally available for HTML onclick handlers
 (window as any).gameViewer = gameViewer;
-(window as any).joinCurrentGame = () => {
-    const form = document.getElementById('joinGameForm');
-    if (form) {
-        form.dispatchEvent(new Event('submit'));
-    }
-};
 (window as any).resetGame = () => gameViewer.resetGame();
 (window as any).leaveGame = () => gameViewer.leaveGame();
 
