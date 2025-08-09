@@ -8,7 +8,7 @@ package main
 
 import (
 	// Import the generated WASM package
-	"github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/wasm"
+	multiplayer_connect4 "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/wasm"
 
 	// Import our actual service implementation
 	"github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/services"
@@ -16,7 +16,7 @@ import (
 
 func main() {
 	// Initialize service implementations with our actual Connect4Service
-	exports := &wasm.Multiplayer_connect4ServicesExports{
+	exports := &multiplayer_connect4.Multiplayer_connect4ServicesExports{
 		Connect4Service: services.NewConnect4Service(),
 	}
 

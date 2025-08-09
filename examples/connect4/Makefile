@@ -37,8 +37,8 @@ remove-symlink:
 
 # Build WASM service
 wasm: 
-	mkdir -p wasm
-	GOOS=js GOARCH=wasm go build -o ./static/wasm/multiplayer_connect4.wasm cmd/wasm/*.go
+	mkdir -p web/static/wasm
+	GOOS=js GOARCH=wasm go build -o ./web/static/wasm/multiplayer_connect4.wasm cmd/wasm/*.go
 
 # Start development web server
 web: 
