@@ -15,7 +15,7 @@
     <div class="container">
         <div class="form-section">
             <h3>Create New Game</h3>
-            <form id="createGameForm">
+            <form id="createGameForm" action="javascript:void(0)" method="post">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="gameName">Game Name:</label>
@@ -24,6 +24,7 @@
                             id="gameName" 
                             name="gameId"
                             placeholder="Enter game name" 
+                            value="TestGame"
                             required
                         >
                     </div>
@@ -53,7 +54,7 @@
                     </div>
                 </div>
                 <div class="controls">
-                    <button type="submit" class="btn btn-primary">Create Game</button>
+                    <button type="button" class="btn btn-primary" onclick="if(window.gamesManager) { window.gamesManager.handleFormSubmit(); } else { console.error('Games manager not ready'); }">Create Game</button>
                 </div>
             </form>
         </div>
@@ -65,7 +66,6 @@
             </div>
         </div>
     </div>
-
-    <script type="module" src="/static/gen/js/index.js"></script>
+    <script type="module" src="/static/gen/js/index.5396af7a500c538d167e.js"></script>
 </body>
 </html>

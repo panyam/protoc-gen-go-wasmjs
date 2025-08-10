@@ -100,9 +100,19 @@ func (s *Connect4Service) CreateGame(ctx context.Context, req *pb.CreateGameRequ
 	}
 
 	s.games[gameId] = game
-	
-	// Save to storage via callback
-	s.saveGameToStorage(gameId, game)
+
+	// Save to storage via callback (async - fire and forget for now)
+	if true {
+		s.saveGameToStorage(gameId, game)
+	} else {
+		// Save to storage via callback and wait for completion
+		if err := s.saveGameToStorageSync(gameId, game); err != nil {
+			return &pb.CreateGameResponse{
+				Success:      false,
+				ErrorMessage: fmt.Sprintf("Failed to save game: %v", err),
+			}, nil
+		}
+	}
 
 	return &pb.CreateGameResponse{
 		Success:   true,
@@ -169,7 +179,7 @@ func (s *Connect4Service) JoinGame(ctx context.Context, req *pb.JoinGameRequest)
 		game.Status = pb.GameStatus_GAME_STATUS_IN_PROGRESS
 	}
 
-	// Save updated game to storage
+	// Save updated game to storage (async)
 	s.saveGameToStorage(req.GameId, game)
 
 	return &pb.JoinGameResponse{
@@ -343,7 +353,7 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 		stats.PiecesPlayed++
 	}
 
-	// Save updated game state to storage
+	// Save updated game state to storage (async)
 	s.saveGameToStorage(req.GameId, game)
 
 	return &pb.DropPieceResponse{
@@ -414,7 +424,7 @@ func (s *Connect4Service) SetStorageCallbacks(saveCallback, loadCallback, pollCa
 	defer s.mu.Unlock()
 
 	s.saveCallback = saveCallback
-	s.loadCallback = loadCallback  
+	s.loadCallback = loadCallback
 	s.pollCallback = pollCallback
 	s.callbacksSet = true
 
@@ -438,6 +448,48 @@ func (s *Connect4Service) HandleExternalStorageChange(gameId, gameStateJson stri
 	fmt.Printf("Updated game %s from external storage change\n", gameId)
 }
 
+// saveGameToStorageSync saves game state to browser storage via callback and waits for completion
+func (s *Connect4Service) saveGameToStorageSync(gameId string, game *pb.GameState) error {
+	if !s.callbacksSet || s.saveCallback.IsUndefined() {
+		return fmt.Errorf("no storage callback configured")
+	}
+
+	// Convert game state to JSON
+	gameStateJson, err := json.Marshal(game)
+	if err != nil {
+		return fmt.Errorf("failed to marshal game state: %v", err)
+	}
+
+	fmt.Println("Part 1 - Ok ehre before calling saveCallback")
+	// Call browser save callback and await result
+	promise := s.saveCallback.Invoke(gameId, string(gameStateJson))
+	fmt.Println("Part 2 - Ok here after calling saveCallback")
+
+	// Await the Promise result
+	result, errResult := await(promise)
+	if errResult != nil {
+		if len(errResult) > 0 {
+			return fmt.Errorf("storage operation failed: %s", errResult[0].String())
+		}
+		return fmt.Errorf("storage operation failed")
+	}
+
+	fmt.Println("Part 3 - Ok here after calling saveCallback")
+	// Check if browser returned an error
+	if len(result) > 0 && !result[0].IsNull() {
+		// Browser can return error info if needed
+		if result[0].Type() == js.TypeString {
+			errorMsg := result[0].String()
+			if errorMsg != "" {
+				return fmt.Errorf("browser storage error: %s", errorMsg)
+			}
+		}
+	}
+	fmt.Println("Part 4 - Ok here after calling saveCallback")
+
+	return nil
+}
+
 // saveGameToStorage saves game state to browser storage via callback
 func (s *Connect4Service) saveGameToStorage(gameId string, game *pb.GameState) {
 	if !s.callbacksSet || s.saveCallback.IsUndefined() {
@@ -451,31 +503,54 @@ func (s *Connect4Service) saveGameToStorage(gameId string, game *pb.GameState) {
 		return
 	}
 
-	// Call browser save callback asynchronously
+	// Call browser save callback asynchronously (fire-and-forget)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Printf("Panic in saveGameToStorage for %s: %v\n", gameId, r)
 			}
 		}()
-		
-		s.saveCallback.Invoke(gameId, string(gameStateJson))
+
+		// Call save callback (returns a Promise)
+		promise := s.saveCallback.Invoke(gameId, string(gameStateJson))
+
+		// Optionally await the result to log success/errors
+		result, err := await(promise)
+		if err != nil {
+			fmt.Printf("Failed to save game state for %s: %v\n", gameId, err)
+		} else {
+			fmt.Printf("Successfully saved game state for %s\n", gameId)
+			if len(result) > 0 && !result[0].IsNull() {
+				// Browser can return additional info if needed
+			}
+		}
 	}()
 }
 
-// loadGameFromStorage loads game state from browser storage via callback  
+// loadGameFromStorage loads game state from browser storage via callback
 func (s *Connect4Service) loadGameFromStorage(gameId string) *pb.GameState {
+	fmt.Println("Load callback called?: ", s.callbacksSet, s.loadCallback)
 	if !s.callbacksSet || s.loadCallback.IsUndefined() {
 		return nil // No callback configured
 	}
 
-	// Call browser load callback (synchronous)
-	result := s.loadCallback.Invoke(gameId)
-	if result.IsNull() || result.IsUndefined() {
+	// Call browser load callback (returns a Promise) and wait for result
+	promise := s.loadCallback.Invoke(gameId)
+
+	// Await the Promise result synchronously
+	result, err := await(promise)
+	if err != nil {
+		fmt.Printf("Failed to load game state for %s: %v\n", gameId, err)
 		return nil
 	}
 
-	gameStateJson := result.String()
+	fmt.Println("Load result: ", result)
+	if len(result) == 0 || result[0].IsNull() || result[0].IsUndefined() {
+		fmt.Printf("No game state found for %s\n", gameId)
+		return nil // Game not found
+	}
+
+	gameStateJson := result[0].String()
 	if gameStateJson == "" {
 		return nil
 	}
@@ -487,5 +562,44 @@ func (s *Connect4Service) loadGameFromStorage(gameId string) *pb.GameState {
 		return nil
 	}
 
+	fmt.Printf("Successfully loaded game %s from storage\n", gameId)
 	return &gameState
+}
+
+// await helper for handling JavaScript Promises in Go WASM
+func await(awaitable js.Value) ([]js.Value, []js.Value) {
+	then := make(chan []js.Value, 1)
+	defer close(then)
+	thenFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		fmt.Println("Did we come to THEN?")
+		then <- args
+		// go func() { }()
+		return nil
+	})
+	defer thenFunc.Release()
+
+	catch := make(chan []js.Value, 1)
+	defer close(catch)
+	catchFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		fmt.Println("Did we come to catch?")
+		catch <- args
+		return nil
+	})
+	defer catchFunc.Release()
+
+	res := awaitable.Call("then", thenFunc)
+	res = res.Call("catch", catchFunc)
+
+	t := time.NewTicker(1000 * time.Millisecond)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+			fmt.Println("Here 7??")
+		case result := <-then:
+			return result, nil
+		case err := <-catch:
+			return nil, err
+		}
+	}
 }

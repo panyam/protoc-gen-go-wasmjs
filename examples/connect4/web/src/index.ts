@@ -60,59 +60,54 @@ class GamesListManager {
         }
 
         this.updateBoardDimensions();
-        this.loadExistingGames();
-        this.initializeWasmClient();
+        this.initializeWasmClient().then(async () => {
+            // Load and display games list from IndexedDB
+            await this.loadExistingGames();
+        });
     }
 
     private async initializeWasmClient(): Promise<void> {
-        try {
-            console.log('Initializing WASM client for games list...');
-            this.connect4Client = new Connect4Client();
-            
-            // Initialize storage transport for global game state management
-            this.storageTransport = new IndexedDBTransport('global');
-            await this.storageTransport.init();
-            
-            // Set up storage callbacks before loading WASM
-            await this.setupStorageCallbacks();
-            
-            await this.connect4Client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
-            await this.connect4Client.waitUntilReady();
-            console.log('WASM client ready for game operations');
-        } catch (error) {
-            console.error('Failed to initialize WASM client:', error);
-        }
+        console.log('Initializing WASM client for games list...');
+        this.connect4Client = new Connect4Client();
+        
+        // Initialize storage transport for global game state management
+        this.storageTransport = new IndexedDBTransport('global');
+        await this.storageTransport.init();
+        
+        // Load WASM first so that setWasmStorageCallbacks is available
+        await this.connect4Client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
+        await this.connect4Client.waitUntilReady();
+        
+        // Set up storage callbacks after WASM is ready
+        await this.setupStorageCallbacks();
+        
+        console.log('WASM client ready for game operations');
     }
 
     private async setupStorageCallbacks(): Promise<void> {
         if (!this.storageTransport || !(window as any).setWasmStorageCallbacks) {
-            console.warn('Storage transport or WASM callbacks not available');
+            console.error('Storage transport or WASM callbacks not available:', {
+                storageTransport: !!this.storageTransport,
+                setWasmStorageCallbacks: !!(window as any).setWasmStorageCallbacks
+            });
             return;
         }
 
-        // Create callback functions for WASM to use
+        // Simple, clean async callbacks - let failures bubble up to WASM
         const saveCallback = async (gameId: string, gameStateJson: string) => {
-            try {
-                const gameState = JSON.parse(gameStateJson);
-                await this.storageTransport!.saveGameState(gameId, gameState);
-                console.log(`Saved game state for ${gameId} to IndexedDB`);
-            } catch (error) {
-                console.error('Failed to save game state:', error);
-            }
+            const gameState = JSON.parse(gameStateJson);
+            console.log("Before Saving to IndexDB")
+            await this.storageTransport!.saveGameState(gameId, gameState);
+            console.log(`After Saved game ${gameId} to IndexedDB`);
         };
 
-        const loadCallback = async (gameId: string): Promise<string | null> => {
-            try {
-                const gameState = await this.storageTransport!.loadGameState(gameId);
-                if (gameState) {
-                    console.log(`Loaded game state for ${gameId} from IndexedDB`);
-                    return JSON.stringify(gameState);
-                }
-                return null;
-            } catch (error) {
-                console.error('Failed to load game state:', error);
-                return null;
+        const loadCallback = async (gameId: string) => {
+            const gameState = await this.storageTransport!.loadGameState(gameId);
+            if (gameState) {
+                console.log(`Loaded game ${gameId} from IndexedDB`);
+                return JSON.stringify(gameState);
             }
+            return null; // Game not found
         };
 
         const pollCallback = (gameId: string) => {
@@ -138,10 +133,11 @@ class GamesListManager {
         }
     }
 
-    private loadExistingGames(): void {
+    private async loadExistingGames(): Promise<void> {
         if (!this.gamesContainer) return;
 
-        const games = this.getStoredGames();
+        // Load games directly from IndexedDB
+        const games = await this.getAllGamesFromIndexedDB();
         
         if (games.length === 0) {
             this.gamesContainer.innerHTML = `
@@ -152,20 +148,55 @@ class GamesListManager {
             return;
         }
 
+        console.log("Listed Games: ", games)
+
         this.gamesContainer.innerHTML = games.map(game => `
-            <div class="game-item" data-game-id="${game.gameId}">
+            <div class="game-item" data-game-id="${game.game_id}">
                 <div class="game-info">
-                    <h3>${game.gameId}</h3>
-                    <p>Player: ${game.playerName}</p>
-                    <p>Status: ${game.gameStatus || 'Unknown'}</p>
-                    <small>Last played: ${new Date(game.lastPlayed).toLocaleString()}</small>
+                    <h3>${game.game_id}</h3>
+                    <p>Dimensions: ${game.config?.board_width || 7}×${game.config?.board_height || 6}</p>
+                    <p>Players: ${game.players?.length || 0}/${game.config?.max_players || 2}</p>
+                    <p>Status: ${this.getGameStatusText(game)}</p>
                 </div>
                 <div class="game-actions">
-                    <a href="/${game.gameId}" class="btn">Continue Game</a>
-                    <button class="btn btn-secondary" onclick="gamesManager.removeGame('${game.gameId}')">Remove</button>
+                    <a href="/${game.game_id}" class="btn">Continue Game</a>
+                    <button class="btn btn-secondary" onclick="gamesManager.removeGame('${game.game_id}')">Remove</button>
                 </div>
             </div>
         `).join('');
+    }
+
+
+    private async getAllGamesFromIndexedDB(): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            if (!this.storageTransport || !this.storageTransport['db']) {
+                resolve([]);
+                return;
+            }
+
+            const db = this.storageTransport['db'];
+            const transaction = db.transaction(['gameStates'], 'readonly');
+            const store = transaction.objectStore('gameStates');
+            
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const results = request.result || [];
+                const games = results.map(item => item.gameState);
+                resolve(games);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    private getGameStatusText(game: any): string {
+        if (!game.status) return 'Unknown';
+        
+        switch (game.status) {
+            case 0: return 'Waiting for players';
+            case 1: return 'In progress';
+            case 2: return 'Finished';
+            default: return 'Unknown';
+        }
     }
 
     private async handleCreateGame(event: Event): Promise<void> {
@@ -182,90 +213,94 @@ class GamesListManager {
             return;
         }
 
-        try {
-            // Validate game ID format
-            if (!this.isValidGameId(gameId)) {
-                alert('Game ID can only contain letters, numbers, and hyphens');
-                return;
+        // Validate game ID format
+        if (!this.isValidGameId(gameId)) {
+            alert('Game ID can only contain letters, numbers, and hyphens');
+            return;
+        }
+
+        // Create the game using WASM client
+        if (!this.connect4Client) {
+            alert('Game engine not loaded yet, please wait and try again');
+            return;
+        }
+
+        const response = await this.connect4Client.connect4Service.createGame({
+            gameId: gameId,
+            creatorName: 'Creator', // Placeholder, will be set when joining slot
+            config: {
+                boardWidth: boardWidth,
+                boardHeight: boardHeight,
+                connectLength: 4,
+                maxPlayers: numPlayers,
+                minPlayers: 2,
+                allowMultipleWinners: false,
+                moveTimeoutSeconds: 30
             }
+        });
 
-            // Create the game using WASM client
-            if (!this.connect4Client) {
-                alert('Game engine not loaded yet, please wait and try again');
-                return;
-            }
-
-            const response = await this.connect4Client.connect4Service.createGame({
-                gameId: gameId,
-                creatorName: 'Creator', // Placeholder, will be set when joining slot
-                config: {
-                    boardWidth: boardWidth,
-                    boardHeight: boardHeight,
-                    connectLength: 4,
-                    maxPlayers: numPlayers,
-                    minPlayers: 2,
-                    allowMultipleWinners: false,
-                    moveTimeoutSeconds: 30
-                }
-            });
-
-            if (response.success) {
-                // Store the game locally
-                this.storeGame({
-                    gameId,
-                    playerName: '', // Will be set when joining a slot
-                    lastPlayed: Date.now(),
-                    gameStatus: 'Created'
-                });
-
-                // Navigate to the game
-                window.location.href = `/${gameId}`;
-            } else {
-                alert(`Failed to create game: ${response.message}`);
-            }
-        } catch (error) {
-            console.error('Error creating game:', error);
-            alert('Failed to create game. Please try again.');
+        if (response.success) {
+            console.log('Game created successfully in WASM (saved to IndexedDB via callback)');
+            
+            // WASM has already awaited storage completion before returning success
+            // window.location.href = `/${gameId}`;
+        } else {
+            alert(`Failed to create game: ${response.message}`);
         }
     }
 
     private getStoredGames(): StoredGame[] {
-        try {
-            const gamesData = localStorage.getItem('connect4Games');
-            return gamesData ? JSON.parse(gamesData) : [];
-        } catch (error) {
-            console.error('Error loading stored games:', error);
-            return [];
-        }
+        const gamesData = localStorage.getItem('connect4Games');
+        return gamesData ? JSON.parse(gamesData) : [];
     }
 
     private storeGame(game: StoredGame): void {
-        try {
-            const games = this.getStoredGames();
-            const existingIndex = games.findIndex(g => g.gameId === game.gameId);
-            
-            if (existingIndex >= 0) {
-                games[existingIndex] = game;
-            } else {
-                games.push(game);
-            }
-            
-            localStorage.setItem('connect4Games', JSON.stringify(games));
-            this.loadExistingGames(); // Refresh the display
-        } catch (error) {
-            console.error('Error storing game:', error);
+        const games = this.getStoredGames();
+        const existingIndex = games.findIndex(g => g.gameId === game.gameId);
+        
+        if (existingIndex >= 0) {
+            games[existingIndex] = game;
+        } else {
+            games.push(game);
+        }
+        
+        localStorage.setItem('connect4Games', JSON.stringify(games));
+        this.loadExistingGames(); // Refresh the display
+    }
+
+    public handleFormSubmit(): void {
+        if (this.createForm) {
+            const event = new Event('submit', { bubbles: true, cancelable: true });
+            this.createForm.dispatchEvent(event);
         }
     }
 
-    public removeGame(gameId: string): void {
-        try {
-            const games = this.getStoredGames();
-            const filteredGames = games.filter(g => g.gameId !== gameId);
-            localStorage.setItem('connect4Games', JSON.stringify(filteredGames));
-            this.loadExistingGames(); // Refresh the display
-        } catch (error) {
-            console.error('Error removing game:', error);
+    public async removeGame(gameId: string): Promise<void> {
+        // Remove from IndexedDB
+        if (this.storageTransport) {
+            await this.removeGameFromIndexedDB(gameId);
+            console.log(`Removed game ${gameId} from IndexedDB`);
         }
+        
+        // Refresh the display
+        await this.loadExistingGames();
+    }
+
+    private async removeGameFromIndexedDB(gameId: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (!this.storageTransport || !this.storageTransport['db']) {
+                resolve();
+                return;
+            }
+
+            const db = this.storageTransport['db'];
+            const transaction = db.transaction(['gameStates'], 'readwrite');
+            const store = transaction.objectStore('gameStates');
+            
+            const request = store.delete(gameId);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
     }
 
     private isValidGameId(gameId: string): boolean {

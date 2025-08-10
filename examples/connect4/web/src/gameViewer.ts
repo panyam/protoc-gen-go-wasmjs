@@ -18,7 +18,8 @@ class GameViewer {
     private ui: GameUI;
     private elements: { [key: string]: HTMLElement | null } = {};
     private selectedSlot: number = -1;
-    private storageTransport: IndexedDBTransport | null = null;
+    private globalStorageTransport: IndexedDBTransport | null = null; // For storage callbacks
+    private gameTransport: IndexedDBTransport | null = null; // For real-time patches
 
     constructor() {
         // Extract game ID from URL path
@@ -92,60 +93,74 @@ class GameViewer {
     }
 
     private async initializeWasmClient(): Promise<void> {
-        try {
-            console.log('Loading WASM module...');
-            this.ui.connect4Client = new Connect4Client();
-            
-            // Initialize storage transport for this specific game
-            this.storageTransport = new IndexedDBTransport(this.ui.gameId);
-            await this.storageTransport.init();
-            
-            // Set up storage callbacks before loading WASM
-            await this.setupStorageCallbacks();
-            
-            await this.ui.connect4Client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
-            await this.ui.connect4Client.waitUntilReady();
-            console.log('WASM module loaded successfully!');
-        } catch (error) {
-            console.error('Failed to load WASM:', error);
-            this.showError('Failed to load game engine');
-        }
+        console.log('Starting initializeWasmClient in gameViewer...');
+        console.log('Loading WASM module...');
+        this.ui.connect4Client = new Connect4Client();
+        
+        // Initialize global storage transport for storage callbacks (same as index.ts)
+        console.log('Initializing global IndexedDB transport...');
+        this.globalStorageTransport = new IndexedDBTransport('global');
+        await this.globalStorageTransport.init();
+        console.log('Global IndexedDB transport initialized');
+        
+        // Initialize game-specific transport for real-time patches
+        console.log('Initializing game-specific transport...');
+        this.gameTransport = new IndexedDBTransport(this.ui.gameId);
+        await this.gameTransport.init();
+        console.log('Game-specific transport initialized');
+        
+        // Load WASM first so that setWasmStorageCallbacks is available
+        console.log('Loading WASM...');
+        await this.ui.connect4Client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
+        await this.ui.connect4Client.waitUntilReady();
+        console.log('WASM loaded and ready');
+        
+        // Set up storage callbacks after WASM is ready
+        console.log('Setting up storage callbacks...');
+        await this.setupStorageCallbacks();
+        console.log('Storage callbacks setup complete');
+        
+        console.log('WASM module loaded successfully!');
     }
 
     private async setupStorageCallbacks(): Promise<void> {
-        if (!this.storageTransport || !(window as any).setWasmStorageCallbacks) {
-            console.warn('Storage transport or WASM callbacks not available');
+        if (!this.globalStorageTransport || !(window as any).setWasmStorageCallbacks) {
+            console.error('Global storage transport or WASM callbacks not available:', {
+                globalStorageTransport: !!this.globalStorageTransport,
+                setWasmStorageCallbacks: !!(window as any).setWasmStorageCallbacks
+            });
             return;
         }
 
-        // Create callback functions for WASM to use
+        // Simple, clean async callbacks using global transport - let failures bubble up to WASM
         const saveCallback = async (gameId: string, gameStateJson: string) => {
-            try {
-                const gameState = JSON.parse(gameStateJson);
-                await this.storageTransport!.saveGameState(gameId, gameState);
-                console.log(`Saved game state for ${gameId} to IndexedDB`);
-            } catch (error) {
-                console.error('Failed to save game state:', error);
-            }
+            const gameState = JSON.parse(gameStateJson);
+            // Save to global DB for cross-page persistence
+            await this.globalStorageTransport!.saveGameState(gameId, gameState);
+            // Also save to game-specific DB for real-time sync (optional)
+            await this.gameTransport!.saveGameState(gameId, gameState);
+            console.log(`Saved game state for ${gameId} to both global and game-specific IndexedDB`);
         };
 
-        const loadCallback = async (gameId: string): Promise<string | null> => {
-            try {
-                const gameState = await this.storageTransport!.loadGameState(gameId);
-                if (gameState) {
-                    console.log(`Loaded game state for ${gameId} from IndexedDB`);
-                    return JSON.stringify(gameState);
-                }
-                return null;
-            } catch (error) {
-                console.error('Failed to load game state:', error);
-                return null;
+        const loadCallback = async (gameId: string) => {
+          console.log("Did loadCallback get called?: ", gameId)
+          
+          // Load from global DB for cross-page persistence
+            const gameState = await this.globalStorageTransport!.loadGameState(gameId);
+            if (gameState) {
+                console.log(`Loaded game state for ${gameId} from global IndexedDB`);
+                return JSON.stringify(gameState);
+            } else {
+                console.log(`No game state found for ${gameId}, checking all stored games...`);
+                // Debug: list all games to see what's actually stored in global DB
+                await this.globalStorageTransport!.debugListAllGames();
             }
+            return null; // Game not found
         };
 
         const pollCallback = (gameId: string) => {
-            // Set up polling for external changes to this game
-            this.storageTransport!.onGameStateChanged((gameState: any) => {
+            // Set up polling for external changes using game-specific transport
+            this.gameTransport!.onGameStateChanged((gameState: any) => {
                 // Update UI when external changes are detected
                 this.handleExternalGameStateChange(gameState);
                 
@@ -157,82 +172,64 @@ class GameViewer {
         };
 
         // Configure WASM with these callbacks
+        console.log('About to set WASM storage callbacks...');
         const result = (window as any).setWasmStorageCallbacks(
             saveCallback,
             loadCallback, 
             pollCallback
         );
         
+        console.log('setWasmStorageCallbacks result:', result);
         if (result && result.success) {
-            console.log('Storage callbacks configured successfully');
+            console.log('Storage callbacks configured successfully in gameViewer');
         } else {
-            console.error('Failed to configure storage callbacks:', result);
+            console.error('Failed to configure storage callbacks in gameViewer:', result);
         }
     }
 
     private handleExternalGameStateChange(gameState: any): void {
-        try {
-            this.ui.gameState = GameState.from(gameState);
-            this.updateGameDisplay();
-            console.log('Updated UI from external game state change');
-        } catch (error) {
-            console.error('Failed to handle external game state change:', error);
-        }
+        this.ui.gameState = GameState.from(gameState);
+        this.updateGameDisplay();
+        console.log('Updated UI from external game state change');
     }
 
     private async initializeStatefulProxy(): Promise<void> {
-        try {
-            // Initialize transport with IndexedDB for cross-page persistence
-            this.ui.transport = TransportFactory.create(this.ui.gameId, 'indexeddb');
-            
-            // Initialize IndexedDB if using IndexedDBTransport
-            if (this.ui.transport instanceof IndexedDBTransport) {
-                await this.ui.transport.init();
-            }
-            
-            // Set up state change listener
+        // Use the already-initialized game-specific transport for real-time patches
+        this.ui.transport = this.gameTransport;
+        
+        // Set up state change listener for real-time patches
+        if (this.ui.transport) {
             this.ui.transport.subscribe((patches: any[]) => {
                 console.log('Received state patches:', patches);
                 this.applyPatches(patches);
             });
-
-            console.log('Stateful transport initialized');
-        } catch (error) {
-            console.error('Failed to initialize stateful transport:', error);
         }
+
+        console.log('Stateful proxy initialized using game-specific transport');
     }
 
     private async loadGameState(): Promise<void> {
-        try {
-            // WASM will now handle loading from storage automatically via callbacks
-            // Just try to get the game state - WASM will load from IndexedDB if not in memory
-            if (this.ui.connect4Client) {
-                // Ensure WASM is ready before making calls
-                await this.ui.connect4Client.waitUntilReady();
-                
-                const response = await this.ui.connect4Client.connect4Service.getGame({
-                    gameId: this.ui.gameId
-                });
+        // WASM will now handle loading from storage automatically via callbacks
+        // Just try to get the game state - WASM will load from IndexedDB if not in memory
+        // Ensure WASM is ready before making calls
+        await this.ui.connect4Client!.waitUntilReady();
+        
+        const response = await this.ui.connect4Client!.connect4Service.getGame({
+            gameId: this.ui.gameId
+        });
 
-                if (response.success) {
-                    this.ui.gameState = GameState.from(response.data);
-                    console.log('Loaded game state (WASM handled storage):', this.ui.gameState);
-                    
-                    // Check if we have a stored player ID for this game
-                    const storedPlayerId = localStorage.getItem(`connect4_player_${this.ui.gameId}`);
-                    if (storedPlayerId) {
-                        this.ui.playerId = storedPlayerId;
-                        this.showGameInterface();
-                        this.updateGameDisplay();
-                    } else {
-                        // Show player slots for joining
-                        this.showPlayerSlots();
-                    }
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load game state:', error);
+        if (response.success) {
+            this.ui.gameState = GameState.from(response.data);
+            console.log('Loaded game state (WASM handled storage):', this.ui.gameState);
+            
+            // Always show the game interface - users can participate as players or viewers
+            console.log('Game state players:', this.ui.gameState.players);
+            console.log('Game state config:', this.ui.gameState.config);
+            console.log('Game state board:', this.ui.gameState.board);
+            
+            this.showGameInterface();
+            this.updateGameDisplay();
+            return;
         }
 
         // If WASM couldn't find/load the game, show error
@@ -258,7 +255,6 @@ class GameViewer {
             
             if (joinResponse.success) {
                 this.ui.gameState = GameState.from(joinResponse.data);
-                this.storeGameState();
                 this.showGameInterface();
                 this.updateGameDisplay();
                 this.addLogEntry(`${playerName} joined the game`);
@@ -269,7 +265,6 @@ class GameViewer {
                 
                 if (createResponse.success) {
                     this.ui.gameState = GameState.from(createResponse.data);
-                    this.storeGameState();
                     this.showGameInterface();
                     this.updateGameDisplay();
                     this.addLogEntry(`Game created by ${playerName}`);
@@ -339,7 +334,6 @@ class GameViewer {
 
             if (response.success) {
                 this.ui.gameState = GameState.from(response.data);
-                this.storeGameState();
                 this.updateGameDisplay();
                 
                 // Send state update through stateful transport
@@ -367,7 +361,6 @@ class GameViewer {
                     const newState = GameState.from(patch.value);
                     if (newState) {
                         this.ui.gameState = newState;
-                        this.storeGameState();
                         this.updateGameDisplay();
                         this.addLogEntry('Game state updated from another player');
                     }
@@ -399,15 +392,27 @@ class GameViewer {
     }
 
     private showGameInterface(): void {
+        console.log('showGameInterface called');
+        console.log('Elements:', {
+            playerSlots: !!this.elements.playerSlots,
+            gameInterface: !!this.elements.gameInterface,
+            gameControls: !!this.elements.gameControls,
+            gameBoard: !!this.elements.gameBoard,
+            slotsContainer: !!this.elements.slotsContainer
+        });
+        
         // Show both left panel and center panel
         if (this.elements.playerSlots) {
             this.elements.playerSlots.classList.remove('hidden');
+            console.log('Showed player slots');
         }
         if (this.elements.gameInterface) {
             this.elements.gameInterface.classList.remove('hidden');
+            console.log('Showed game interface');
         }
         if (this.elements.gameControls) {
             this.elements.gameControls.classList.remove('hidden');
+            console.log('Showed game controls');
         }
         if (this.elements.errorState) {
             this.elements.errorState.classList.add('hidden');
@@ -416,8 +421,11 @@ class GameViewer {
             this.elements.joinSlotModal.classList.add('hidden');
         }
         
+        console.log('Calling generatePlayerSlots...');
         this.generatePlayerSlots();
+        console.log('Calling initializeGameBoard...');
         this.initializeGameBoard();
+        console.log('showGameInterface complete');
     }
 
     private showError(message: string): void {
@@ -529,12 +537,6 @@ class GameViewer {
         this.initializeGameBoard();
     }
 
-    private storeGameState(): void {
-        if (this.ui.gameState) {
-            localStorage.setItem(`connect4_game_${this.ui.gameId}`, JSON.stringify(this.ui.gameState));
-            localStorage.setItem(`connect4_player_${this.ui.gameId}`, this.ui.playerId);
-        }
-    }
 
     private addLogEntry(message: string): void {
         if (!this.elements.gameLog) return;
@@ -569,11 +571,25 @@ class GameViewer {
     }
 
     private generatePlayerSlots(): void {
-        if (!this.elements.slotsContainer || !this.ui.gameState) return;
+        console.log('generatePlayerSlots called');
+        console.log('slotsContainer exists:', !!this.elements.slotsContainer);
+        console.log('gameState exists:', !!this.ui.gameState);
+        
+        if (!this.elements.slotsContainer || !this.ui.gameState) {
+            console.log('Early return from generatePlayerSlots - missing elements');
+            return;
+        }
 
         const maxPlayers = this.ui.gameState.config?.maxPlayers || 2;
         const currentPlayers = this.ui.gameState.players || [];
         const playerColors = this.getPlayerColors(maxPlayers);
+        
+        console.log('Player slot generation data:', {
+            maxPlayers,
+            currentPlayersCount: currentPlayers.length,
+            currentPlayers,
+            playerColors
+        });
 
         let slotsHTML = '';
         for (let slotIndex = 0; slotIndex < maxPlayers; slotIndex++) {
@@ -607,7 +623,9 @@ class GameViewer {
             }
         }
 
+        console.log('Generated slots HTML:', slotsHTML);
         this.elements.slotsContainer.innerHTML = slotsHTML;
+        console.log('Set slotsContainer innerHTML complete');
     }
 
     public openJoinModal(slotIndex: number): void {
@@ -657,7 +675,6 @@ class GameViewer {
 
             if (response.success) {
                 this.ui.gameState = GameState.from(response.data);
-                this.storeGameState();
                 this.showGameInterface();
                 this.updateGameDisplay();
                 this.addLogEntry(`${playerName} joined as Player ${this.selectedSlot + 1}`);
@@ -673,16 +690,12 @@ class GameViewer {
     // Public methods for HTML onclick handlers
     public resetGame(): void {
         if (confirm('Are you sure you want to start a new game?')) {
-            localStorage.removeItem(`connect4_game_${this.ui.gameId}`);
-            localStorage.removeItem(`connect4_player_${this.ui.gameId}`);
             window.location.reload();
         }
     }
 
     public leaveGame(): void {
         if (confirm('Are you sure you want to leave this game?')) {
-            localStorage.removeItem(`connect4_game_${this.ui.gameId}`);
-            localStorage.removeItem(`connect4_player_${this.ui.gameId}`);
             window.location.href = '/';
         }
     }

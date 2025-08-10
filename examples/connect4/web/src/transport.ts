@@ -50,21 +50,26 @@ export class IndexedDBTransport extends StatefulTransport {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, 1);
             
-            request.onerror = () => reject(request.error);
+            request.onerror = () => {
+              console.log("Error opening DB: ", request.error)
+              reject(request.error);
+            }
             request.onsuccess = () => {
+              console.log("Successfully opened IndexedDB: ", request)
                 this.db = request.result;
                 this.startPolling();
                 resolve();
             };
             
             request.onupgradeneeded = (event) => {
+                console.log("Upgrading....")
                 const db = (event.target as IDBOpenDBRequest).result;
                 
                 // Create patches store (existing functionality)
                 if (!db.objectStoreNames.contains(this.patchesStoreName)) {
-                    const patchesStore = db.createObjectStore(this.patchesStoreName, { keyPath: 'id', autoIncrement: true });
+                    const patchesStore = db.createObjectStore(this.patchesStoreName, { keyPath: 'game_id', autoIncrement: true });
                     patchesStore.createIndex('timestamp', 'timestamp', { unique: false });
-                    patchesStore.createIndex('gameId', 'gameId', { unique: false });
+                    patchesStore.createIndex('game_id', 'game_id', { unique: false });
                 }
                 
                 // Create game states store (new functionality)
@@ -98,10 +103,11 @@ export class IndexedDBTransport extends StatefulTransport {
     }
 
     // Save complete game state to IndexedDB
-    async saveGameState(gameId: string, gameState: any): Promise<void> {
+    async saveGameState(gameId: string, gameState: any): Promise<IDBValidKey> {
         if (!this.db) throw new Error('Database not initialized');
+        console.log("Saving game state to IndexedDB:", { gameId, gameState });
         
-        const transaction = this.db.transaction([this.gameStatesStoreName], 'readwrite');
+        const transaction = this.db!.transaction([this.gameStatesStoreName], 'readwrite');
         const store = transaction.objectStore(this.gameStatesStoreName);
         
         const gameStateData = {
@@ -112,27 +118,75 @@ export class IndexedDBTransport extends StatefulTransport {
             tabId: this.getTabId()
         };
         
+        console.log("Game state data to save:", gameStateData);
+        const request = store.put(gameStateData); // Use put to update existing
+        console.log("Payload: ", gameStateData)
         return new Promise((resolve, reject) => {
-            const request = store.put(gameStateData); // Use put to update existing
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+            request.onerror = () => {
+              console.log("Error saving DB: ", this.db, request.error)
+              reject(request.error);
+            }
+            request.onsuccess = () => {
+              console.log("Successfully saved: ", request)
+                resolve(request.result);
+            };
+        })
     }
 
     // Load complete game state from IndexedDB
     async loadGameState(gameId: string): Promise<any | null> {
         if (!this.db) throw new Error('Database not initialized');
+        console.log("Loading game state from IndexedDB for gameId:", gameId);
         
         const transaction = this.db.transaction([this.gameStatesStoreName], 'readonly');
         const store = transaction.objectStore(this.gameStatesStoreName);
+        const request = store.get(gameId);
         
         return new Promise((resolve, reject) => {
-            const request = store.get(gameId);
+            request.onerror = () => {
+              console.log("Error loading game from DB: ", this.db, request.error)
+              reject(request.error);
+            }
             request.onsuccess = () => {
-                const result = request.result;
-                resolve(result ? result.gameState : null);
+              console.log("Load request result:", request.result);
+              const result = request.result;
+              if (result) {
+                console.log("Found game state:", result.gameState);
+                resolve(result.gameState);
+              } else {
+                console.log("No game state found for gameId:", gameId);
+                resolve(null);
+              }
             };
-            request.onerror = () => reject(request.error);
+        })
+    }
+
+    // Debug method to see all stored games
+    async debugListAllGames(): Promise<void> {
+        if (!this.db) throw new Error('Database not initialized');
+        console.log("=== DEBUG: Listing all games in IndexedDB ===");
+        
+        const transaction = this.db.transaction([this.gameStatesStoreName], 'readonly');
+        const store = transaction.objectStore(this.gameStatesStoreName);
+        const request = store.getAll();
+        
+        return new Promise((resolve, reject) => {
+            request.onerror = () => {
+                console.log("Error listing all games:", request.error);
+                reject(request.error);
+            };
+            request.onsuccess = () => {
+                console.log("All stored games:", request.result);
+                request.result.forEach((item: any, index: number) => {
+                    console.log(`Game ${index}:`, {
+                        gameId: item.gameId,
+                        hasGameState: !!item.gameState,
+                        timestamp: item.timestamp,
+                        gameState: item.gameState
+                    });
+                });
+                resolve();
+            };
         });
     }
 
@@ -163,7 +217,7 @@ export class IndexedDBTransport extends StatefulTransport {
         
         const transaction = this.db.transaction([this.patchesStoreName], 'readonly');
         const store = transaction.objectStore(this.patchesStoreName);
-        const gameIndex = store.index('gameId');
+        const gameIndex = store.index('game_id');
         
         const request = gameIndex.getAll(this.gameId);
         request.onsuccess = () => {
