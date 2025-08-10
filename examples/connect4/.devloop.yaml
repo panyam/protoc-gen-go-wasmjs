@@ -4,7 +4,7 @@ settings:
     color_scheme: auto
     default_debounce_delay: 500ms
 rules:
-    - name: Go Backend
+    - name: backend
       prefix: go
       color: blue
       watch:
@@ -12,22 +12,23 @@ rules:
           patterns:
             - vendor/**
             - '**/*_test.go'
-            - '**/.*'
             - bin/**
             - dist/**
         - action: include
           patterns:
+            - 'cmd/**/*.go'
+            - 'services/**/*.go'
             - '**/*.go'
             - go.mod
             - go.sum
       commands:
         - echo 'Building Go application...'
-        - go build -o bin/app .
-        - echo 'Starting Go application...'
-        - ./bin/app
+        - make wasm
+        - go run cmd/serve/*.go
     - name: TypeScript Frontend
-      prefix: ts
+      prefix: web
       color: cyan
+      workdir: "./web"
       watch:
         - action: exclude
           patterns:
@@ -45,9 +46,5 @@ rules:
             - package.json
             - tsconfig.json
       commands:
-        - echo 'Installing dependencies...'
-        - npm install
-        - echo 'Building TypeScript project...'
-        - npm run build
-        - echo 'Starting development server...'
-        - npm run dev
+        - "echo '⚡ Building frontend...'"
+        - "npm run build"

@@ -122,7 +122,7 @@ module.exports = (_env, options) => {
       path: OUTPUT_DIR, // -> ./static/gen/js/
       // Public path where browser requests bundles/assets. Matches path structure served by static server.
       publicPath: `${staticPublicPath}/gen/js/`, // -> /static/gen/js/
-      filename: "[name].js",
+      filename: "[name].[contenthash].js",
       module: true,
       clean: true, // Clean the output directory before build
     },

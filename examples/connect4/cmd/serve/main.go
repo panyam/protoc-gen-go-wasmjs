@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
+
+	gotl "github.com/panyam/goutils/template"
+	tmplr "github.com/panyam/templar"
 )
 
 // TemplateData holds data for template rendering
@@ -18,7 +19,7 @@ type TemplateData struct {
 
 // Server holds our application state
 type Server struct {
-	templates *template.Template
+	templates *tmplr.TemplateGroup
 	mux       *http.ServeMux
 }
 
@@ -34,11 +35,9 @@ func NewServer() *Server {
 
 // Load HTML templates
 func (s *Server) loadTemplates() {
-	templatePattern := filepath.Join("cmd/serve/templates", "*.html")
-	templates, err := template.ParseGlob(templatePattern)
-	if err != nil {
-		log.Fatalf("Failed to load templates: %v", err)
-	}
+	templates := tmplr.NewTemplateGroup()
+	templates.Loader = (&tmplr.LoaderList{}).AddLoader(tmplr.NewFileSystemLoader("./cmd/serve/templates"))
+	templates.AddFuncs(gotl.DefaultFuncMap())
 	s.templates = templates
 }
 
@@ -85,11 +84,20 @@ func (s *Server) handleRouting(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGamesPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	err := s.templates.ExecuteTemplate(w, "games.html", nil)
+	templateFile := "games.html"
+	tmpl, err := s.templates.Loader.Load(templateFile, "")
 	if err != nil {
-		log.Printf("Error rendering games template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		log.Println("Template Load Error: ", templateFile, err)
+		fmt.Fprint(w, "Error rendering: ", err.Error())
+	} else {
+		log.Printf("DEBUG: Successfully loaded template, rendering...")
+		err = s.templates.RenderHtmlTemplate(w, tmpl[0], "", nil, nil)
+		if err != nil {
+			log.Printf("DEBUG: Template render error: %v", err)
+			fmt.Fprint(w, "Template render error: ", err.Error())
+		} else {
+			log.Printf("DEBUG: Template rendered successfully")
+		}
 	}
 }
 
@@ -102,11 +110,20 @@ func (s *Server) handleGamePage(w http.ResponseWriter, r *http.Request, gameID s
 		GameURL: fmt.Sprintf("%s://%s/%s", getScheme(r), r.Host, gameID),
 	}
 
-	err := s.templates.ExecuteTemplate(w, "game.html", data)
+	templateFile := "game.html"
+	tmpl, err := s.templates.Loader.Load(templateFile, "")
 	if err != nil {
-		log.Printf("Error rendering game template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		log.Println("Template Load Error: ", templateFile, err)
+		fmt.Fprint(w, "Error rendering: ", err.Error())
+	} else {
+		log.Printf("DEBUG: Successfully loaded template, rendering...")
+		err = s.templates.RenderHtmlTemplate(w, tmpl[0], "", data, nil)
+		if err != nil {
+			log.Printf("DEBUG: Template render error: %v", err)
+			fmt.Fprint(w, "Template render error: ", err.Error())
+		} else {
+			log.Printf("DEBUG: Template rendered successfully")
+		}
 	}
 }
 

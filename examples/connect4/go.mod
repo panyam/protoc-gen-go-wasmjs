@@ -5,6 +5,8 @@ go 1.24.6
 replace github.com/panyam/protoc-gen-go-wasmjs => ../../
 
 require (
+	github.com/panyam/goutils v0.1.9
+	github.com/panyam/templar v0.0.20
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
 )
