@@ -88,7 +88,7 @@ class GameViewer {
 
         // Initialize game components
         await this.initializeWasmClient();
-        await this.initializeStatefulProxy();
+        // await this.initializeStatefulProxy();
         await this.loadGameState();
     }
 
@@ -188,9 +188,11 @@ class GameViewer {
     }
 
     private handleExternalGameStateChange(gameState: any): void {
-        this.ui.gameState = GameState.from(gameState);
-        this.updateGameDisplay();
-        console.log('Updated UI from external game state change');
+        if (!this.ui.gameState || JSON.stringify(this.ui.gameState) !== JSON.stringify(gameState)) {
+            this.ui.gameState = GameState.from(gameState);
+            this.updateGameDisplay();
+            console.log('Updated UI from external game state change');
+        }
     }
 
     private async initializeStatefulProxy(): Promise<void> {
@@ -209,32 +211,33 @@ class GameViewer {
     }
 
     private async loadGameState(): Promise<void> {
-        // WASM will now handle loading from storage automatically via callbacks
-        // Just try to get the game state - WASM will load from IndexedDB if not in memory
-        // Ensure WASM is ready before making calls
-        await this.ui.connect4Client!.waitUntilReady();
-        
-        const response = await this.ui.connect4Client!.connect4Service.getGame({
+        // Use the new async callback-based API to avoid deadlocks
+        await this.ui.connect4Client!.connect4Service.getGame({
             gameId: this.ui.gameId
+        }, (response, error) => {
+            if (error) {
+                console.error('Failed to load game state:', error);
+                this.showError('Game not found - please check the game ID or create a new game');
+                return;
+            }
+            
+            if (response) {
+                this.ui.gameState = GameState.from(JSON.parse(response));
+                console.log('Loaded game state via callback:', this.ui.gameState);
+                
+                // Always show the game interface - users can participate as players or viewers
+                console.log('Game state players:', this.ui.gameState.players);
+                console.log('Game state config:', this.ui.gameState.config);
+                console.log('Game state board:', this.ui.gameState.board);
+                
+                this.showGameInterface();
+                this.updateGameDisplay();
+            } else {
+                this.showError('Game not found - please check the game ID or create a new game');
+            }
         });
-
-        if (response.success) {
-            this.ui.gameState = GameState.from(response.data);
-            console.log('Loaded game state (WASM handled storage):', this.ui.gameState);
-            
-            // Always show the game interface - users can participate as players or viewers
-            console.log('Game state players:', this.ui.gameState.players);
-            console.log('Game state config:', this.ui.gameState.config);
-            console.log('Game state board:', this.ui.gameState.board);
-            
-            this.showGameInterface();
-            this.updateGameDisplay();
-            return;
-        }
-
-        // If WASM couldn't find/load the game, show error
-        this.showError('Game not found - please check the game ID or create a new game');
     }
+
 
     private async handleJoinGame(event: Event): Promise<void> {
         event.preventDefault();
@@ -264,12 +267,12 @@ class GameViewer {
                 const createResponse = await this.createGame(playerName);
                 
                 if (createResponse.success) {
-                    this.ui.gameState = GameState.from(createResponse.data);
+                    this.ui.gameState = GameState.from(createResponse.gameState);
                     this.showGameInterface();
                     this.updateGameDisplay();
                     this.addLogEntry(`Game created by ${playerName}`);
                 } else {
-                    throw new Error(createResponse.message || 'Failed to create game');
+                    throw new Error(createResponse.errorMessage || 'Failed to create game');
                 }
             }
         } catch (error) {
@@ -305,18 +308,26 @@ class GameViewer {
             moveTimeoutSeconds: 30
         };
 
-        const response = await this.ui.connect4Client.connect4Service.createGame({
-            gameId: this.ui.gameId,
-            playerId: this.ui.playerId,
-            playerName: playerName,
-            config: gameConfig
-        }) as any;
-
-        if (!response.success) {
-            throw new Error(response.message || 'Failed to create game');
-        }
-
-        return response;
+        return new Promise((resolve, reject) => {
+            this.ui.connect4Client!.connect4Service.createGame({
+                gameId: this.ui.gameId,
+                playerId: this.ui.playerId,
+                playerName: playerName,
+                config: gameConfig
+            }, (response, error) => {
+                if (error) {
+                    reject(new Error(error));
+                    return;
+                }
+                
+                if (response) {
+                    const parsedResponse = JSON.parse(response);
+                    resolve(parsedResponse);
+                } else {
+                    reject(new Error('Failed to create game'));
+                }
+            });
+        });
     }
 
     public async dropPiece(column: number): Promise<void> {
@@ -482,6 +493,31 @@ class GameViewer {
         this.elements.gameBoard.innerHTML = boardHTML;
     }
 
+    private updateBoardOnly(): void {
+        if (!this.elements.gameBoard || !this.ui.gameState?.board) return;
+
+        const cells = this.elements.gameBoard.querySelectorAll('.board-cell');
+        const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
+        
+        cells.forEach((cell: Element) => {
+            const htmlCell = cell as HTMLElement;
+            const row = parseInt(htmlCell.dataset.row || '0');
+            const col = parseInt(htmlCell.dataset.col || '0');
+            const cellValue = this.ui.gameState!.board!.rows[row]?.cells[col] || '';
+            const player = this.ui.gameState!.players.find(p => p.id === cellValue);
+            const playerIndex = player ? this.ui.gameState!.players.indexOf(player) : -1;
+            const pieceColor = playerIndex >= 0 ? playerColors[playerIndex] : '';
+            
+            if (cellValue) {
+                htmlCell.className = 'board-cell occupied';
+                htmlCell.innerHTML = `<span class="piece" style="color: ${pieceColor}">●</span>`;
+            } else {
+                htmlCell.className = 'board-cell empty';
+                htmlCell.innerHTML = '';
+            }
+        });
+    }
+
     private updateGameDisplay(): void {
         if (!this.ui.gameState) return;
 
@@ -533,8 +569,9 @@ class GameViewer {
             }).join('');
         }
 
-        // Update board
-        this.initializeGameBoard();
+        // Update player slots and board separately to avoid cascading updates
+        this.generatePlayerSlots();
+        this.updateBoardOnly();
     }
 
 

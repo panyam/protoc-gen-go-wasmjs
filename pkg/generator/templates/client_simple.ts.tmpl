@@ -28,7 +28,11 @@ export class WasmError extends Error {
 export interface {{ .Name }}Methods {
 	{{- range .Methods }}
 		{{- if .ShouldGenerate }}
+			{{- if .IsAsync }}
+	{{ .JSName }}(request: any, callback: (response: any, error?: string) => void): Promise<void>;
+			{{- else }}
 	{{ .JSName }}(request: any): Promise<any>;
+			{{- end }}
 		{{- end }}
 	{{- end }}
 }
@@ -103,6 +107,41 @@ export class {{ .ModuleName | title }}Client {
 
             // Return response data directly
             return wasmResponse.data;
+        } catch (error) {
+            if (error instanceof WasmError) {
+                throw error;
+            }
+            throw new WasmError(
+                `Call error: ${error instanceof Error ? error.message : String(error)}`,
+                methodPath
+            );
+        }
+    }
+
+    /**
+     * Internal method to call async WASM functions with callback
+     */
+    public callMethodWithCallback<TRequest>(
+        methodPath: string,
+        request: TRequest,
+        callback: (response: any, error?: string) => void
+    ): Promise<void> {
+        this.ensureWASMLoaded();
+
+        try {
+            // Convert request to JSON
+            const jsonReq = JSON.parse(JSON.stringify(request));
+            const wasmMethod = this.getWasmMethod(methodPath);
+            
+            // Call WASM method with callback function
+            const wasmResponse = wasmMethod(JSON.stringify(jsonReq), callback);
+
+            if (!wasmResponse.success) {
+                throw new WasmError(wasmResponse.message, methodPath);
+            }
+
+            // Async methods return immediately
+            return Promise.resolve();
         } catch (error) {
             if (error instanceof WasmError) {
                 throw error;
@@ -246,15 +285,27 @@ class {{ .Name }}ClientImpl implements {{ .Name }}Methods {
 
 	{{- range .Methods }}
 		{{- if .ShouldGenerate }}
-    async {{ .JSName }}(request: any): Promise<any> {
-		{{- if eq $.APIStructure "namespaced" }}
-        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
-		{{- else if eq $.APIStructure "flat" }}
-        return this.parent.callMethod('{{ $.JSNamespace }}{{ .Name }}', request);
-		{{- else if eq $.APIStructure "service_based" }}
-        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
-		{{- end }}
+			{{- if .IsAsync }}
+    async {{ .JSName }}(request: any, callback: (response: any, error?: string) => void): Promise<void> {
+				{{- if eq $.APIStructure "namespaced" }}
+        return this.parent.callMethodWithCallback('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
+				{{- else if eq $.APIStructure "flat" }}
+        return this.parent.callMethodWithCallback('{{ $.JSNamespace }}{{ .Name }}', request, callback);
+				{{- else if eq $.APIStructure "service_based" }}
+        return this.parent.callMethodWithCallback('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
+				{{- end }}
     }
+			{{- else }}
+    async {{ .JSName }}(request: any): Promise<any> {
+				{{- if eq $.APIStructure "namespaced" }}
+        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
+				{{- else if eq $.APIStructure "flat" }}
+        return this.parent.callMethod('{{ $.JSNamespace }}{{ .Name }}', request);
+				{{- else if eq $.APIStructure "service_based" }}
+        return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
+				{{- end }}
+    }
+			{{- end }}
 		{{- end }}
 	{{- end }}
 }

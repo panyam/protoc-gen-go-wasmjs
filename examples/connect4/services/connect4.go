@@ -102,17 +102,7 @@ func (s *Connect4Service) CreateGame(ctx context.Context, req *pb.CreateGameRequ
 	s.games[gameId] = game
 
 	// Save to storage via callback (async - fire and forget for now)
-	if true {
-		s.saveGameToStorage(gameId, game)
-	} else {
-		// Save to storage via callback and wait for completion
-		if err := s.saveGameToStorageSync(gameId, game); err != nil {
-			return &pb.CreateGameResponse{
-				Success:      false,
-				ErrorMessage: fmt.Sprintf("Failed to save game: %v", err),
-			}, nil
-		}
-	}
+	s.saveGameToStorage(gameId, game)
 
 	return &pb.CreateGameResponse{
 		Success:   true,
@@ -198,12 +188,11 @@ func (s *Connect4Service) GetGame(ctx context.Context, req *pb.GetGameRequest) (
 	game, exists := s.games[req.GameId]
 	if !exists {
 		// Try to load from storage
-		if loadedGame := s.loadGameFromStorage(req.GameId); loadedGame != nil {
-			// Store in memory for future access
+		loadedGame := s.loadGameFromStorage(req.GameId)
+		if loadedGame != nil {
 			s.games[req.GameId] = loadedGame
 			return loadedGame, nil
 		}
-		return nil, fmt.Errorf("game not found: %s", req.GameId)
 	}
 
 	return game, nil
@@ -448,48 +437,6 @@ func (s *Connect4Service) HandleExternalStorageChange(gameId, gameStateJson stri
 	fmt.Printf("Updated game %s from external storage change\n", gameId)
 }
 
-// saveGameToStorageSync saves game state to browser storage via callback and waits for completion
-func (s *Connect4Service) saveGameToStorageSync(gameId string, game *pb.GameState) error {
-	if !s.callbacksSet || s.saveCallback.IsUndefined() {
-		return fmt.Errorf("no storage callback configured")
-	}
-
-	// Convert game state to JSON
-	gameStateJson, err := json.Marshal(game)
-	if err != nil {
-		return fmt.Errorf("failed to marshal game state: %v", err)
-	}
-
-	fmt.Println("Part 1 - Ok ehre before calling saveCallback")
-	// Call browser save callback and await result
-	promise := s.saveCallback.Invoke(gameId, string(gameStateJson))
-	fmt.Println("Part 2 - Ok here after calling saveCallback")
-
-	// Await the Promise result
-	result, errResult := await(promise)
-	if errResult != nil {
-		if len(errResult) > 0 {
-			return fmt.Errorf("storage operation failed: %s", errResult[0].String())
-		}
-		return fmt.Errorf("storage operation failed")
-	}
-
-	fmt.Println("Part 3 - Ok here after calling saveCallback")
-	// Check if browser returned an error
-	if len(result) > 0 && !result[0].IsNull() {
-		// Browser can return error info if needed
-		if result[0].Type() == js.TypeString {
-			errorMsg := result[0].String()
-			if errorMsg != "" {
-				return fmt.Errorf("browser storage error: %s", errorMsg)
-			}
-		}
-	}
-	fmt.Println("Part 4 - Ok here after calling saveCallback")
-
-	return nil
-}
-
 // saveGameToStorage saves game state to browser storage via callback
 func (s *Connect4Service) saveGameToStorage(gameId string, game *pb.GameState) {
 	if !s.callbacksSet || s.saveCallback.IsUndefined() {
@@ -503,28 +450,25 @@ func (s *Connect4Service) saveGameToStorage(gameId string, game *pb.GameState) {
 		return
 	}
 
-	// Call browser save callback asynchronously (fire-and-forget)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Printf("Panic in saveGameToStorage for %s: %v\n", gameId, r)
-			}
-		}()
-
-		// Call save callback (returns a Promise)
-		promise := s.saveCallback.Invoke(gameId, string(gameStateJson))
-
-		// Optionally await the result to log success/errors
-		result, err := await(promise)
-		if err != nil {
-			fmt.Printf("Failed to save game state for %s: %v\n", gameId, err)
-		} else {
-			fmt.Printf("Successfully saved game state for %s\n", gameId)
-			if len(result) > 0 && !result[0].IsNull() {
-				// Browser can return additional info if needed
-			}
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Panic in saveGameToStorage for %s: %v\n", gameId, r)
 		}
 	}()
+
+	// Call save callback synchronously (WASM wrapper now handles async)
+	promise := s.saveCallback.Invoke(gameId, string(gameStateJson))
+
+	// Await the result to log success/errors
+	result, err := await(promise)
+	if err != nil {
+		fmt.Printf("Failed to save game state for %s: %v\n", gameId, err)
+	} else {
+		fmt.Printf("Successfully saved game state for %s\n", gameId)
+		if len(result) > 0 && !result[0].IsNull() {
+			// Browser can return additional info if needed
+		}
+	}
 }
 
 // loadGameFromStorage loads game state from browser storage via callback
@@ -534,7 +478,7 @@ func (s *Connect4Service) loadGameFromStorage(gameId string) *pb.GameState {
 		return nil // No callback configured
 	}
 
-	// Call browser load callback (returns a Promise) and wait for result
+	// Call browser load callback synchronously (WASM wrapper now handles async)
 	promise := s.loadCallback.Invoke(gameId)
 
 	// Await the Promise result synchronously
@@ -551,19 +495,19 @@ func (s *Connect4Service) loadGameFromStorage(gameId string) *pb.GameState {
 	}
 
 	gameStateJson := result[0].String()
-	if gameStateJson == "" {
-		return nil
+	if gameStateJson != "" {
+		// Parse the JSON
+		var gameState pb.GameState
+		if err := json.Unmarshal([]byte(gameStateJson), &gameState); err != nil {
+			fmt.Printf("Failed to unmarshal loaded game state for %s: %v\n", gameId, err)
+			return nil
+		}
+
+		fmt.Printf("Successfully loaded game %s from storage\n", gameId)
+		return &gameState
 	}
 
-	// Parse the JSON
-	var gameState pb.GameState
-	if err := json.Unmarshal([]byte(gameStateJson), &gameState); err != nil {
-		fmt.Printf("Failed to unmarshal loaded game state for %s: %v\n", gameId, err)
-		return nil
-	}
-
-	fmt.Printf("Successfully loaded game %s from storage\n", gameId)
-	return &gameState
+	return nil
 }
 
 // await helper for handling JavaScript Promises in Go WASM

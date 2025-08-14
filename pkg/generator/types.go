@@ -18,6 +18,8 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
+	wasmjsv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go/wasmjs/v1"
 )
 
 // TemplateData holds all data needed for template generation
@@ -70,6 +72,7 @@ type MethodData struct {
 	RequestTSType  string // TypeScript request type name
 	ResponseTSType string // TypeScript response type name
 	Comment        string // Method comment from protobuf
+	IsAsync        bool   // Whether this method is marked as async and needs callback
 }
 
 // FileGenerator handles generation for a single proto file
@@ -317,6 +320,16 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 	jsName := g.config.GetMethodJSName(methodName)
 	goFuncName := strings.ToLower(serviceName[:1]) + serviceName[1:] + methodName
 
+	// Check if method is marked as async
+	isAsync := false
+	if method.Desc.Options() != nil {
+		if asyncOpts := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_AsyncMethod); asyncOpts != nil {
+			if opts, ok := asyncOpts.(*wasmjsv1.AsyncMethodOptions); ok && opts != nil {
+				isAsync = opts.GetIsAsync()
+			}
+		}
+	}
+
 	return &MethodData{
 		Name:           methodName,
 		JSName:         jsName,
@@ -327,6 +340,7 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 		RequestTSType:  string(method.Input.GoIdent.GoName),
 		ResponseTSType: string(method.Output.GoIdent.GoName),
 		Comment:        strings.TrimSpace(string(method.Comments.Leading)),
+		IsAsync:        isAsync,
 	}
 }
 

@@ -136,3 +136,25 @@ enum ConflictResolution {
   // Last writer wins (simple but may lose data)
   LAST_WRITER_WINS = 2;
 }
+
+// async_method marks a method as asynchronous, requiring a callback parameter.
+// This is used for methods that need to call browser APIs from WASM to avoid deadlocks.
+//
+// Example usage:
+//   rpc GetGame(GetGameRequest) returns (GameState) {
+//     option (wasmjs.v1.async_method) = {
+//       is_async: true
+//     };
+//   }
+//
+// Generated TypeScript signature becomes:
+//   getGame(request: GetGameRequest, callback: (response: GameState, error?: string) => void): Promise<void>
+extend google.protobuf.MethodOptions {
+  AsyncMethodOptions async_method = 50007;
+}
+
+// Configuration for async methods
+message AsyncMethodOptions {
+  // Whether this method should be generated as async with callback parameter
+  bool is_async = 1;
+}

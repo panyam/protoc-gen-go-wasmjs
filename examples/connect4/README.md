@@ -108,6 +108,16 @@ service Connect4Service {
     conflict_resolution: CHANGE_NUMBER_BASED
   };
   
+  // Async method annotation for IndexedDB operations (prevents deadlocks)
+  rpc GetGame(GetGameRequest) returns (GameState) {
+    option (wasmjs.v1.async_method) = { is_async: true };
+  };
+  
+  rpc CreateGame(CreateGameRequest) returns (CreateGameResponse) {
+    option (wasmjs.v1.async_method) = { is_async: true };
+  };
+  
+  // Stateful method for real-time updates
   rpc DropPiece(DropPieceRequest) returns (DropPieceResponse) {
     option (wasmjs.v1.stateful_method) = {
       returns_patches: true
@@ -125,11 +135,22 @@ import Connect4Client from './gen/wasmts/multiplayer_connect4Client.client';
 const client = new Connect4Client();
 await client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
 
-// Direct method calls to WASM service
-const response = await client.callMethod('connect4Service.dropPiece', {
+// Synchronous method calls (traditional pattern)
+const response = await client.connect4Service.dropPiece({
   gameId: 'my-game',
   playerId: 'player_123',
   column: 3
+});
+
+// Async method calls with callbacks (for IndexedDB operations)
+await client.connect4Service.getGame({ gameId: 'my-game' }, (response, error) => {
+  if (error) {
+    console.error('Failed to load game:', error);
+    return;
+  }
+  
+  const gameState = JSON.parse(response);
+  console.log('Game loaded:', gameState);
 });
 ```
 

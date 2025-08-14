@@ -197,6 +197,9 @@ export class IndexedDBTransport extends StatefulTransport {
     }
 
     private startPolling(): void {
+        if (this.pollTimer) {
+            clearInterval(this.pollTimer);
+        }
         this.pollTimer = window.setInterval(() => {
             this.checkForNewPatches();
         }, this.pollInterval);

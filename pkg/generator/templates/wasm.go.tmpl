@@ -93,6 +93,66 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 		return createJSResponse(false, "{{ $serviceName }} not initialized", nil)
 	}
 
+	{{- if .IsAsync }}
+	// Async method: expect request JSON and callback function
+	if len(args) < 2 {
+		return createJSResponse(false, "Request JSON and callback function required", nil)
+	}
+
+	requestJSON := args[0].String()
+	if requestJSON == "" {
+		return createJSResponse(false, "Request JSON is empty", nil)
+	}
+
+	callback := args[1]
+	if callback.Type() != js.TypeFunction {
+		return createJSResponse(false, "Second argument must be a callback function", nil)
+	}
+
+	// Parse request
+	req := &{{ .RequestType }}{}
+	opts := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+		AllowPartial:   true,
+	}
+	if err := opts.Unmarshal([]byte(requestJSON), req); err != nil {
+		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
+	}
+
+	// Call service method in goroutine to avoid blocking
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Call service method
+		resp, err := exports.{{ $serviceName }}.{{ .Name }}(ctx, req)
+		
+		if err != nil {
+			// Call callback with error
+			callback.Invoke(js.Null(), err.Error())
+			return
+		}
+
+		// Marshal response
+		marshalOpts := protojson.MarshalOptions{
+			UseProtoNames:   false,
+			EmitUnpopulated: false,
+			UseEnumNumbers:  false,
+		}
+		responseJSON, err := marshalOpts.Marshal(resp)
+		if err != nil {
+			callback.Invoke(js.Null(), fmt.Sprintf("Failed to marshal response: %v", err))
+			return
+		}
+
+		// Call callback with success
+		callback.Invoke(string(responseJSON), js.Null())
+	}()
+
+	// Return immediately for async methods
+	return createJSResponse(true, "Async operation started", nil)
+	{{- else }}
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
@@ -134,6 +194,7 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 	}
 
 	return createJSResponse(true, "Success", json.RawMessage(responseJSON))
+	{{- end }}
 }
 		{{- end }}
 	{{- end }}

@@ -38,7 +38,11 @@ service Connect4Service {
   };
 
   // Get current game state
-  rpc GetGame(GetGameRequest) returns (GameState);
+  rpc GetGame(GetGameRequest) returns (GameState) {
+    option (wasmjs.v1.async_method) = {
+      is_async: true
+    };
+  };
   
   // Drop a piece in a column - returns patches for real-time updates
   rpc DropPiece(DropPieceRequest) returns (DropPieceResponse) {
@@ -52,7 +56,11 @@ service Connect4Service {
   rpc JoinGame(JoinGameRequest) returns (JoinGameResponse);
   
   // Create a new game with custom settings
-  rpc CreateGame(CreateGameRequest) returns (CreateGameResponse);
+  rpc CreateGame(CreateGameRequest) returns (CreateGameResponse) {
+    option (wasmjs.v1.async_method) = {
+      is_async: true
+    };
+  };
 }
 
 message GameConfig {

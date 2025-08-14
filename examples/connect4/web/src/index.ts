@@ -123,6 +123,7 @@ class GamesListManager {
         const result = (window as any).setWasmStorageCallbacks(
             saveCallback,
             loadCallback, 
+            null,
             pollCallback
         );
         
@@ -225,7 +226,7 @@ class GamesListManager {
             return;
         }
 
-        const response = await this.connect4Client.connect4Service.createGame({
+        await this.connect4Client.connect4Service.createGame({
             gameId: gameId,
             creatorName: 'Creator', // Placeholder, will be set when joining slot
             config: {
@@ -237,16 +238,21 @@ class GamesListManager {
                 allowMultipleWinners: false,
                 moveTimeoutSeconds: 30
             }
-        });
-
-        if (response.success) {
-            console.log('Game created successfully in WASM (saved to IndexedDB via callback)');
+        }, (response, error) => {
+            if (error) {
+                alert(`Failed to create game: ${error}`);
+                return;
+            }
             
-            // WASM has already awaited storage completion before returning success
-            // window.location.href = `/${gameId}`;
-        } else {
-            alert(`Failed to create game: ${response.message}`);
-        }
+            if (response) {
+                console.log('Game created successfully in WASM (saved to IndexedDB via callback)');
+                
+                // Navigate to game page
+                window.location.href = `/${gameId}`;
+            } else {
+                alert('Failed to create game: No response received');
+            }
+        });
     }
 
     private getStoredGames(): StoredGame[] {
