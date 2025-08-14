@@ -460,9 +460,9 @@ func (s *Connect4Service) saveGameToStorage(gameId string, game *pb.GameState) {
 	promise := s.saveCallback.Invoke(gameId, string(gameStateJson))
 
 	// Await the result to log success/errors
-	result, err := await(promise)
-	if err != nil {
-		fmt.Printf("Failed to save game state for %s: %v\n", gameId, err)
+	result, errValues := await(promise)
+	if errValues != nil && len(errValues) > 0 {
+		fmt.Printf("Failed to save game state for %s: %v\n", gameId, errValues[0])
 	} else {
 		fmt.Printf("Successfully saved game state for %s\n", gameId)
 		if len(result) > 0 && !result[0].IsNull() {
@@ -482,9 +482,9 @@ func (s *Connect4Service) loadGameFromStorage(gameId string) *pb.GameState {
 	promise := s.loadCallback.Invoke(gameId)
 
 	// Await the Promise result synchronously
-	result, err := await(promise)
-	if err != nil {
-		fmt.Printf("Failed to load game state for %s: %v\n", gameId, err)
+	result, errValues := await(promise)
+	if errValues != nil && len(errValues) > 0 {
+		fmt.Printf("Failed to load game state for %s: %v\n", gameId, errValues[0])
 		return nil
 	}
 

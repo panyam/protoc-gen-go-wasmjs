@@ -19,7 +19,7 @@ import (
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
-	wasmjsv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/connect4/gen/go/wasmjs/v1"
+	wasmjsv1 "github.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1"
 )
 
 // TemplateData holds all data needed for template generation
