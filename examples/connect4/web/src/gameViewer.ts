@@ -282,6 +282,7 @@ class GameViewer {
             const player = this.ui.gameState.players?.[urlPlayerIndex];
             if (player) {
                 console.log('🔗 Auto-selecting player from URL index:', { playerIndex: urlPlayerIndex, playerId: player.id, playerName: player.name });
+                // Use the actual player ID from the game state, not the index
                 this.ui.playerId = player.id;
                 this.savePlayerIdentity(player.id, player.name);
                 return; // Skip showing modal
@@ -502,7 +503,19 @@ class GameViewer {
         if (this.ui.gameState.currentPlayerId !== this.ui.playerId) {
             const currentPlayer = this.ui.gameState.players?.find(p => p.id === this.ui.gameState?.currentPlayerId);
             const selectedPlayer = this.ui.gameState.players?.find(p => p.id === this.ui.playerId);
-            alert(`It's ${currentPlayer?.name}'s turn! You're playing as ${selectedPlayer?.name}.`);
+            
+            console.log('❌ Not your turn:', {
+                currentPlayerId: this.ui.gameState.currentPlayerId,
+                yourPlayerId: this.ui.playerId,
+                currentPlayerName: currentPlayer?.name,
+                selectedPlayerName: selectedPlayer?.name
+            });
+            
+            if (selectedPlayer) {
+                alert(`It's ${currentPlayer?.name}'s turn! You're playing as ${selectedPlayer.name}.`);
+            } else {
+                alert(`It's ${currentPlayer?.name}'s turn! Please select a player first.`);
+            }
             return;
         }
 
@@ -598,10 +611,10 @@ class GameViewer {
                     });
                     
                     // If we had a player selected from URL, maintain that selection
-                    if (previousPlayerId && (this as any).urlPlayerIndex >= 0) {
+                    if ((this as any).urlPlayerIndex >= 0) {
                         const urlPlayerIndex = (this as any).urlPlayerIndex;
                         const urlPlayer = newState.players?.[urlPlayerIndex];
-                        if (urlPlayer && urlPlayer.id !== previousPlayerId) {
+                        if (urlPlayer) {
                             console.log('🔗 Re-applying URL player selection after patch:', { 
                                 urlPlayerIndex, 
                                 newPlayerId: urlPlayer.id, 
@@ -756,13 +769,6 @@ class GameViewer {
 
     private updateGameDisplay(): void {
         if (!this.ui.gameState) return;
-
-        console.log('🎨 updateGameDisplay called:', {
-            currentPlayerId: this.ui.playerId,
-            urlPlayerIndex: (this as any).urlPlayerIndex,
-            gameStatePlayers: this.ui.gameState.players?.map((p, i) => ({ index: i, id: p.id, name: p.name }))
-        });
-
         // Update turn information
         if (this.elements.turnNumber) {
             this.elements.turnNumber.textContent = this.ui.gameState.turnNumber.toString();

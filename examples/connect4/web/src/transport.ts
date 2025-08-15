@@ -48,7 +48,7 @@ export class IndexedDBTransport extends StatefulTransport {
 
     async init(): Promise<void> {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, 2); // Increment version to force schema update
+            const request = indexedDB.open(this.dbName, 4); // Force schema recreation with proper cleanup
             
             request.onerror = () => {
               console.log("Error opening DB: ", request.error)
@@ -62,22 +62,33 @@ export class IndexedDBTransport extends StatefulTransport {
             };
             
             request.onupgradeneeded = (event) => {
-                console.log("Upgrading....")
+                console.log("🔄 Upgrading IndexedDB schema...")
                 const db = (event.target as IDBOpenDBRequest).result;
                 
-                // Create patches store (existing functionality)
-                if (!db.objectStoreNames.contains(this.patchesStoreName)) {
-                    const patchesStore = db.createObjectStore(this.patchesStoreName, { autoIncrement: true });
-                    patchesStore.createIndex('timestamp', 'timestamp', { unique: false });
-                    patchesStore.createIndex('game_id', 'game_id', { unique: false });
+                // Delete existing stores if they exist (force clean recreation)
+                if (db.objectStoreNames.contains(this.patchesStoreName)) {
+                    console.log("🗑️ Deleting existing patches store");
+                    db.deleteObjectStore(this.patchesStoreName);
+                }
+                if (db.objectStoreNames.contains(this.gameStatesStoreName)) {
+                    console.log("🗑️ Deleting existing game states store");
+                    db.deleteObjectStore(this.gameStatesStoreName);
                 }
                 
-                // Create game states store (new functionality)
-                if (!db.objectStoreNames.contains(this.gameStatesStoreName)) {
-                    const gameStatesStore = db.createObjectStore(this.gameStatesStoreName, { keyPath: 'gameId' });
-                    gameStatesStore.createIndex('timestamp', 'timestamp', { unique: false });
-                    gameStatesStore.createIndex('lastModified', 'lastModified', { unique: false });
-                }
+                // Create patches store with auto-increment primary key
+                console.log("🏗️ Creating new patches store");
+                const patchesStore = db.createObjectStore(this.patchesStoreName, { autoIncrement: true });
+                patchesStore.createIndex('timestamp', 'timestamp', { unique: false });
+                patchesStore.createIndex('game_id', 'game_id', { unique: false });
+                patchesStore.createIndex('tabId', 'tabId', { unique: false });
+                
+                // Create game states store
+                console.log("🏗️ Creating new game states store");
+                const gameStatesStore = db.createObjectStore(this.gameStatesStoreName, { keyPath: 'gameId' });
+                gameStatesStore.createIndex('timestamp', 'timestamp', { unique: false });
+                gameStatesStore.createIndex('lastModified', 'lastModified', { unique: false });
+                
+                console.log("✅ IndexedDB schema upgrade complete");
             };
         });
     }
@@ -95,18 +106,42 @@ export class IndexedDBTransport extends StatefulTransport {
             gameId: this.gameId, // Keep both for compatibility
             patches,
             timestamp: Date.now(),
-            tabId: this.getTabId()
+            tabId: this.getTabId(),
+            uniqueId: `${this.gameId}_${Date.now()}_${Math.random()}` // Add unique identifier
         };
+        
+        console.log('💾 Preparing to save patch data:', patchData);
         
         return new Promise((resolve, reject) => {
             const request = store.add(patchData);
             request.onsuccess = () => {
-                console.log('✅ Patches saved to IndexedDB successfully');
+                console.log('✅ Patches saved to IndexedDB successfully with ID:', request.result);
                 resolve();
             };
-            request.onerror = () => {
-                console.error('❌ Failed to save patches to IndexedDB:', request.error);
-                reject(request.error);
+            request.onerror = (event) => {
+                const error = request.error;
+                console.error('❌ Failed to save patches to IndexedDB:', {
+                    error: error,
+                    errorName: error?.name,
+                    errorMessage: error?.message,
+                    patchData: patchData,
+                    storeName: this.patchesStoreName,
+                    event: event
+                });
+                
+                // Try to provide more specific error info
+                if (error?.name === 'ConstraintError') {
+                    console.error('🚨 ConstraintError details:', {
+                        message: 'A constraint was violated. This usually means a unique index or key constraint failed.',
+                        possibleCauses: [
+                            'Duplicate primary key',
+                            'Unique index violation', 
+                            'Invalid key path'
+                        ]
+                    });
+                }
+                
+                reject(error);
             };
         });
     }
@@ -322,6 +357,26 @@ export class IndexedDBTransport extends StatefulTransport {
             this.db.close();
             this.db = null;
         }
+    }
+
+    // Manual cleanup function for debugging
+    async clearDatabase(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (this.db) {
+                this.db.close();
+                this.db = null;
+            }
+            
+            const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+            deleteRequest.onsuccess = () => {
+                console.log('🗑️ Database deleted successfully:', this.dbName);
+                resolve();
+            };
+            deleteRequest.onerror = () => {
+                console.error('❌ Failed to delete database:', deleteRequest.error);
+                reject(deleteRequest.error);
+            };
+        });
     }
 }
 
