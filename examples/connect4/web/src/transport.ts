@@ -48,7 +48,7 @@ export class IndexedDBTransport extends StatefulTransport {
 
     async init(): Promise<void> {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, 1);
+            const request = indexedDB.open(this.dbName, 2); // Increment version to force schema update
             
             request.onerror = () => {
               console.log("Error opening DB: ", request.error)
@@ -67,7 +67,7 @@ export class IndexedDBTransport extends StatefulTransport {
                 
                 // Create patches store (existing functionality)
                 if (!db.objectStoreNames.contains(this.patchesStoreName)) {
-                    const patchesStore = db.createObjectStore(this.patchesStoreName, { keyPath: 'game_id', autoIncrement: true });
+                    const patchesStore = db.createObjectStore(this.patchesStoreName, { autoIncrement: true });
                     patchesStore.createIndex('timestamp', 'timestamp', { unique: false });
                     patchesStore.createIndex('game_id', 'game_id', { unique: false });
                 }
@@ -239,24 +239,45 @@ export class IndexedDBTransport extends StatefulTransport {
             console.log('📡 Checking for new patches:', { 
                 totalResults: results.length, 
                 lastProcessedId: this.lastProcessedId,
-                myTabId: myTabId
+                myTabId: myTabId,
+                sampleResult: results[0] // Debug: see the structure
             });
             
-            const newPatches = results.filter(item => 
-                item.id > this.lastProcessedId && 
-                item.tabId !== myTabId
-            );
+            const newPatches = results.filter(item => {
+                const hasId = 'id' in item;
+                const itemId = hasId ? item.id : item.timestamp; // Fallback to timestamp if no id
+                const isNew = itemId > this.lastProcessedId;
+                const isDifferentTab = item.tabId !== myTabId;
+                
+                console.log('📋 Patch filter debug:', {
+                    hasId,
+                    itemId,
+                    isNew,
+                    isDifferentTab,
+                    lastProcessedId: this.lastProcessedId,
+                    item: item
+                });
+                
+                return isNew && isDifferentTab;
+            });
             
             if (newPatches.length > 0) {
                 console.log('🔔 Found new patches:', newPatches.length);
                 
-                // Sort by ID to maintain order
-                newPatches.sort((a, b) => a.id - b.id);
+                // Sort by ID to maintain order (use timestamp as fallback)
+                newPatches.sort((a, b) => {
+                    const aId = 'id' in a ? a.id : a.timestamp;
+                    const bId = 'id' in b ? b.id : b.timestamp;
+                    return aId - bId;
+                });
                 
                 for (const patchData of newPatches) {
                     console.log('📥 Applying patch from tab:', patchData.tabId, patchData.patches);
                     this.onPatchReceived!(patchData.patches);
-                    this.lastProcessedId = Math.max(this.lastProcessedId, patchData.id);
+                    
+                    // Update lastProcessedId (use timestamp as fallback)
+                    const itemId = 'id' in patchData ? patchData.id : patchData.timestamp;
+                    this.lastProcessedId = Math.max(this.lastProcessedId, itemId);
                 }
             }
         };

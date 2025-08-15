@@ -269,6 +269,13 @@ class GameViewer {
     private checkPlayerSelection(): void {
         if (!this.ui.gameState) return;
         
+        console.log('🔍 checkPlayerSelection called:', {
+            urlPlayerIndex: (this as any).urlPlayerIndex,
+            currentPlayerId: this.ui.playerId,
+            gameStatePlayers: this.ui.gameState.players?.map((p, i) => ({ index: i, id: p.id, name: p.name })),
+            url: window.location.pathname
+        });
+        
         // If URL contains player index, validate and auto-select
         const urlPlayerIndex = (this as any).urlPlayerIndex;
         if (urlPlayerIndex >= 0) {
@@ -279,13 +286,18 @@ class GameViewer {
                 this.savePlayerIdentity(player.id, player.name);
                 return; // Skip showing modal
             } else {
-                console.warn('🚨 Player index from URL not found in game:', urlPlayerIndex);
+                console.warn('🚨 Player index from URL not found in game:', {
+                    urlPlayerIndex,
+                    availablePlayers: this.ui.gameState.players?.length || 0,
+                    players: this.ui.gameState.players
+                });
                 // Player doesn't exist at that index, fall through to normal selection
             }
         }
         
         // If there are existing players, show player selection
         if (this.ui.gameState.players && this.ui.gameState.players.length > 0) {
+            console.log('🎭 Showing player selection modal - no URL player index or player not found');
             this.showPlayerSelectionModal();
         } else {
             // No players yet - user needs to join first
@@ -549,11 +561,56 @@ class GameViewer {
     }
 
     private applyPatches(patches: any[]): void {
+        console.log('🔄 Applying patches:', {
+            patchCount: patches.length,
+            currentPlayerId: this.ui.playerId,
+            urlPlayerIndex: (this as any).urlPlayerIndex,
+            beforeState: this.ui.gameState?.players?.map((p, i) => ({ index: i, id: p.id, name: p.name }))
+        });
+        
         for (const patch of patches) {
             if (patch.operation === 'update' && patch.value) {
                 const newState = GameState.from(patch.value);
                 if (newState) {
+                    // Validate patch: reject if it would make the game state worse
+                    const currentPlayerCount = this.ui.gameState?.players?.length || 0;
+                    const newPlayerCount = newState.players?.length || 0;
+                    
+                    // Don't apply patches that remove all players (likely corrupted)
+                    if (currentPlayerCount > 0 && newPlayerCount === 0) {
+                        console.warn('🚨 Rejecting patch with empty players array:', {
+                            currentPlayerCount,
+                            newPlayerCount,
+                            patchValue: patch.value
+                        });
+                        continue; // Skip this patch
+                    }
+                    
+                    const previousPlayerId = this.ui.playerId;
                     this.ui.gameState = newState;
+                    
+                    console.log('🔄 Game state updated from patch:', {
+                        previousPlayerId,
+                        currentPlayerCount,
+                        newPlayerCount,
+                        newPlayers: newState.players?.map((p, i) => ({ index: i, id: p.id, name: p.name })),
+                        willMaintainPlayerSelection: !!previousPlayerId
+                    });
+                    
+                    // If we had a player selected from URL, maintain that selection
+                    if (previousPlayerId && (this as any).urlPlayerIndex >= 0) {
+                        const urlPlayerIndex = (this as any).urlPlayerIndex;
+                        const urlPlayer = newState.players?.[urlPlayerIndex];
+                        if (urlPlayer && urlPlayer.id !== previousPlayerId) {
+                            console.log('🔗 Re-applying URL player selection after patch:', { 
+                                urlPlayerIndex, 
+                                newPlayerId: urlPlayer.id, 
+                                previousPlayerId 
+                            });
+                            this.ui.playerId = urlPlayer.id;
+                        }
+                    }
+                    
                     this.updateGameDisplay();
                     this.addLogEntry('Game state updated from another player');
                 }
@@ -700,6 +757,12 @@ class GameViewer {
     private updateGameDisplay(): void {
         if (!this.ui.gameState) return;
 
+        console.log('🎨 updateGameDisplay called:', {
+            currentPlayerId: this.ui.playerId,
+            urlPlayerIndex: (this as any).urlPlayerIndex,
+            gameStatePlayers: this.ui.gameState.players?.map((p, i) => ({ index: i, id: p.id, name: p.name }))
+        });
+
         // Update turn information
         if (this.elements.turnNumber) {
             this.elements.turnNumber.textContent = this.ui.gameState.turnNumber.toString();
@@ -708,16 +771,7 @@ class GameViewer {
         // Update current player
         const currentPlayer = this.ui.gameState.players.find(p => p.id === this.ui.gameState!.currentPlayerId);
         const selectedPlayer = this.ui.gameState.players.find(p => p.id === this.ui.playerId);
-        
-        console.log('🎮 Current Player Debug:', {
-            turnNumber: this.ui.gameState.turnNumber,
-            currentPlayerId: this.ui.gameState.currentPlayerId,
-            currentPlayerName: currentPlayer?.name,
-            selectedPlayerId: this.ui.playerId,
-            selectedPlayerName: selectedPlayer?.name,
-            allPlayers: this.ui.gameState.players.map((p, i) => ({ index: i, id: p.id, name: p.name }))
-        });
-        
+    
         if (this.elements.currentPlayerName && currentPlayer) {
             let displayText = currentPlayer.name;
             if (this.ui.playerId) {
@@ -737,14 +791,6 @@ class GameViewer {
                 const playerIndex = this.ui.gameState.players.indexOf(currentPlayer);
                 const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
                 const playerColor = playerColors[playerIndex] || '#e74c3c';
-                
-                console.log('🎨 Current Player Color Debug:', {
-                    currentPlayerName: currentPlayer.name,
-                    playerIndex: playerIndex,
-                    playerColor: playerColor,
-                    allColors: playerColors
-                });
-                
                 this.elements.currentPlayerColor.style.backgroundColor = playerColor;
                 this.elements.currentPlayerColor.innerHTML = '●';
                 this.elements.currentPlayerColor.style.color = playerColor;
@@ -938,6 +984,17 @@ class GameViewer {
             return;
         }
 
+        // Debug: Log game state before joining
+        console.log('🎮 Attempting to join slot:', {
+            selectedSlot: this.selectedSlot,
+            playerName: playerName,
+            gameId: this.ui.gameId,
+            currentGameState: this.ui.gameState,
+            currentPlayers: this.ui.gameState?.players,
+            maxPlayers: this.ui.gameState?.config?.maxPlayers,
+            playerCount: this.ui.gameState?.players?.length || 0
+        });
+
         this.ui.playerId = `player_${Date.now()}`;
     
         await this.ui.connect4Client!.connect4Service.joinGame({
@@ -955,9 +1012,17 @@ class GameViewer {
             }
             
             if (response) {
-                console.log('🧪 Attempting to parse response:', response);
+                console.log('🧪 Join response received:', response);
                 const parsedResponse = JSON.parse(response);
-                console.log('🧪 Parsed response:', parsedResponse);
+                console.log('🧪 Parsed join response:', parsedResponse);
+                
+                if (!parsedResponse.success) {
+                    console.error('🚨 Join failed - Server response:', {
+                        success: parsedResponse.success,
+                        errorMessage: parsedResponse.errorMessage,
+                        fullResponse: parsedResponse
+                    });
+                }
                 
                 if (parsedResponse.success) {
                     this.ui.playerId = parsedResponse.playerId;
