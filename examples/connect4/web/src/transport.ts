@@ -85,11 +85,14 @@ export class IndexedDBTransport extends StatefulTransport {
     async sendPatches(patches: any[]): Promise<void> {
         if (!this.db) throw new Error('Database not initialized');
         
+        console.log('🚀 Sending patches via IndexedDB:', { gameId: this.gameId, patches, tabId: this.getTabId() });
+        
         const transaction = this.db.transaction([this.patchesStoreName], 'readwrite');
         const store = transaction.objectStore(this.patchesStoreName);
         
         const patchData = {
-            gameId: this.gameId,
+            game_id: this.gameId,
+            gameId: this.gameId, // Keep both for compatibility
             patches,
             timestamp: Date.now(),
             tabId: this.getTabId()
@@ -97,8 +100,14 @@ export class IndexedDBTransport extends StatefulTransport {
         
         return new Promise((resolve, reject) => {
             const request = store.add(patchData);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                console.log('✅ Patches saved to IndexedDB successfully');
+                resolve();
+            };
+            request.onerror = () => {
+                console.error('❌ Failed to save patches to IndexedDB:', request.error);
+                reject(request.error);
+            };
         });
     }
 
@@ -225,16 +234,27 @@ export class IndexedDBTransport extends StatefulTransport {
         const request = gameIndex.getAll(this.gameId);
         request.onsuccess = () => {
             const results = request.result;
+            const myTabId = this.getTabId();
+            
+            console.log('📡 Checking for new patches:', { 
+                totalResults: results.length, 
+                lastProcessedId: this.lastProcessedId,
+                myTabId: myTabId
+            });
+            
             const newPatches = results.filter(item => 
                 item.id > this.lastProcessedId && 
-                item.tabId !== this.getTabId()
+                item.tabId !== myTabId
             );
             
             if (newPatches.length > 0) {
+                console.log('🔔 Found new patches:', newPatches.length);
+                
                 // Sort by ID to maintain order
                 newPatches.sort((a, b) => a.id - b.id);
                 
                 for (const patchData of newPatches) {
+                    console.log('📥 Applying patch from tab:', patchData.tabId, patchData.patches);
                     this.onPatchReceived!(patchData.patches);
                     this.lastProcessedId = Math.max(this.lastProcessedId, patchData.id);
                 }
