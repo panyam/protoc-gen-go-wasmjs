@@ -46,6 +46,9 @@ service Connect4Service {
   
   // Drop a piece in a column - returns patches for real-time updates
   rpc DropPiece(DropPieceRequest) returns (DropPieceResponse) {
+    option (wasmjs.v1.async_method) = {
+      is_async: true
+    };
     option (wasmjs.v1.stateful_method) = {
       returns_patches: true
       broadcasts: true
@@ -53,7 +56,11 @@ service Connect4Service {
   };
   
   // Join game as a player
-  rpc JoinGame(JoinGameRequest) returns (JoinGameResponse);
+  rpc JoinGame(JoinGameRequest) returns (JoinGameResponse) {
+    option (wasmjs.v1.async_method) = {
+      is_async: true
+    };
+  };
   
   // Create a new game with custom settings
   rpc CreateGame(CreateGameRequest) returns (CreateGameResponse) {

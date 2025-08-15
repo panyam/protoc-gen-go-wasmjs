@@ -633,6 +633,132 @@ body {
     color: #166534;
 }
 
+.player-slot.occupied.you {
+    border-color: #fbbf24 !important;
+    background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 20%, #f3f4f6 20%, #e3f2fd 100%);
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.player-slot.occupied.you .slot-status {
+    background: #fbbf24;
+    color: #92400e;
+    font-weight: 600;
+}
+
+.player-slot.occupied.you .slot-header {
+    font-weight: 700;
+    color: #92400e;
+}
+
+/* Player selection styles */
+.player-slot.occupied.selected {
+    border-color: #3b82f6 !important;
+    background: linear-gradient(135deg, #dbeafe 0%, #3b82f6 20%, #f3f4f6 20%, #e3f2fd 100%);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.player-slot.occupied.selected .slot-status {
+    background: #3b82f6;
+    color: white;
+    font-weight: 600;
+}
+
+.player-slot.occupied.current-turn {
+    animation: pulse-turn 2s infinite;
+}
+
+.player-slot.occupied.current-turn.selected {
+    border-color: #10b981 !important;
+    background: linear-gradient(135deg, #d1fae5 0%, #10b981 20%, #dbeafe 20%, #e3f2fd 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.player-slot.occupied.current-turn.selected .slot-status {
+    background: #10b981;
+    color: white;
+    font-weight: 700;
+}
+
+@keyframes pulse-turn {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    50% { 
+        transform: scale(1.02);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+    }
+}
+
+.switch-btn {
+    margin-top: 8px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    background: #6b7280;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.switch-btn:hover {
+    background: #4b5563;
+}
+
+/* Player selection modal */
+.player-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.player-option {
+    padding: 15px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.player-option:hover {
+    border-color: #3b82f6;
+    background: #f0f4ff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.1);
+}
+
+.player-option.spectator {
+    border-style: dashed;
+    background: #f9fafb;
+}
+
+.player-option.spectator:hover {
+    border-color: #6b7280;
+    background: #f3f4f6;
+}
+
+.player-option .player-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.current-indicator {
+    color: #10b981;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.modal-note {
+    text-align: center;
+    margin-top: 15px;
+    color: #6b7280;
+}
+
 /* Modal styles */
 .modal {
     position: fixed;

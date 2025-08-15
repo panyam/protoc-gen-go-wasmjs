@@ -88,7 +88,7 @@ class GameViewer {
 
         // Initialize game components
         await this.initializeWasmClient();
-        // await this.initializeStatefulProxy();
+        await this.initializeStatefulProxy();
         await this.loadGameState();
     }
 
@@ -135,11 +135,16 @@ class GameViewer {
         // Simple, clean async callbacks using global transport - let failures bubble up to WASM
         const saveCallback = async (gameId: string, gameStateJson: string) => {
             const gameState = JSON.parse(gameStateJson);
+            
+            console.log('💾 SaveCallback triggered for game:', gameId);
+            console.log('💾 Game state being saved players:', gameState.players);
+            console.log('💾 Number of players being saved:', gameState.players?.length || 0);
+            
             // Save to global DB for cross-page persistence
             await this.globalStorageTransport!.saveGameState(gameId, gameState);
             // Also save to game-specific DB for real-time sync (optional)
             await this.gameTransport!.saveGameState(gameId, gameState);
-            console.log(`Saved game state for ${gameId} to both global and game-specific IndexedDB`);
+            console.log(`💾 Saved game state for ${gameId} to both global and game-specific IndexedDB`);
         };
 
         const loadCallback = async (gameId: string) => {
@@ -225,6 +230,13 @@ class GameViewer {
                 this.ui.gameState = GameState.from(JSON.parse(response));
                 console.log('Loaded game state via callback:', this.ui.gameState);
                 
+                        // Debug: Log the loaded game state
+        console.log('🔍 Loaded game state players:', this.ui.gameState.players);
+        console.log('🔍 Number of players loaded:', this.ui.gameState.players?.length || 0);
+        
+        // Show player selection if players exist
+        this.checkPlayerSelection();
+                
                 // Always show the game interface - users can participate as players or viewers
                 console.log('Game state players:', this.ui.gameState.players);
                 console.log('Game state config:', this.ui.gameState.config);
@@ -236,6 +248,98 @@ class GameViewer {
                 this.showError('Game not found - please check the game ID or create a new game');
             }
         });
+    }
+
+    private checkPlayerSelection(): void {
+        if (!this.ui.gameState) return;
+        
+        // If there are existing players, show player selection
+        if (this.ui.gameState.players && this.ui.gameState.players.length > 0) {
+            this.showPlayerSelectionModal();
+        } else {
+            // No players yet - user needs to join first
+            this.ui.playerId = '';
+            console.log('🎮 No players in game yet - user needs to join');
+        }
+    }
+
+    private showPlayerSelectionModal(): void {
+        if (!this.ui.gameState?.players) return;
+        
+        // Create player selection modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'playerSelectionModal';
+        
+        const playerOptions = this.ui.gameState.players.map((player, index) => {
+            const isCurrentPlayer = player.id === this.ui.gameState?.currentPlayerId;
+            const playerColors = this.getPlayerColors(this.ui.gameState?.config?.maxPlayers || 2);
+            const playerColor = playerColors[index];
+            
+            return `
+                <div class="player-option" data-player-id="${player.id}" onclick="gameViewer.selectPlayer('${player.id}')">
+                    <div class="player-info">
+                        <span class="player-color" style="color: ${playerColor}">●</span>
+                        <span class="player-name">${player.name}</span>
+                        ${isCurrentPlayer ? '<span class="current-indicator">(Current Turn)</span>' : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3>Select Player</h3>
+                <p>Choose which player you want to play as in this tab:</p>
+                <div class="player-selection">
+                    ${playerOptions}
+                    <div class="player-option spectator" onclick="gameViewer.selectPlayer('')">
+                        <div class="player-info">
+                            <span class="player-color">👁️</span>
+                            <span class="player-name">Spectate Only</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-note">
+                    <small>You can play as any existing player or just watch the game.</small>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    public selectPlayer(playerId: string): void {
+        this.ui.playerId = playerId;
+        
+        // Close the selection modal
+        const modal = document.getElementById('playerSelectionModal');
+        if (modal) {
+            modal.remove();
+        }
+        
+        if (playerId) {
+            const player = this.ui.gameState?.players?.find(p => p.id === playerId);
+            console.log('🎮 Selected player:', player?.name, 'ID:', playerId);
+            this.addLogEntry(`You are now playing as ${player?.name}`);
+        } else {
+            console.log('🎮 Selected spectator mode');
+            this.addLogEntry('You are now spectating');
+        }
+        
+        // Update the display to reflect selection
+        this.updateGameDisplay();
+    }
+
+    private savePlayerIdentity(playerId: string, playerName: string): void {
+        const identity = {
+            playerId: playerId,
+            playerName: playerName,
+            joinedAt: Date.now()
+        };
+        
+        localStorage.setItem(`connect4_player_${this.ui.gameId}`, JSON.stringify(identity));
+        console.log('🎮 Saved player identity:', playerName, 'ID:', playerId);
     }
 
 
@@ -286,10 +390,24 @@ class GameViewer {
             throw new Error('WASM client not initialized');
         }
 
-        return await this.ui.connect4Client.connect4Service.joinGame({
-            gameId: this.ui.gameId,
-            playerId: this.ui.playerId,
-            playerName: playerName
+        return new Promise((resolve, reject) => {
+            this.ui.connect4Client!.connect4Service.joinGame({
+                gameId: this.ui.gameId,
+                playerId: this.ui.playerId,
+                playerName: playerName
+            }, (response, error) => {
+                if (error) {
+                    reject(new Error(error));
+                    return;
+                }
+                
+                if (response) {
+                    const parsedResponse = JSON.parse(response);
+                    resolve(parsedResponse);
+                } else {
+                    reject(new Error('No response received'));
+                }
+            });
         });
     }
 
@@ -336,33 +454,78 @@ class GameViewer {
             return;
         }
 
-        try {
-            const response = await this.ui.connect4Client.connect4Service.dropPiece({
-                gameId: this.ui.gameId,
-                playerId: this.ui.playerId,
-                column: column
-            }) as any;
+        // Check if user has selected a player
+        if (!this.ui.playerId) {
+            alert('You need to select a player first! Choose which player you want to play as.');
+            return;
+        }
 
-            if (response.success) {
-                this.ui.gameState = GameState.from(response.data);
-                this.updateGameDisplay();
-                
-                // Send state update through stateful transport
-                if (this.ui.transport) {
-                    await this.ui.transport.sendPatches([{
-                        operation: 'update',
-                        path: '',
-                        value: this.ui.gameState,
-                        timestamp: Date.now(),
-                        source: this.ui.playerId
-                    }]);
+        // Check if it's the selected player's turn
+        if (this.ui.gameState.currentPlayerId !== this.ui.playerId) {
+            const currentPlayer = this.ui.gameState.players?.find(p => p.id === this.ui.gameState?.currentPlayerId);
+            const selectedPlayer = this.ui.gameState.players?.find(p => p.id === this.ui.playerId);
+            alert(`It's ${currentPlayer?.name}'s turn! You're playing as ${selectedPlayer?.name}.`);
+            return;
+        }
+
+        console.log('🎮 Dropping piece:', {
+            gameId: this.ui.gameId,
+            playerId: this.ui.playerId,
+            column: column
+        });
+
+        await this.ui.connect4Client.connect4Service.dropPiece({
+            gameId: this.ui.gameId,
+            playerId: this.ui.playerId,
+            column: column
+        }, (response, error) => {
+            console.log('🎮 Drop piece callback - Response:', response);
+            console.log('🎮 Drop piece callback - Error:', error);
+
+            if (error) {
+                console.error('Failed to drop piece:', error);
+                alert(`Move failed: ${error}`);
+                return;
+            }
+
+            if (response) {
+                try {
+                    const parsedResponse = JSON.parse(response);
+                    console.log('🎮 Parsed drop piece response:', parsedResponse);
+
+                    if (parsedResponse.success) {
+                        // Update game state from response
+                        this.ui.gameState = GameState.from(parsedResponse.gameState || parsedResponse.data);
+                        this.updateGameDisplay();
+                        
+                        // Send state update through stateful transport
+                        if (this.ui.transport) {
+                            this.ui.transport.sendPatches([{
+                                operation: 'update',
+                                path: '',
+                                value: this.ui.gameState,
+                                timestamp: Date.now(),
+                                source: this.ui.playerId
+                            }]);
+                        }
+
+                        // Add move to log
+                        const player = this.ui.gameState.players?.find(p => p.id === this.ui.playerId);
+                        this.addLogEntry(`${player?.name || 'You'} dropped piece in column ${column + 1}`);
+                    } else {
+                        console.error('Failed to drop piece:', parsedResponse.errorMessage);
+                        alert(`Move failed: ${parsedResponse.errorMessage || 'Unknown error'}`);
+                    }
+                } catch (parseError) {
+                    console.error('🎮 Failed to parse drop piece response:', parseError);
+                    console.error('🎮 Raw response was:', response);
+                    alert('Move failed: Invalid response format');
                 }
             } else {
-                console.error('Failed to drop piece:', response.message);
+                console.error('🎮 No response received from dropPiece');
+                alert('Move failed: No response received');
             }
-        } catch (error) {
-            console.error('Error dropping piece:', error);
-        }
+        });
     }
 
     private applyPatches(patches: any[]): void {
@@ -528,8 +691,21 @@ class GameViewer {
 
         // Update current player
         const currentPlayer = this.ui.gameState.players.find(p => p.id === this.ui.gameState!.currentPlayerId);
+        const selectedPlayer = this.ui.gameState.players.find(p => p.id === this.ui.playerId);
+        
         if (this.elements.currentPlayerName && currentPlayer) {
-            this.elements.currentPlayerName.textContent = currentPlayer.name;
+            let displayText = currentPlayer.name;
+            if (this.ui.playerId) {
+                if (currentPlayer.id === this.ui.playerId) {
+                    displayText += ' (Your Turn!)';
+                } else {
+                    displayText += ` | You: ${selectedPlayer?.name || 'Spectating'}`;
+                }
+            } else {
+                displayText += ' | You: Spectating';
+            }
+            
+            this.elements.currentPlayerName.textContent = displayText;
             
             // Update current player color
             if (this.elements.currentPlayerColor) {
@@ -634,15 +810,40 @@ class GameViewer {
             const slotColor = playerColors[slotIndex];
             
             if (player) {
+                // Check different states
+                const isSelectedPlayer = player.id === this.ui.playerId;
+                const isCurrentPlayer = player.id === this.ui.gameState?.currentPlayerId;
+                
+                let extraClasses = '';
+                let indicators = [];
+                let statusText = 'Joined';
+                
+                if (isSelectedPlayer) {
+                    extraClasses += ' selected';
+                    indicators.push('Playing as');
+                    statusText = 'You';
+                }
+                
+                if (isCurrentPlayer) {
+                    extraClasses += ' current-turn';
+                    indicators.push('Current Turn');
+                    if (!isSelectedPlayer) {
+                        statusText = 'Turn Active';
+                    }
+                }
+                
+                const indicatorText = indicators.length > 0 ? ` (${indicators.join(', ')})` : '';
+                
                 // Occupied slot
                 slotsHTML += `
-                    <div class="player-slot occupied" data-slot="${slotIndex}" style="border-left: 4px solid ${slotColor}">
-                        <div class="slot-header">Player ${slotIndex + 1}</div>
+                    <div class="player-slot occupied${extraClasses}" data-slot="${slotIndex}" style="border-left: 4px solid ${slotColor}">
+                        <div class="slot-header">Player ${slotIndex + 1}${indicatorText}</div>
                         <div class="player-info">
                             <span class="player-name">${player.name}</span>
                             <span class="player-color" style="color: ${slotColor}">●</span>
                         </div>
-                        <div class="slot-status">Joined</div>
+                        <div class="slot-status">${statusText}</div>
+                        ${!isSelectedPlayer ? `<button class="switch-btn" onclick="gameViewer.selectPlayer('${player.id}')">Play as ${player.name}</button>` : ''}
                     </div>
                 `;
             } else {
@@ -704,22 +905,61 @@ class GameViewer {
         this.ui.playerId = `player_${Date.now()}`;
         
         try {
-            const response = await this.ui.connect4Client!.connect4Service.joinGame({
+            await this.ui.connect4Client!.connect4Service.joinGame({
                 gameId: this.ui.gameId,
                 playerId: this.ui.playerId,
                 playerName: playerName
+            }, (response, error) => {
+                console.log('🧪 JoinGame callback - Raw response:', response);
+                console.log('🧪 JoinGame callback - Error:', error);
+                
+                if (error) {
+                    console.error('Error joining slot:', error);
+                    alert(`Failed to join slot: ${error}`);
+                    return;
+                }
+                
+                if (response) {
+                    console.log('🧪 Attempting to parse response:', response);
+                    try {
+                        const parsedResponse = JSON.parse(response);
+                        console.log('🧪 Parsed response:', parsedResponse);
+                        
+                        if (parsedResponse.success) {
+                            this.ui.playerId = parsedResponse.playerId;
+                            this.ui.gameState = GameState.from(parsedResponse.gameState);
+                            
+                            console.log('🎉 Player joined successfully!');
+                            console.log('🎉 New game state players:', this.ui.gameState.players);
+                            console.log('🎉 Number of players after join:', this.ui.gameState.players?.length || 0);
+                            
+                            // Save player identity for persistence across refreshes
+                            this.savePlayerIdentity(parsedResponse.playerId, playerName);
+                            
+                            this.showGameInterface();
+                            this.updateGameDisplay();
+                            this.addLogEntry(`${playerName} joined as Player ${this.selectedSlot + 1}`);
+                            
+                            // Close the modal
+                            if (this.elements.joinSlotModal) {
+                                this.elements.joinSlotModal.classList.add('hidden');
+                            }
+                        } else {
+                            console.error('🧪 Join failed with error:', parsedResponse.errorMessage);
+                            alert(`Failed to join slot: ${parsedResponse.errorMessage || 'Unknown error'}`);
+                        }
+                    } catch (parseError) {
+                        console.error('🧪 Failed to parse response JSON:', parseError);
+                        console.error('🧪 Raw response was:', response);
+                        alert('Failed to join slot: Invalid response format');
+                    }
+                } else {
+                    console.error('🧪 No response received from joinGame');
+                    alert('Failed to join slot: No response received');
+                }
             });
-
-            if (response.success) {
-                this.ui.gameState = GameState.from(response.data);
-                this.showGameInterface();
-                this.updateGameDisplay();
-                this.addLogEntry(`${playerName} joined as Player ${this.selectedSlot + 1}`);
-            } else {
-                alert(`Failed to join slot: ${response.message}`);
-            }
         } catch (error) {
-            console.error('Error joining slot:', error);
+            console.error('Error calling joinGame:', error);
             alert('Failed to join slot. Please try again.');
         }
     }
