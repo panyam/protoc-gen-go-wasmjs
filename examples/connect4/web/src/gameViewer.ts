@@ -22,17 +22,33 @@ class GameViewer {
     private gameTransport: IndexedDBTransport | null = null; // For real-time patches
 
     constructor() {
-        // Extract game ID from URL path
+        // Extract game ID and optional player index from URL path
+        // Supports: /gameId and /gameId/players/0 (or 1, 2, etc.)
         const pathParts = window.location.pathname.split('/').filter(p => p);
         const gameId = pathParts[0] || '';
         
+        // Check if this is a player-specific URL: /gameId/players/0
+        let urlPlayerIndex = -1;
+        let urlPlayerId = '';
+        if (pathParts.length >= 3 && pathParts[1] === 'players') {
+            const indexStr = pathParts[2];
+            const index = parseInt(indexStr);
+            if (!isNaN(index) && index >= 0) {
+                urlPlayerIndex = index;
+                console.log('🔗 Player-specific URL detected:', { gameId, playerIndex: urlPlayerIndex });
+            }
+        }
+        
         this.ui = {
             gameId,
-            playerId: '',
+            playerId: urlPlayerId, // Will be set later when we load game state
             gameState: null,
             transport: null,
             connect4Client: null
         };
+        
+        // Store the URL player index for later use
+        (this as any).urlPlayerIndex = urlPlayerIndex;
 
         this.init();
     }
@@ -253,6 +269,21 @@ class GameViewer {
     private checkPlayerSelection(): void {
         if (!this.ui.gameState) return;
         
+        // If URL contains player index, validate and auto-select
+        const urlPlayerIndex = (this as any).urlPlayerIndex;
+        if (urlPlayerIndex >= 0) {
+            const player = this.ui.gameState.players?.[urlPlayerIndex];
+            if (player) {
+                console.log('🔗 Auto-selecting player from URL index:', { playerIndex: urlPlayerIndex, playerId: player.id, playerName: player.name });
+                this.ui.playerId = player.id;
+                this.savePlayerIdentity(player.id, player.name);
+                return; // Skip showing modal
+            } else {
+                console.warn('🚨 Player index from URL not found in game:', urlPlayerIndex);
+                // Player doesn't exist at that index, fall through to normal selection
+            }
+        }
+        
         // If there are existing players, show player selection
         if (this.ui.gameState.players && this.ui.gameState.players.length > 0) {
             this.showPlayerSelectionModal();
@@ -356,32 +387,27 @@ class GameViewer {
 
         this.ui.playerId = `player_${Date.now()}`;
         
-        try {
-            // Try to join existing game first
-            const joinResponse = await this.joinGame(playerName);
+        // Try to join existing game first
+        const joinResponse = await this.joinGame(playerName);
+        
+        if (joinResponse.success) {
+            this.ui.gameState = GameState.from(joinResponse.data);
+            this.showGameInterface();
+            this.updateGameDisplay();
+            this.addLogEntry(`${playerName} joined the game`);
+        } else {
+            // If join fails, try to create a new game
+            console.log('Join failed, attempting to create new game...');
+            const createResponse = await this.createGame(playerName);
             
-            if (joinResponse.success) {
-                this.ui.gameState = GameState.from(joinResponse.data);
+            if (createResponse.success) {
+                this.ui.gameState = GameState.from(createResponse.gameState);
                 this.showGameInterface();
                 this.updateGameDisplay();
-                this.addLogEntry(`${playerName} joined the game`);
+                this.addLogEntry(`Game created by ${playerName}`);
             } else {
-                // If join fails, try to create a new game
-                console.log('Join failed, attempting to create new game...');
-                const createResponse = await this.createGame(playerName);
-                
-                if (createResponse.success) {
-                    this.ui.gameState = GameState.from(createResponse.gameState);
-                    this.showGameInterface();
-                    this.updateGameDisplay();
-                    this.addLogEntry(`Game created by ${playerName}`);
-                } else {
-                    throw new Error(createResponse.errorMessage || 'Failed to create game');
-                }
+                throw new Error(createResponse.errorMessage || 'Failed to create game');
             }
-        } catch (error) {
-            console.error('Error joining game:', error);
-            this.showError('Failed to join or create game. Please try again.');
         }
     }
 
@@ -489,37 +515,31 @@ class GameViewer {
             }
 
             if (response) {
-                try {
-                    const parsedResponse = JSON.parse(response);
-                    console.log('🎮 Parsed drop piece response:', parsedResponse);
+                const parsedResponse = JSON.parse(response);
+                console.log('🎮 Parsed drop piece response:', parsedResponse);
 
-                    if (parsedResponse.success) {
-                        // Update game state from response
-                        this.ui.gameState = GameState.from(parsedResponse.gameState || parsedResponse.data);
-                        this.updateGameDisplay();
-                        
-                        // Send state update through stateful transport
-                        if (this.ui.transport) {
-                            this.ui.transport.sendPatches([{
-                                operation: 'update',
-                                path: '',
-                                value: this.ui.gameState,
-                                timestamp: Date.now(),
-                                source: this.ui.playerId
-                            }]);
-                        }
-
-                        // Add move to log
-                        const player = this.ui.gameState.players?.find(p => p.id === this.ui.playerId);
-                        this.addLogEntry(`${player?.name || 'You'} dropped piece in column ${column + 1}`);
-                    } else {
-                        console.error('Failed to drop piece:', parsedResponse.errorMessage);
-                        alert(`Move failed: ${parsedResponse.errorMessage || 'Unknown error'}`);
+                if (parsedResponse.success) {
+                    // Update game state from response
+                    this.ui.gameState = GameState.from(parsedResponse.gameState || parsedResponse.data);
+                    this.updateGameDisplay();
+                    
+                    // Send state update through stateful transport
+                    if (this.ui.transport) {
+                        this.ui.transport.sendPatches([{
+                            operation: 'update',
+                            path: '',
+                            value: this.ui.gameState,
+                            timestamp: Date.now(),
+                            source: this.ui.playerId
+                        }]);
                     }
-                } catch (parseError) {
-                    console.error('🎮 Failed to parse drop piece response:', parseError);
-                    console.error('🎮 Raw response was:', response);
-                    alert('Move failed: Invalid response format');
+
+                    // Add move to log
+                    const player = this.ui.gameState.players?.find(p => p.id === this.ui.playerId);
+                    this.addLogEntry(`${player?.name || 'You'} dropped piece in column ${column + 1}`);
+                } else {
+                    console.error('Failed to drop piece:', parsedResponse.errorMessage);
+                    alert(`Move failed: ${parsedResponse.errorMessage || 'Unknown error'}`);
                 }
             } else {
                 console.error('🎮 No response received from dropPiece');
@@ -531,15 +551,11 @@ class GameViewer {
     private applyPatches(patches: any[]): void {
         for (const patch of patches) {
             if (patch.operation === 'update' && patch.value) {
-                try {
-                    const newState = GameState.from(patch.value);
-                    if (newState) {
-                        this.ui.gameState = newState;
-                        this.updateGameDisplay();
-                        this.addLogEntry('Game state updated from another player');
-                    }
-                } catch (error) {
-                    console.error('Failed to apply patch:', error);
+                const newState = GameState.from(patch.value);
+                if (newState) {
+                    this.ui.gameState = newState;
+                    this.updateGameDisplay();
+                    this.addLogEntry('Game state updated from another player');
                 }
             }
         }
@@ -835,6 +851,8 @@ class GameViewer {
                 const indicatorText = indicators.length > 0 ? ` (${indicators.join(', ')})` : '';
                 
                 // Occupied slot
+                const isGeneralGamePage = !window.location.pathname.includes('/players/');
+                
                 slotsHTML += `
                     <div class="player-slot occupied${extraClasses}" data-slot="${slotIndex}" style="border-left: 4px solid ${slotColor}">
                         <div class="slot-header">Player ${slotIndex + 1}${indicatorText}</div>
@@ -844,6 +862,7 @@ class GameViewer {
                         </div>
                         <div class="slot-status">${statusText}</div>
                         ${!isSelectedPlayer ? `<button class="switch-btn" onclick="gameViewer.selectPlayer('${player.id}')">Play as ${player.name}</button>` : ''}
+                        ${isGeneralGamePage ? `<button class="direct-link-btn" onclick="gameViewer.goToPlayerIndex(${slotIndex})" title="Go to player-specific page">🔗 Direct Link</button>` : ''}
                     </div>
                 `;
             } else {
@@ -903,65 +922,67 @@ class GameViewer {
         }
 
         this.ui.playerId = `player_${Date.now()}`;
-        
-        try {
-            await this.ui.connect4Client!.connect4Service.joinGame({
-                gameId: this.ui.gameId,
-                playerId: this.ui.playerId,
-                playerName: playerName
-            }, (response, error) => {
-                console.log('🧪 JoinGame callback - Raw response:', response);
-                console.log('🧪 JoinGame callback - Error:', error);
+    
+        await this.ui.connect4Client!.connect4Service.joinGame({
+            gameId: this.ui.gameId,
+            playerId: this.ui.playerId,
+            playerName: playerName
+        }, (response, error) => {
+            console.log('🧪 JoinGame callback - Raw response:', response);
+            console.log('🧪 JoinGame callback - Error:', error);
+            
+            if (error) {
+                console.error('Error joining slot:', error);
+                alert(`Failed to join slot: ${error}`);
+                return;
+            }
+            
+            if (response) {
+                console.log('🧪 Attempting to parse response:', response);
+                const parsedResponse = JSON.parse(response);
+                console.log('🧪 Parsed response:', parsedResponse);
                 
-                if (error) {
-                    console.error('Error joining slot:', error);
-                    alert(`Failed to join slot: ${error}`);
-                    return;
-                }
-                
-                if (response) {
-                    console.log('🧪 Attempting to parse response:', response);
-                    try {
-                        const parsedResponse = JSON.parse(response);
-                        console.log('🧪 Parsed response:', parsedResponse);
-                        
-                        if (parsedResponse.success) {
-                            this.ui.playerId = parsedResponse.playerId;
-                            this.ui.gameState = GameState.from(parsedResponse.gameState);
-                            
-                            console.log('🎉 Player joined successfully!');
-                            console.log('🎉 New game state players:', this.ui.gameState.players);
-                            console.log('🎉 Number of players after join:', this.ui.gameState.players?.length || 0);
-                            
-                            // Save player identity for persistence across refreshes
-                            this.savePlayerIdentity(parsedResponse.playerId, playerName);
-                            
-                            this.showGameInterface();
-                            this.updateGameDisplay();
-                            this.addLogEntry(`${playerName} joined as Player ${this.selectedSlot + 1}`);
-                            
-                            // Close the modal
-                            if (this.elements.joinSlotModal) {
-                                this.elements.joinSlotModal.classList.add('hidden');
-                            }
-                        } else {
-                            console.error('🧪 Join failed with error:', parsedResponse.errorMessage);
-                            alert(`Failed to join slot: ${parsedResponse.errorMessage || 'Unknown error'}`);
+                if (parsedResponse.success) {
+                    this.ui.playerId = parsedResponse.playerId;
+                    this.ui.gameState = GameState.from(parsedResponse.gameState);
+                    
+                    console.log('🎉 Player joined successfully!');
+                    console.log('🎉 New game state players:', this.ui.gameState.players);
+                    console.log('🎉 Number of players after join:', this.ui.gameState.players?.length || 0);
+                    
+                    // Save player identity for persistence across refreshes
+                    this.savePlayerIdentity(parsedResponse.playerId, playerName);
+                    
+                    this.showGameInterface();
+                    this.updateGameDisplay();
+                    this.addLogEntry(`${playerName} joined as Player ${this.selectedSlot + 1}`);
+                    
+                    // Close the modal
+                    if (this.elements.joinSlotModal) {
+                        this.elements.joinSlotModal.classList.add('hidden');
+                    }
+                    
+                    // Redirect to player-specific URL if we're on the general game page
+                    const currentPath = window.location.pathname;
+                    const isGeneralGamePage = !currentPath.includes('/players/');
+                    if (isGeneralGamePage) {
+                        // Find the player index in the game state
+                        const playerIndex = this.ui.gameState.players?.findIndex(p => p.id === parsedResponse.playerId) ?? -1;
+                        if (playerIndex >= 0) {
+                            const playerSpecificUrl = `/${this.ui.gameId}/players/${playerIndex}`;
+                            console.log('🔗 Redirecting to player-specific URL:', playerSpecificUrl);
+                            window.history.pushState({}, '', playerSpecificUrl);
                         }
-                    } catch (parseError) {
-                        console.error('🧪 Failed to parse response JSON:', parseError);
-                        console.error('🧪 Raw response was:', response);
-                        alert('Failed to join slot: Invalid response format');
                     }
                 } else {
-                    console.error('🧪 No response received from joinGame');
-                    alert('Failed to join slot: No response received');
+                    console.error('🧪 Join failed with error:', parsedResponse.errorMessage);
+                    alert(`Failed to join slot: ${parsedResponse.errorMessage || 'Unknown error'}`);
                 }
-            });
-        } catch (error) {
-            console.error('Error calling joinGame:', error);
-            alert('Failed to join slot. Please try again.');
-        }
+            } else {
+                console.error('🧪 No response received from joinGame');
+                alert('Failed to join slot: No response received');
+            }
+        });
     }
 
     // Public methods for HTML onclick handlers
@@ -969,6 +990,12 @@ class GameViewer {
         if (confirm('Are you sure you want to start a new game?')) {
             window.location.reload();
         }
+    }
+    
+    public goToPlayerIndex(playerIndex: number): void {
+        const playerSpecificUrl = `/${this.ui.gameId}/players/${playerIndex}`;
+        console.log('🔗 Navigating to player-specific URL:', playerSpecificUrl);
+        window.location.href = playerSpecificUrl;
     }
 
     public leaveGame(): void {

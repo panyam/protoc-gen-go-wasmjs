@@ -70,10 +70,27 @@ func (s *Server) handleRouting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Game page - shows individual game
-	if isValidGameID(path) {
-		s.handleGamePage(w, r, path)
-		return
+	// Split path into parts
+	pathParts := strings.Split(path, "/")
+	
+	// Game page - handles both /gameId and /gameId/players/0
+	if len(pathParts) >= 1 && isValidGameID(pathParts[0]) {
+		gameID := pathParts[0]
+		
+		// Validate player-specific URL format if present
+		if len(pathParts) == 3 && pathParts[1] == "players" {
+			// Validate that the third part is a valid player index (number)
+			playerIndex := pathParts[2]
+			if isValidPlayerIndex(playerIndex) {
+				// Valid player-specific URL: /gameId/players/0
+				s.handleGamePage(w, r, gameID)
+				return
+			}
+		} else if len(pathParts) == 1 {
+			// Valid general game URL: /gameId
+			s.handleGamePage(w, r, gameID)
+			return
+		}
 	}
 
 	// Not found
@@ -148,6 +165,22 @@ func isValidGameID(gameID string) bool {
 	// Allow alphanumeric characters and hyphens
 	for _, r := range gameID {
 		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-') {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Validate player index format (should be a non-negative integer)
+func isValidPlayerIndex(playerIndex string) bool {
+	if len(playerIndex) == 0 || len(playerIndex) > 3 {
+		return false
+	}
+
+	// Must be all digits
+	for _, r := range playerIndex {
+		if !(r >= '0' && r <= '9') {
 			return false
 		}
 	}
