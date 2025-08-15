@@ -269,6 +269,10 @@ body {
     height: 12px;
     border-radius: 50%;
     border: 1px solid #d1d5db;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .game-card-actions {
@@ -310,6 +314,10 @@ body {
     height: 20px;
     border-radius: 50%;
     border: 2px solid #333;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .game-status {
@@ -574,6 +582,13 @@ body {
 .player-info .player-color {
     font-size: 1.5rem;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    line-height: 1;
 }
 
 .empty-message {
@@ -589,6 +604,13 @@ body {
 .empty-message .player-color {
     font-size: 1.5rem;
     opacity: 0.5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    line-height: 1;
 }
 
 .slot-status {

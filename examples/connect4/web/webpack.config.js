@@ -144,6 +144,7 @@ module.exports = (_env, options) => {
             templateContent: "",
             minify: false, // { collapseWhitespace: false },
             inject: 'body',
+            scriptLoading: 'module', // Add this to generate type="module" script tags
           }),
       ),
 

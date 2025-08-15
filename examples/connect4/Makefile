@@ -4,7 +4,7 @@
 .PHONY: all generate wasm web clean test 
 
 # Run generate seperately for now
-all: parent generate wasm web
+all: parent wasm web
 
 parent:
 	cd ../../ && make
