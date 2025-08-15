@@ -709,6 +709,15 @@ class GameViewer {
         const currentPlayer = this.ui.gameState.players.find(p => p.id === this.ui.gameState!.currentPlayerId);
         const selectedPlayer = this.ui.gameState.players.find(p => p.id === this.ui.playerId);
         
+        console.log('🎮 Current Player Debug:', {
+            turnNumber: this.ui.gameState.turnNumber,
+            currentPlayerId: this.ui.gameState.currentPlayerId,
+            currentPlayerName: currentPlayer?.name,
+            selectedPlayerId: this.ui.playerId,
+            selectedPlayerName: selectedPlayer?.name,
+            allPlayers: this.ui.gameState.players.map((p, i) => ({ index: i, id: p.id, name: p.name }))
+        });
+        
         if (this.elements.currentPlayerName && currentPlayer) {
             let displayText = currentPlayer.name;
             if (this.ui.playerId) {
@@ -728,6 +737,14 @@ class GameViewer {
                 const playerIndex = this.ui.gameState.players.indexOf(currentPlayer);
                 const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
                 const playerColor = playerColors[playerIndex] || '#e74c3c';
+                
+                console.log('🎨 Current Player Color Debug:', {
+                    currentPlayerName: currentPlayer.name,
+                    playerIndex: playerIndex,
+                    playerColor: playerColor,
+                    allColors: playerColors
+                });
+                
                 this.elements.currentPlayerColor.style.backgroundColor = playerColor;
                 this.elements.currentPlayerColor.innerHTML = '●';
                 this.elements.currentPlayerColor.style.color = playerColor;
