@@ -105,6 +105,7 @@ message PlayerStats {
   int32 winning_lines = 2; // Number of connect-4s achieved
   bool has_won = 3;
   int64 total_move_time = 4; // Milliseconds
+  int32 rank = 5; // Player's final ranking (1st place, 2nd place, etc.) - 0 means not ranked yet
 }
 
 // Request/Response messages

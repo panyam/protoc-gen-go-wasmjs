@@ -513,6 +513,13 @@ class GameViewer {
             return;
         }
 
+        // Check if the selected player has already won
+        const playerStats = (this.ui.gameState?.playerStats as any)?.[this.ui.playerId];
+        if (playerStats?.hasWon) {
+            alert('You have already won! Winners cannot make more moves.');
+            return;
+        }
+
         // Check if it's the selected player's turn
         if (this.ui.gameState.currentPlayerId !== this.ui.playerId) {
             const currentPlayerIndex = parseInt(this.ui.gameState.currentPlayerId || '-1');
@@ -885,6 +892,13 @@ class GameViewer {
         return defaultColors.slice(0, maxPlayers);
     }
 
+    private getRankSuffix(rank: number): string {
+        if (rank === 1) return 'st';
+        if (rank === 2) return 'nd';
+        if (rank === 3) return 'rd';
+        return 'th';
+    }
+
     private generatePlayerSlots(): void {
         console.log('generatePlayerSlots called');
         console.log('slotsContainer exists:', !!this.elements.slotsContainer);
@@ -916,6 +930,11 @@ class GameViewer {
                 const isSelectedPlayer = slotIndex.toString() === this.ui.playerId;
                 const isCurrentPlayer = slotIndex.toString() === this.ui.gameState?.currentPlayerId;
                 
+                // Get player stats for ranking and win status
+                const playerStats = (this.ui.gameState?.playerStats as any)?.[player.id];
+                const hasWon = playerStats?.hasWon || false;
+                const rank = playerStats?.rank || 0;
+                
                 let extraClasses = '';
                 let indicators = [];
                 let statusText = 'Joined';
@@ -926,12 +945,19 @@ class GameViewer {
                     statusText = 'You';
                 }
                 
-                if (isCurrentPlayer) {
+                if (isCurrentPlayer && !hasWon) {
                     extraClasses += ' current-turn';
                     indicators.push('Current Turn');
                     if (!isSelectedPlayer) {
                         statusText = 'Turn Active';
                     }
+                }
+                
+                if (hasWon) {
+                    extraClasses += ' winner';
+                    const rankSuffix = this.getRankSuffix(rank);
+                    indicators.push(`${rank}${rankSuffix} Place`);
+                    statusText = hasWon ? `Won - ${rank}${rankSuffix}` : statusText;
                 }
                 
                 const indicatorText = indicators.length > 0 ? ` (${indicators.join(', ')})` : '';
@@ -947,8 +973,8 @@ class GameViewer {
                             <span class="player-color" style="color: ${slotColor}">●</span>
                         </div>
                         <div class="slot-status">${statusText}</div>
-                        ${!isSelectedPlayer ? `<button class="switch-btn" onclick="gameViewer.selectPlayerByIndex(${slotIndex})">Play as ${player.name}</button>` : ''}
-                        ${isGeneralGamePage ? `<button class="direct-link-btn" onclick="gameViewer.goToPlayerIndex(${slotIndex})" title="Go to player-specific page">🔗 Direct Link</button>` : ''}
+                        ${!isSelectedPlayer && !hasWon ? `<button class="switch-btn" onclick="gameViewer.selectPlayerByIndex(${slotIndex})">Play as ${player.name}</button>` : ''}
+                        ${isGeneralGamePage ? `<button class="direct-link-btn" onclick="gameViewer.goToPlayerIndex(${slotIndex})" title="Go to player-specific page">Direct Link</button>` : ''}
                     </div>
                 `;
             } else {

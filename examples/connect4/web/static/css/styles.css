@@ -690,6 +690,34 @@ body {
     }
 }
 
+/* Winner styles */
+.player-slot.occupied.winner {
+    border-color: #ffd700 !important;
+    background: linear-gradient(135deg, #fffbeb 0%, #ffd700 20%, #f3f4f6 20%, #e3f2fd 100%);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+    animation: winner-glow 3s infinite;
+}
+
+.player-slot.occupied.winner .slot-status {
+    background: #ffd700;
+    color: #92400e;
+    font-weight: 700;
+}
+
+.player-slot.occupied.winner .slot-header {
+    font-weight: 700;
+    color: #92400e;
+}
+
+@keyframes winner-glow {
+    0%, 100% { 
+        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+    }
+    50% { 
+        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+    }
+}
+
 .switch-btn {
     margin-top: 8px;
     padding: 4px 8px;

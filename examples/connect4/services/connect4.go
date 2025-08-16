@@ -97,6 +97,7 @@ func (s *Connect4Service) CreateGame(ctx context.Context, req *pb.CreateGameRequ
 		WinningLines:  0,
 		HasWon:        false,
 		TotalMoveTime: 0,
+		Rank:          0, // 0 means not ranked yet
 	}
 
 	s.games[gameId] = game
@@ -163,6 +164,7 @@ func (s *Connect4Service) JoinGame(ctx context.Context, req *pb.JoinGameRequest)
 		WinningLines:  0,
 		HasWon:        false,
 		TotalMoveTime: 0,
+		Rank:          0, // 0 means not ranked yet
 	}
 
 	// Start game if we have enough players
@@ -227,6 +229,14 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 		}, nil
 	}
 
+	// Check if player has already won (can't make more moves)
+	if stats, exists := game.PlayerStats[req.PlayerId]; exists && stats.HasWon {
+		return &pb.DropPieceResponse{
+			Success:      false,
+			ErrorMessage: "You have already won and cannot make more moves",
+		}, nil
+	}
+
 	if req.Column < 0 || req.Column >= game.Config.BoardWidth {
 		return &pb.DropPieceResponse{
 			Success:      false,
@@ -281,23 +291,16 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 	}
 
 	if len(winningLines) > 0 {
-		// Player wins!
-		game.Status = pb.GameStatus_GAME_STATUS_FINISHED
+		// Player wins! Add to winners and assign ranking
 		game.Winners = append(game.Winners, req.PlayerId)
+		currentRank := int32(len(game.Winners)) // 1st place = 1, 2nd place = 2, etc.
 
 		// Update player stats
 		if stats, exists := game.PlayerStats[req.PlayerId]; exists {
 			stats.HasWon = true
 			stats.WinningLines = int32(len(winningLines))
+			stats.Rank = currentRank
 		}
-
-		patches = append(patches, &wasmjs.MessagePatch{
-			Operation:    wasmjs.PatchOperation_SET,
-			FieldPath:    "status",
-			ValueJson:    fmt.Sprintf("%d", int(pb.GameStatus_GAME_STATUS_FINISHED)),
-			ChangeNumber: s.changeCounter,
-			Timestamp:    time.Now().UnixMicro(),
-		})
 
 		patches = append(patches, &wasmjs.MessagePatch{
 			Operation:    wasmjs.PatchOperation_INSERT_LIST,
@@ -306,19 +309,35 @@ func (s *Connect4Service) DropPiece(ctx context.Context, req *pb.DropPieceReques
 			ChangeNumber: s.changeCounter,
 			Timestamp:    time.Now().UnixMicro(),
 		})
-	} else {
-		// Switch to next player
-		currentPlayerIndex := -1
-		for i, player := range game.Players {
-			if player.Id == req.PlayerId {
-				currentPlayerIndex = i
-				break
+
+		// Check if game should end
+		activePlayers := s.getActivePlayers(game)
+		boardFull := s.isBoardFull(game)
+		
+		if len(activePlayers) <= 1 || boardFull {
+			// Game ends - assign final ranking to remaining players
+			if len(activePlayers) == 1 {
+				// Last remaining player gets last place
+				lastPlayerId := activePlayers[0]
+				if stats, exists := game.PlayerStats[lastPlayerId]; exists {
+					stats.Rank = int32(len(game.Players))
+				}
 			}
+			
+			game.Status = pb.GameStatus_GAME_STATUS_FINISHED
+			patches = append(patches, &wasmjs.MessagePatch{
+				Operation:    wasmjs.PatchOperation_SET,
+				FieldPath:    "status",
+				ValueJson:    fmt.Sprintf("%d", int(pb.GameStatus_GAME_STATUS_FINISHED)),
+				ChangeNumber: s.changeCounter,
+				Timestamp:    time.Now().UnixMicro(),
+			})
 		}
-		if currentPlayerIndex >= 0 {
-			nextPlayerIndex := (currentPlayerIndex + 1) % len(game.Players)
-			game.CurrentPlayerId = game.Players[nextPlayerIndex].Id
-		}
+	}
+
+	// Switch to next active player (skip winners)
+	if game.Status != pb.GameStatus_GAME_STATUS_FINISHED {
+		s.switchToNextActivePlayer(game, req.PlayerId)
 		game.TurnNumber++
 
 		patches = append(patches, &wasmjs.MessagePatch{
@@ -379,6 +398,58 @@ func (s *Connect4Service) checkForWinningLines(game *pb.GameState, row, col int3
 	}
 
 	return winningLines
+}
+
+// getActivePlayers returns a list of player IDs who haven't won yet
+func (s *Connect4Service) getActivePlayers(game *pb.GameState) []string {
+	var activePlayers []string
+	for _, player := range game.Players {
+		if stats, exists := game.PlayerStats[player.Id]; !exists || !stats.HasWon {
+			activePlayers = append(activePlayers, player.Id)
+		}
+	}
+	return activePlayers
+}
+
+// isBoardFull checks if the game board is completely full
+func (s *Connect4Service) isBoardFull(game *pb.GameState) bool {
+	for _, height := range game.Board.ColumnHeights {
+		if height < game.Config.BoardHeight {
+			return false
+		}
+	}
+	return true
+}
+
+// switchToNextActivePlayer switches to the next player who hasn't won yet
+func (s *Connect4Service) switchToNextActivePlayer(game *pb.GameState, currentPlayerId string) {
+	currentPlayerIndex := -1
+	for i, player := range game.Players {
+		if player.Id == currentPlayerId {
+			currentPlayerIndex = i
+			break
+		}
+	}
+	
+	if currentPlayerIndex < 0 {
+		return // Player not found, shouldn't happen
+	}
+	
+	// Find next active player (who hasn't won)
+	playerCount := len(game.Players)
+	for i := 1; i <= playerCount; i++ {
+		nextIndex := (currentPlayerIndex + i) % playerCount
+		nextPlayerId := game.Players[nextIndex].Id
+		
+		// Check if this player is still active (hasn't won)
+		if stats, exists := game.PlayerStats[nextPlayerId]; !exists || !stats.HasWon {
+			game.CurrentPlayerId = nextPlayerId
+			return
+		}
+	}
+	
+	// If we get here, all players have won (shouldn't happen in normal flow)
+	// Keep current player as fallback
 }
 
 // findLineInDirection finds the longest continuous line in a given direction
