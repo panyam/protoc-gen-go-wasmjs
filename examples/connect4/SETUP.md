@@ -80,9 +80,13 @@ npm run build                # Production build
 
 ## Features Demonstrated
 
-- **Real-time multiplayer**: Cross-tab via IndexedDB + polling
-- **WASM integration**: Go service compiled to WebAssembly
-- **TypeScript generation**: Fully-typed WASM client bindings  
+- **Real-time multiplayer**: Cross-tab via enhanced IndexedDB + polling and BroadcastChannel
+- **Player-specific URLs**: Direct links like `/GameName/players/0` for seamless sharing
+- **Simple player IDs**: Clean numeric indices (0, 1) instead of complex timestamps
+- **Auto-player selection**: URLs automatically select the correct player identity
+- **WASM integration**: Go service compiled to WebAssembly with async callback support
+- **TypeScript generation**: Fully-typed WASM client bindings with async method support
+- **Enhanced transport layer**: Fixed IndexedDB schema with proper patch validation
 - **Pluggable transports**: IndexedDB, BroadcastChannel, WebSocket-ready
-- **State persistence**: Games survive browser restarts
+- **State persistence**: Games survive browser restarts with player identity restoration
 - **Independent module**: Self-contained with own go.mod

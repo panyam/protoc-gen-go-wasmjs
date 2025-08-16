@@ -12,17 +12,22 @@ Stateful proxies provide:
 4. **Type Safety**: Generated TypeScript clients with full type checking
 5. **Persistent State**: LocalStorage + IndexedDB for cross-session continuity
 
-## 🎮 Game Features
+## Game Features
 
 - **2 players** with unique colors (configurable for more)
+- **Simple player IDs** - Clean numeric indices (0, 1, 2) instead of complex timestamps
+- **Player-specific URLs** - Direct links like `/GameName/players/0` for seamless sharing
+- **Auto-player selection** - URLs automatically select the correct player
 - **Standard 7x6 board** (configurable sizes)
 - **Real-time collaboration** via pluggable transport system
+- **Enhanced cross-tab sync** - Fixed IndexedDB constraint errors with proper schema management
 - **Gravity-based piece placement**
 - **Turn-based gameplay** with validation
 - **Line detection** (horizontal, vertical, diagonal)
 - **Game persistence** across browser sessions
+- **Player selection modal** - Choose your player identity when accessing general game URLs
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐    IndexedDB     ┌─────────────────┐
@@ -47,7 +52,7 @@ Stateful proxies provide:
                    └─────────────────┘
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Go 1.23+
@@ -75,7 +80,7 @@ Stateful proxies provide:
 make test
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 examples/connect4/
@@ -97,7 +102,7 @@ examples/connect4/
 └── Makefile                  # Build automation
 ```
 
-## 🎯 Key Stateful Features
+## Key Stateful Features
 
 ### Service Annotations
 ```protobuf
@@ -127,71 +132,95 @@ service Connect4Service {
 }
 ```
 
+### Player-Specific URLs
+
+The Connect4 example now supports clean, shareable player-specific URLs:
+
+```
+General game view:           /GameName
+Player-specific URLs:        /GameName/players/0
+                            /GameName/players/1
+Direct creation and join:    Create game -> auto-redirect to /GameName/players/0
+```
+
+**Features:**
+- **Simple Player IDs**: Uses clean numeric indices (0, 1) instead of complex timestamps
+- **Auto-Selection**: Player-specific URLs automatically select the correct player
+- **Direct Sharing**: Send `/TestGame/players/1` to let someone join as Player 2
+- **Player Selection Modal**: General URLs show a modal to choose your player identity
+- **Cross-Tab Consistency**: Player identity persists across tabs and browser sessions
+
 ### Generated TypeScript Client
 ```typescript
-// Auto-generated WASM client
+// Auto-generated WASM client with async method support
 import Connect4Client from './gen/wasmts/multiplayer_connect4Client.client';
 
 const client = new Connect4Client();
 await client.loadWasm('/static/wasm/multiplayer_connect4.wasm');
 
-// Synchronous method calls (traditional pattern)
-const response = await client.connect4Service.dropPiece({
-  gameId: 'my-game',
-  playerId: 'player_123',
-  column: 3
-});
-
-// Async method calls with callbacks (for IndexedDB operations)
-await client.connect4Service.getGame({ gameId: 'my-game' }, (response, error) => {
+// Async method calls with callbacks (prevents IndexedDB deadlocks)
+await client.connect4Service.joinGame({ 
+  gameId: 'my-game', 
+  playerName: 'Player1' 
+}, (response, error) => {
   if (error) {
-    console.error('Failed to load game:', error);
+    console.error('Failed to join game:', error);
     return;
   }
   
   const gameState = JSON.parse(response);
-  console.log('Game loaded:', gameState);
+  console.log('Joined as player:', gameState.playerId); // Simple ID like "0" or "1"
+});
+
+// Synchronous method calls for game moves
+const response = await client.connect4Service.dropPiece({
+  gameId: 'my-game',
+  playerId: '0',  // Simple numeric player ID
+  column: 3
 });
 ```
 
 ### Real-time Updates
 ```typescript
-// Pluggable transport system
+// Enhanced transport system with fixed IndexedDB schema
 const transport = TransportFactory.create(gameId, 'indexeddb');
 
 transport.subscribe((patches) => {
-  // Apply incoming state changes
+  // Apply incoming state changes with validation
   statefulProxy.applyPatches(patches);
   updateGameUI();
 });
 
-// Send state changes to other clients
+// Send state changes to other clients with proper patch structure
 await transport.sendPatches([{
   operation: 'update',
   path: 'board.rows[2].cells[3]',
-  value: 'player_123'
+  value: '0',  // Simple player ID
+  source: '0', // Who made the change
+  timestamp: Date.now(),
+  uniqueId: `${gameId}_${Date.now()}_${Math.random()}`
 }]);
 ```
 
-## 🧪 Game Rules & Validation
+## Game Rules & Validation
 
 ### Valid Moves
-✅ **Turn-based** - Only current player can move  
-✅ **Column bounds** - Must be within board width  
-✅ **Available space** - Column not full  
-✅ **Gravity** - Pieces fall to lowest position  
+- **Turn-based** - Only current player can move  
+- **Column bounds** - Must be within board width  
+- **Available space** - Column not full  
+- **Gravity** - Pieces fall to lowest position  
 
 ### Invalid Moves
-❌ **Out of turn** - Not your turn  
-❌ **Full column** - No space available  
-❌ **Invalid column** - Outside board bounds  
+- **Out of turn** - Not your turn  
+- **Full column** - No space available  
+- **Invalid column** - Outside board bounds  
 
 ### Winning Conditions
-🏆 **Connect 4** - Horizontal, vertical, or diagonal  
-🏆 **Multiple winners** - Game continues (configurable)  
-🏆 **Score tracking** - Pieces played, lines formed  
+- **Connect 4** - Horizontal, vertical, or diagonal  
+- **Multiple winners** - Game continues (configurable)  
+- **Score tracking** - Pieces played, lines formed  
 
-## 📊 Performance Benefits
+## Performance Benefits
 
 - **Local-First** - Instant UI feedback with localStorage persistence
 - **Differential Patches** - Only send changes, not full state  
@@ -199,7 +228,7 @@ await transport.sendPatches([{
 - **Cross-Session Persistence** - Resume games across browser restarts
 - **WASM Performance** - Game logic runs in compiled WebAssembly
 
-## 🔧 Development
+## Development
 
 ### Clean Generated Files
 ```bash

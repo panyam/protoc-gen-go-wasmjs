@@ -309,6 +309,11 @@ service LibraryService {
     option (wasmjs.v1.wasm_method_name) = "searchBooks";
   }
   
+  // Async method with callback support (prevents browser deadlocks)
+  rpc LoadData(LoadDataRequest) returns (LoadDataResponse) {
+    option (wasmjs.v1.async_method) = { is_async: true };
+  }
+  
   // Exclude from WASM generation
   rpc AdminMethod(AdminRequest) returns (AdminResponse) {
     option (wasmjs.v1.wasm_method_exclude) = true;
@@ -539,7 +544,9 @@ To publish this plugin to buf.build (for maintainers):
 │   ├── generator.go             # Main generation logic
 │   └── types.go                 # Template data structures
 ├── proto/wasmjs/v1/             # WASM annotation definitions
-├── example/                     # LibraryService example
+├── examples/                    # Comprehensive examples
+│   ├── library/                 # LibraryService example
+│   └── connect4/                # Real-time multiplayer Connect4 with stateful proxies
 └── PLAN.md                      # Development progress tracking
 ```
 
@@ -557,8 +564,9 @@ To publish this plugin to buf.build (for maintainers):
 # Build the plugin
 go build ./cmd/protoc-gen-go-wasmjs
 
-# Test with example
-cd example && buf generate
+# Test with examples
+cd examples/library && buf generate
+cd examples/connect4 && make all
 
 # Run tests
 go test ./...

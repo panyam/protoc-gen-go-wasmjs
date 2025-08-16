@@ -1,63 +1,82 @@
 # Next Steps - Connect4 Example
 
-## Recently Completed ✅
+## Recently Completed
+
+### Player Management System
+- **Simple Player IDs**: Converted from complex timestamps to clean numeric indices (0, 1, 2)
+- **Player-Specific URLs**: Implemented `/GameName/players/0` pattern for direct player access
+- **Auto-Player Selection**: URL-based automatic player selection with localStorage persistence
+- **Cross-Tab Player Sync**: Player identity maintained across browser tabs and sessions
+
+### Enhanced Transport System
+- **Fixed IndexedDB Schema**: Resolved ConstraintError issues with auto-increment patches store
+- **Patch Validation**: Added validation to prevent race conditions and empty state overwrites
+- **Unique Patch IDs**: Implemented proper patch uniqueness for reliable cross-tab sync
+- **Enhanced BroadcastChannel**: Improved real-time cross-tab messaging
 
 ### Async Callback Pattern Implementation
 - **Problem Solved**: Browser→WASM→Browser deadlock when calling IndexedDB from WASM methods
 - **Solution**: Implemented async method annotations with direct callback support
-
-#### Key Changes:
-1. **Protobuf Generator Enhancements**:
-   - Added `AsyncMethodOptions` to `wasmjs/v1/annotations.proto`
-   - Extended method options with `async_method` annotation
-   - Updated TypeScript and WASM template generators for callback support
-
-2. **Service Methods Made Async**:
-   - `GetGame` marked as async (eliminates deadlock when loading from IndexedDB)
-   - `CreateGame` marked as async (eliminates deadlock when saving to IndexedDB)
-   - Removed internal goroutines from service methods (WASM wrapper now handles async)
-
-3. **Frontend Integration**:
-   - Updated `gameViewer.ts` to use callback-based `getGame()` 
-   - Updated `index.ts` and `gameViewer.ts` for callback-based `createGame()`
-   - Fixed infinite loop issues in game page loading
-
-4. **Generator Templates Enhanced**:
-   - TypeScript client generates different signatures for async vs sync methods
-   - WASM wrapper generates goroutine-based execution for async methods
-   - Direct `js.Value` callback parameter passing for clean async handling
+- **Service Methods Made Async**: `GetGame`, `CreateGame`, `JoinGame`, and `DropPiece` support async callbacks
+- **Generator Templates Enhanced**: TypeScript and WASM templates generate proper async patterns
 
 ## Current State
 - ✅ Async callback pattern fully implemented
 - ✅ Browser→WASM→Browser deadlock resolved  
-- ✅ Infinite loop in game page loading fixed
-- ✅ Clean TypeScript API with proper async/callback patterns
+- ✅ Player-specific URLs with auto-selection working
+- ✅ Simple numeric player ID system implemented
+- ✅ Enhanced cross-tab synchronization with fixed IndexedDB schema
+- ✅ Player selection modal and direct link buttons
+- ✅ Game creation, joining, and piece dropping all functional
+- ✅ Transport layer enhanced with proper patch validation
 
 ## Immediate Next Steps
 
 ### 1. Testing & Validation
-- [ ] Regenerate protobuf files and WASM artifacts
-- [ ] Test game creation flow (index page → game page)
-- [ ] Test game loading flow (direct game URL access)
-- [ ] Verify IndexedDB storage operations work without deadlocks
+- ✅ Test game creation flow (index page → player-specific URL)
+- ✅ Test game loading flow (direct game URL access)
+- ✅ Verify IndexedDB storage operations work without deadlocks
+- ✅ Test cross-tab real-time synchronization
+- [ ] Test edge cases in player URL handling
+- [ ] Validate game state persistence across browser restarts
 
 ### 2. Code Cleanup
+- ✅ Updated all player ID references to use simple indices
+- ✅ Enhanced error handling in async callback chains
 - [ ] Remove legacy static JS files if no longer needed
-- [ ] Update any remaining sync calls to use new async pattern
-- [ ] Clean up commented code and debug logs
+- [ ] Clean up remaining debug logs (optional - currently helpful for troubleshooting)
 
 ### 3. Documentation Updates
-- [ ] Update README with new async callback patterns
-- [ ] Document the deadlock solution for future reference
-- [ ] Add examples of how to use async methods
+- ✅ Update README with player-specific URLs and simple player IDs
+- ✅ Update DEMO_STATUS with current features
+- ✅ Update ARCHITECTURE with player management system
+- [ ] Update SETUP.md if build process has changed
 
 ## Technical Debt
 - [ ] Static JS files (`connect4-game.js`, etc.) may need updating or removal
 - [ ] Consider consolidating storage callback patterns
-- [ ] Review error handling in async callback chains
 
 ## Future Enhancements
+
+### Cross-Browser Multiplayer
+- [ ] Implement WebSocket server endpoint for real-time cross-browser play
+- [ ] Add server-side game room management
+- [ ] Implement transport auto-upgrade (IndexedDB → WebSocket when online)
+
+### Enhanced Player Features
+- [ ] Implement player authentication/accounts
+- [ ] Add player statistics and game history
+- [ ] Support for more than 2 players
+- [ ] Implement spectator mode
+
+### Game Features
+- [ ] Add game replay functionality
+- [ ] Implement different board sizes (configurable)
+- [ ] Add time limits per move
+- [ ] Implement tournament brackets
+
+### Technical Improvements
 - [ ] Add timeout handling for async operations
 - [ ] Implement retry logic for failed storage operations
 - [ ] Add progress indicators for async operations in UI
-- [ ] Consider extending async pattern to other methods that may benefit
+- [ ] Optimize patch sizes for large game states

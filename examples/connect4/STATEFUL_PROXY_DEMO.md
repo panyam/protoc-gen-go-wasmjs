@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Connect4 example demonstrates a **pluggable stateful proxy system** that can seamlessly switch between different transport mechanisms for real-time collaboration.
+This Connect4 example demonstrates a **pluggable stateful proxy system** with **enhanced player management** that can seamlessly switch between different transport mechanisms for real-time collaboration. Recent updates include player-specific URLs, simple player IDs, and improved cross-tab synchronization.
 
 ## Architecture
 
@@ -31,8 +31,8 @@ This Connect4 example demonstrates a **pluggable stateful proxy system** that ca
 
 ### 1. IndexedDB + Polling (Default)
 - **Use Case**: Cross-tab collaboration with persistence
-- **URL**: `http://localhost:8080/{gameId}` (automatic)
-- **Pros**: Persistent across browser sessions, works offline
+- **URL**: `http://localhost:8080/{gameId}` or `http://localhost:8080/{gameId}/players/{playerIndex}`
+- **Pros**: Persistent across browser sessions, works offline, enhanced schema (v4) prevents constraint errors
 - **Cons**: ~1 second polling delay
 
 ### 2. BroadcastChannel
@@ -58,10 +58,12 @@ This Connect4 example demonstrates a **pluggable stateful proxy system** that ca
 ### 1. Basic Cross-Tab Communication
 1. **Start server**: `make all` or `make web`
 2. **Open**: `http://localhost:8080/`
-3. **Create game**: Enter Game ID "test-game", Player Name "Player1"
-4. **Open same game in new tab**: Navigate to `http://localhost:8080/test-game`
+3. **Create game**: Enter Game ID "TestGame", Player Name "Creator"
+   - Automatically redirected to `http://localhost:8080/TestGame/players/0`
+4. **Open player-specific URL in new tab**: Navigate to `http://localhost:8080/TestGame/players/1`
+   - Or use general URL `http://localhost:8080/TestGame` and select Player 2 from modal
 5. **Join as Player2**: Enter Player Name "Player2"
-6. **Test moves**: Drop pieces and watch real-time sync via IndexedDB
+6. **Test moves**: Drop pieces and watch real-time sync via enhanced IndexedDB + BroadcastChannel
 
 ### 2. Runtime Transport Switching
 ```javascript
@@ -121,24 +123,28 @@ if (navigator.onLine) {
 
 ## WASM Integration Flow
 
-The system integrates seamlessly with the WASM service:
+The system integrates seamlessly with the WASM service using async callbacks:
 
 1. **User Action** → Click column in UI
-2. **TypeScript** → `gameViewer.dropPiece(column)`
-3. **WASM Call** → `connect4Client.callMethod('connect4Service.dropPiece', {gameId, playerId, column})`
-4. **Go Service** → Validates move, updates game state, returns response
-5. **State Update** → Update local game state from WASM response
-6. **Transport Broadcast** → `transport.sendPatches([...patches])`
-7. **Cross-Tab Sync** → Other tabs receive patches via IndexedDB polling
-8. **UI Update** → All game UIs reflect the change with ~1 second delay
+2. **TypeScript** → `gameViewer.dropPiece(column)` with player validation
+3. **WASM Call** → `connect4Client.connect4Service.dropPiece({gameId, playerId: '0', column}, callback)`
+4. **Go Service** → Validates move, updates game state with simple player ID, returns async response
+5. **Async Callback** → Receives game state update without blocking browser
+6. **State Update** → Update local game state from WASM callback
+7. **Transport Broadcast** → `transport.sendPatches([...patches])` with uniqueId for reliability
+8. **Cross-Tab Sync** → Other tabs receive patches via enhanced IndexedDB + BroadcastChannel
+9. **UI Update** → All game UIs reflect the change instantly (BroadcastChannel) or within ~1 second (IndexedDB)
 
 ## Current vs Future Architecture
 
 **Current (Working)**:
-- **Local multiplayer**: Cross-tab via IndexedDB + polling
-- **State persistence**: Survives browser restarts
-- **WASM integration**: Full game logic in WebAssembly
-- **Transport switching**: Runtime pluggable transports
+- **Enhanced local multiplayer**: Cross-tab via IndexedDB + polling and BroadcastChannel
+- **Player-specific URLs**: Direct links like `/TestGame/players/0` with auto-selection
+- **Simple player IDs**: Clean numeric indices (0, 1) instead of complex timestamps
+- **Enhanced state persistence**: Survives browser restarts with player identity restoration
+- **WASM integration**: Full game logic in WebAssembly with async callback support
+- **Robust transport layer**: Enhanced IndexedDB schema (v4) with constraint error fixes
+- **Transport switching**: Runtime pluggable transports with improved reliability
 
 **Future (Server Required)**:
 - **Cross-browser multiplayer**: WebSocket server coordination
