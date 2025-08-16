@@ -520,6 +520,12 @@ class GameViewer {
             return;
         }
 
+        // Check if game is over
+        if (this.ui.gameState.status === 2) { // GAME_STATUS_FINISHED
+            alert('Game is over! No more moves can be made.');
+            return;
+        }
+
         // Check if it's the selected player's turn
         if (this.ui.gameState.currentPlayerId !== this.ui.playerId) {
             const currentPlayerIndex = parseInt(this.ui.gameState.currentPlayerId || '-1');
@@ -797,33 +803,49 @@ class GameViewer {
         }
 
         // Update current player
-        const currentPlayerIndex = parseInt(this.ui.gameState.currentPlayerId || '-1');
-        const selectedPlayerIndex = parseInt(this.ui.playerId || '-1');
-        const currentPlayer = currentPlayerIndex >= 0 ? this.ui.gameState.players[currentPlayerIndex] : null;
-        const selectedPlayer = selectedPlayerIndex >= 0 ? this.ui.gameState.players[selectedPlayerIndex] : null;
-    
-        if (this.elements.currentPlayerName && currentPlayer) {
-            let displayText = currentPlayer.name;
-            if (this.ui.playerId) {
-                if (currentPlayerIndex.toString() === this.ui.playerId) {
-                    displayText += ' (Your Turn!)';
-                } else {
-                    displayText += ` | You: ${selectedPlayer?.name || 'Spectating'}`;
-                }
-            } else {
-                displayText += ' | You: Spectating';
+        // Check if game is finished first
+        const isGameFinished = this.ui.gameState.status === 2; // GAME_STATUS_FINISHED
+        
+        if (isGameFinished) {
+            // Game is over - show game over message
+            if (this.elements.currentPlayerName) {
+                this.elements.currentPlayerName.textContent = 'Game Over';
             }
-            
-            this.elements.currentPlayerName.textContent = displayText;
-            
-            // Update current player color
             if (this.elements.currentPlayerColor) {
-                const playerIndex = this.ui.gameState.players.indexOf(currentPlayer);
-                const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
-                const playerColor = playerColors[playerIndex] || '#e74c3c';
-                this.elements.currentPlayerColor.style.backgroundColor = playerColor;
+                this.elements.currentPlayerColor.style.backgroundColor = '#6b7280';
                 this.elements.currentPlayerColor.innerHTML = '●';
-                this.elements.currentPlayerColor.style.color = playerColor;
+                this.elements.currentPlayerColor.style.color = '#6b7280';
+            }
+        } else {
+            // Game is still in progress - show current player info
+            const currentPlayerIndex = parseInt(this.ui.gameState.currentPlayerId || '-1');
+            const selectedPlayerIndex = parseInt(this.ui.playerId || '-1');
+            const currentPlayer = currentPlayerIndex >= 0 ? this.ui.gameState.players[currentPlayerIndex] : null;
+            const selectedPlayer = selectedPlayerIndex >= 0 ? this.ui.gameState.players[selectedPlayerIndex] : null;
+        
+            if (this.elements.currentPlayerName && currentPlayer) {
+                let displayText = currentPlayer.name;
+                if (this.ui.playerId) {
+                    if (currentPlayerIndex.toString() === this.ui.playerId) {
+                        displayText += ' (Your Turn!)';
+                    } else {
+                        displayText += ` | You: ${selectedPlayer?.name || 'Spectating'}`;
+                    }
+                } else {
+                    displayText += ' | You: Spectating';
+                }
+                
+                this.elements.currentPlayerName.textContent = displayText;
+                
+                // Update current player color
+                if (this.elements.currentPlayerColor) {
+                    const playerIndex = this.ui.gameState.players.indexOf(currentPlayer);
+                    const playerColors = this.getPlayerColors(this.ui.gameState.config?.maxPlayers || 2);
+                    const playerColor = playerColors[playerIndex] || '#e74c3c';
+                    this.elements.currentPlayerColor.style.backgroundColor = playerColor;
+                    this.elements.currentPlayerColor.innerHTML = '●';
+                    this.elements.currentPlayerColor.style.color = playerColor;
+                }
             }
         }
 
