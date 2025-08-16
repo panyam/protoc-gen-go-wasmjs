@@ -882,3 +882,191 @@ body {
         opacity: 1;
     }
 }
+
+/* Responsive Design for Mobile */
+@media (max-width: 768px) {
+    /* Main game layout - stack vertically on mobile */
+    .game-layout {
+        flex-direction: column;
+        gap: 15px;
+        min-height: auto;
+        margin-top: 15px;
+    }
+
+    /* Center panel (game board) comes first on mobile */
+    .center-panel {
+        order: 1;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+
+    /* Left panel (player slots) comes second and goes full width */
+    .left-panel {
+        order: 2;
+        width: 100%;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    /* Make player slots horizontal on mobile */
+    .slots-container {
+        flex-direction: row;
+        gap: 10px;
+        overflow-x: auto;
+        margin-bottom: 15px;
+        padding-bottom: 5px;
+    }
+
+    /* Player slot styling for horizontal layout */
+    .player-slot {
+        min-width: 140px;
+        flex-shrink: 0;
+        padding: 12px;
+        min-height: 80px;
+    }
+
+    .slot-header {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .player-info {
+        margin-bottom: 6px;
+    }
+
+    .player-name {
+        font-size: 0.85rem;
+    }
+
+    .slot-status {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+    }
+
+    .switch-btn, .direct-link-btn {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+        margin-top: 4px;
+    }
+
+    /* Smaller board cells for mobile */
+    .board-cell {
+        width: 40px;
+        height: 40px;
+    }
+
+    .board-cell .piece {
+        font-size: 1.5rem;
+    }
+
+    .board-row {
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+
+    /* Adjust game status area */
+    .game-status {
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+
+    .current-player {
+        font-size: 0.9rem;
+    }
+
+    /* Modal adjustments for mobile */
+    .modal {
+        padding: 10px;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        padding: 20px 15px;
+        margin: 10px;
+    }
+
+    /* Join game modal */
+    .join-slot-modal .modal-content {
+        padding: 15px;
+    }
+
+    .form-group input {
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+
+    .form-group button {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Player selection modal */
+    .player-option {
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    /* Navigation */
+    .navigation {
+        padding: 10px 15px;
+    }
+
+    .back-link {
+        font-size: 0.9rem;
+    }
+
+    /* Page header */
+    .page-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .share-url {
+        font-size: 0.8rem;
+        padding: 8px;
+    }
+}
+
+/* Extra small screens (phones in portrait) */
+@media (max-width: 480px) {
+    .player-slot {
+        min-width: 120px;
+        padding: 10px;
+        min-height: 70px;
+    }
+
+    .slot-header {
+        font-size: 0.8rem;
+    }
+
+    .player-name {
+        font-size: 0.8rem;
+    }
+
+    .board-cell {
+        width: 35px;
+        height: 35px;
+    }
+
+    .board-cell .piece {
+        font-size: 1.3rem;
+    }
+
+    .board-row {
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+
+    .center-panel {
+        padding: 10px;
+    }
+
+    .left-panel {
+        padding: 10px;
+    }
+
+    .left-panel h3 {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+}
