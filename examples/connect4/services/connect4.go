@@ -70,9 +70,9 @@ func (s *Connect4Service) CreateGame(ctx context.Context, req *pb.CreateGameRequ
 		}
 	}
 
-	// Create initial player
+	// Create initial player with simple index-based ID
 	player := &pb.Player{
-		Id:          fmt.Sprintf("player_%d", time.Now().UnixNano()),
+		Id:          "0", // First player always gets index 0
 		Name:        req.CreatorName,
 		Color:       "#ff0000", // Red
 		IsConnected: true,
@@ -144,13 +144,14 @@ func (s *Connect4Service) JoinGame(ctx context.Context, req *pb.JoinGameRequest)
 		}, nil
 	}
 
-	// Create new player
+	// Create new player with simple index-based ID
+	playerIndex := len(game.Players)
 	player := &pb.Player{
-		Id:          fmt.Sprintf("player_%d", time.Now().UnixNano()),
+		Id:          fmt.Sprintf("%d", playerIndex), // Simple index: "0", "1", "2"...
 		Name:        req.PlayerName,
 		Color:       "#0000ff", // Blue (for second player)
 		IsConnected: true,
-		JoinOrder:   int32(len(game.Players)),
+		JoinOrder:   int32(playerIndex),
 	}
 
 	// Add player to game

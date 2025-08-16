@@ -104,7 +104,7 @@ class GameViewer {
 
         // Initialize game components
         await this.initializeWasmClient();
-        await this.initializeStatefulProxy();
+        // await this.initializeStatefulProxy();
         await this.loadGameState();
     }
 
@@ -282,9 +282,10 @@ class GameViewer {
             const player = this.ui.gameState.players?.[urlPlayerIndex];
             if (player) {
                 console.log('🔗 Auto-selecting player from URL index:', { playerIndex: urlPlayerIndex, playerId: player.id, playerName: player.name });
-                // Use the actual player ID from the game state, not the index
-                this.ui.playerId = player.id;
-                this.savePlayerIdentity(player.id, player.name);
+                
+                // Use the index as player ID (clean numeric system)
+                this.ui.playerId = urlPlayerIndex.toString();
+                this.savePlayerIdentity(this.ui.playerId, player.name);
                 return; // Skip showing modal
             } else {
                 console.warn('🚨 Player index from URL not found in game:', {
@@ -316,12 +317,12 @@ class GameViewer {
         modal.id = 'playerSelectionModal';
         
         const playerOptions = this.ui.gameState.players.map((player, index) => {
-            const isCurrentPlayer = player.id === this.ui.gameState?.currentPlayerId;
+            const isCurrentPlayer = index.toString() === this.ui.gameState?.currentPlayerId;
             const playerColors = this.getPlayerColors(this.ui.gameState?.config?.maxPlayers || 2);
             const playerColor = playerColors[index];
             
             return `
-                <div class="player-option" data-player-id="${player.id}" onclick="gameViewer.selectPlayer('${player.id}')">
+                <div class="player-option" data-player-index="${index}" onclick="gameViewer.selectPlayerByIndex(${index})">
                     <div class="player-info">
                         <span class="player-color" style="color: ${playerColor}">●</span>
                         <span class="player-name">${player.name}</span>
@@ -337,7 +338,7 @@ class GameViewer {
                 <p>Choose which player you want to play as in this tab:</p>
                 <div class="player-selection">
                     ${playerOptions}
-                    <div class="player-option spectator" onclick="gameViewer.selectPlayer('')">
+                    <div class="player-option spectator" onclick="gameViewer.selectPlayerByIndex(-1)">
                         <div class="player-info">
                             <span class="player-color">👁️</span>
                             <span class="player-name">Spectate Only</span>
@@ -353,26 +354,39 @@ class GameViewer {
         document.body.appendChild(modal);
     }
 
-    public selectPlayer(playerId: string): void {
-        this.ui.playerId = playerId;
-        
+    public selectPlayerByIndex(playerIndex: number): void {
         // Close the selection modal
         const modal = document.getElementById('playerSelectionModal');
         if (modal) {
             modal.remove();
         }
         
-        if (playerId) {
-            const player = this.ui.gameState?.players?.find(p => p.id === playerId);
-            console.log('🎮 Selected player:', player?.name, 'ID:', playerId);
-            this.addLogEntry(`You are now playing as ${player?.name}`);
+        if (playerIndex >= 0 && this.ui.gameState?.players?.[playerIndex]) {
+            this.ui.playerId = playerIndex.toString();
+            const player = this.ui.gameState.players[playerIndex];
+            console.log('🎮 Selected player by index:', { playerIndex, playerName: player.name, playerId: this.ui.playerId });
+            this.addLogEntry(`You are now playing as ${player.name}`);
         } else {
+            // Spectator mode
+            this.ui.playerId = '';
             console.log('🎮 Selected spectator mode');
             this.addLogEntry('You are now spectating');
         }
         
         // Update the display to reflect selection
         this.updateGameDisplay();
+    }
+
+    // Legacy method for compatibility
+    public selectPlayer(playerId: string): void {
+        if (!playerId) {
+            this.selectPlayerByIndex(-1);
+            return;
+        }
+        
+        // Convert player ID to index for new system
+        const playerIndex = this.ui.gameState?.players?.findIndex(p => p.id === playerId) ?? -1;
+        this.selectPlayerByIndex(playerIndex);
     }
 
     private savePlayerIdentity(playerId: string, playerName: string): void {
@@ -398,7 +412,7 @@ class GameViewer {
             return;
         }
 
-        this.ui.playerId = `player_${Date.now()}`;
+        this.ui.playerId = this.selectedSlot.toString();
         
         // Try to join existing game first
         const joinResponse = await this.joinGame(playerName);
@@ -501,8 +515,10 @@ class GameViewer {
 
         // Check if it's the selected player's turn
         if (this.ui.gameState.currentPlayerId !== this.ui.playerId) {
-            const currentPlayer = this.ui.gameState.players?.find(p => p.id === this.ui.gameState?.currentPlayerId);
-            const selectedPlayer = this.ui.gameState.players?.find(p => p.id === this.ui.playerId);
+            const currentPlayerIndex = parseInt(this.ui.gameState.currentPlayerId || '-1');
+            const selectedPlayerIndex = parseInt(this.ui.playerId || '-1');
+            const currentPlayer = currentPlayerIndex >= 0 ? this.ui.gameState.players?.[currentPlayerIndex] : null;
+            const selectedPlayer = selectedPlayerIndex >= 0 ? this.ui.gameState.players?.[selectedPlayerIndex] : null;
             
             console.log('❌ Not your turn:', {
                 currentPlayerId: this.ui.gameState.currentPlayerId,
@@ -560,7 +576,8 @@ class GameViewer {
                     }
 
                     // Add move to log
-                    const player = this.ui.gameState.players?.find(p => p.id === this.ui.playerId);
+                    const playerIndex = parseInt(this.ui.playerId || '-1');
+                    const player = playerIndex >= 0 ? this.ui.gameState.players?.[playerIndex] : null;
                     this.addLogEntry(`${player?.name || 'You'} dropped piece in column ${column + 1}`);
                 } else {
                     console.error('Failed to drop piece:', parsedResponse.errorMessage);
@@ -722,9 +739,8 @@ class GameViewer {
             boardHTML += '<div class="board-row">';
             for (let col = 0; col < cols; col++) {
                 const cellValue = this.ui.gameState.board.rows[row]?.cells[col] || '';
-                const player = this.ui.gameState.players.find(p => p.id === cellValue);
-                const playerIndex = player ? this.ui.gameState.players.indexOf(player) : -1;
-                const pieceColor = playerIndex >= 0 ? playerColors[playerIndex] : '';
+                const playerIndex = cellValue ? parseInt(cellValue) : -1;
+                const pieceColor = playerIndex >= 0 && playerIndex < playerColors.length ? playerColors[playerIndex] : '';
                 
                 boardHTML += `
                     <div class="board-cell ${cellValue ? 'occupied' : 'empty'}" 
@@ -753,9 +769,8 @@ class GameViewer {
             const row = parseInt(htmlCell.dataset.row || '0');
             const col = parseInt(htmlCell.dataset.col || '0');
             const cellValue = this.ui.gameState!.board!.rows[row]?.cells[col] || '';
-            const player = this.ui.gameState!.players.find(p => p.id === cellValue);
-            const playerIndex = player ? this.ui.gameState!.players.indexOf(player) : -1;
-            const pieceColor = playerIndex >= 0 ? playerColors[playerIndex] : '';
+            const playerIndex = cellValue ? parseInt(cellValue) : -1;
+            const pieceColor = playerIndex >= 0 && playerIndex < playerColors.length ? playerColors[playerIndex] : '';
             
             if (cellValue) {
                 htmlCell.className = 'board-cell occupied';
@@ -775,13 +790,15 @@ class GameViewer {
         }
 
         // Update current player
-        const currentPlayer = this.ui.gameState.players.find(p => p.id === this.ui.gameState!.currentPlayerId);
-        const selectedPlayer = this.ui.gameState.players.find(p => p.id === this.ui.playerId);
+        const currentPlayerIndex = parseInt(this.ui.gameState.currentPlayerId || '-1');
+        const selectedPlayerIndex = parseInt(this.ui.playerId || '-1');
+        const currentPlayer = currentPlayerIndex >= 0 ? this.ui.gameState.players[currentPlayerIndex] : null;
+        const selectedPlayer = selectedPlayerIndex >= 0 ? this.ui.gameState.players[selectedPlayerIndex] : null;
     
         if (this.elements.currentPlayerName && currentPlayer) {
             let displayText = currentPlayer.name;
             if (this.ui.playerId) {
-                if (currentPlayer.id === this.ui.playerId) {
+                if (currentPlayerIndex.toString() === this.ui.playerId) {
                     displayText += ' (Your Turn!)';
                 } else {
                     displayText += ` | You: ${selectedPlayer?.name || 'Spectating'}`;
@@ -822,7 +839,7 @@ class GameViewer {
             this.elements.playersList.innerHTML = this.ui.gameState.players.map((player, index) => {
                 const playerColor = playerColors[index] || '#e74c3c';
                 return `
-                    <div class="player-item ${player.id === this.ui.gameState!.currentPlayerId ? 'current' : ''}">
+                    <div class="player-item ${index.toString() === this.ui.gameState!.currentPlayerId ? 'current' : ''}">
                         <span class="player-name">${player.name}</span>
                         <span class="player-color" style="color: ${playerColor}">●</span>
                     </div>
@@ -896,8 +913,8 @@ class GameViewer {
             
             if (player) {
                 // Check different states
-                const isSelectedPlayer = player.id === this.ui.playerId;
-                const isCurrentPlayer = player.id === this.ui.gameState?.currentPlayerId;
+                const isSelectedPlayer = slotIndex.toString() === this.ui.playerId;
+                const isCurrentPlayer = slotIndex.toString() === this.ui.gameState?.currentPlayerId;
                 
                 let extraClasses = '';
                 let indicators = [];
@@ -930,7 +947,7 @@ class GameViewer {
                             <span class="player-color" style="color: ${slotColor}">●</span>
                         </div>
                         <div class="slot-status">${statusText}</div>
-                        ${!isSelectedPlayer ? `<button class="switch-btn" onclick="gameViewer.selectPlayer('${player.id}')">Play as ${player.name}</button>` : ''}
+                        ${!isSelectedPlayer ? `<button class="switch-btn" onclick="gameViewer.selectPlayerByIndex(${slotIndex})">Play as ${player.name}</button>` : ''}
                         ${isGeneralGamePage ? `<button class="direct-link-btn" onclick="gameViewer.goToPlayerIndex(${slotIndex})" title="Go to player-specific page">🔗 Direct Link</button>` : ''}
                     </div>
                 `;
@@ -1001,7 +1018,7 @@ class GameViewer {
             playerCount: this.ui.gameState?.players?.length || 0
         });
 
-        this.ui.playerId = `player_${Date.now()}`;
+        this.ui.playerId = this.selectedSlot.toString();
     
         await this.ui.connect4Client!.connect4Service.joinGame({
             gameId: this.ui.gameId,
@@ -1054,8 +1071,8 @@ class GameViewer {
                     const currentPath = window.location.pathname;
                     const isGeneralGamePage = !currentPath.includes('/players/');
                     if (isGeneralGamePage) {
-                        // Find the player index in the game state
-                        const playerIndex = this.ui.gameState.players?.findIndex(p => p.id === parsedResponse.playerId) ?? -1;
+                        // Use the player ID as the index (in new system, playerId is the index)
+                        const playerIndex = parseInt(parsedResponse.playerId || '-1');
                         if (playerIndex >= 0) {
                             const playerSpecificUrl = `/${this.ui.gameId}/players/${playerIndex}`;
                             console.log('🔗 Redirecting to player-specific URL:', playerSpecificUrl);
