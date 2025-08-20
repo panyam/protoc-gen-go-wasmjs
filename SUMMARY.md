@@ -197,6 +197,16 @@ The project has completed a comprehensive enhanced factory and deserialization s
   - Fixed template data structures to include enums in all generation contexts
 - ✅ **Enhanced Cross-Package Import Detection**: Improved import resolution to filter out wasmjs.v1 dependencies in factory composition
 
+### Server Streaming Support (August 2025)
+- ✅ **Phase 1: Server Streaming Implementation**: Complete server-side streaming from WASM to JavaScript
+  - Callback-based streaming API: `method(request, (response, error, done) => boolean)`
+  - Goroutine-based WASM implementation with proper `stream.Recv()` handling
+  - User-controlled stream cancellation via callback return values
+  - Proper error handling and EOF detection
+  - TypeScript interface generation with correct streaming signatures
+- 🔄 **Phase 2: Client Streaming** (Planned): Connection objects with `send()`, `close()`, `isOpen()` methods
+- 🔄 **Phase 3: Bidirectional Streaming** (Planned): Combined server and client streaming capabilities
+
 **Major Architecture Achievements**: 
 1. **Factory Composition System**: Implemented sophisticated cross-package factory delegation enabling seamless object creation across package boundaries with automatic dependency injection
 2. **Schema-Aware Architecture**: Built complete schema generation and deserialization system with field metadata, proto field IDs, and oneof support for type-safe runtime processing

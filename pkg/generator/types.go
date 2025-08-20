@@ -63,16 +63,17 @@ type ServiceData struct {
 
 // MethodData represents a gRPC method for template generation
 type MethodData struct {
-	Name           string // Original protobuf method name (e.g., "FindBooks")
-	JSName         string // JavaScript method name (e.g., "findBooks")
-	GoFuncName     string // Go function name for WASM wrapper (e.g., "libraryFindBooks")
-	ShouldGenerate bool   // Whether to generate this method based on filters
-	RequestType    string // Fully qualified Go request type
-	ResponseType   string // Fully qualified Go response type
-	RequestTSType  string // TypeScript request type name
-	ResponseTSType string // TypeScript response type name
-	Comment        string // Method comment from protobuf
-	IsAsync        bool   // Whether this method is marked as async and needs callback
+	Name              string // Original protobuf method name (e.g., "FindBooks")
+	JSName            string // JavaScript method name (e.g., "findBooks")
+	GoFuncName        string // Go function name for WASM wrapper (e.g., "libraryFindBooks")
+	ShouldGenerate    bool   // Whether to generate this method based on filters
+	RequestType       string // Fully qualified Go request type
+	ResponseType      string // Fully qualified Go response type
+	RequestTSType     string // TypeScript request type name
+	ResponseTSType    string // TypeScript response type name
+	Comment           string // Method comment from protobuf
+	IsAsync           bool   // Whether this method is marked as async and needs callback
+	IsServerStreaming bool   // Whether this method uses server-side streaming
 }
 
 // FileGenerator handles generation for a single proto file
@@ -312,8 +313,8 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 		return nil
 	}
 
-	// Only support unary methods for now
-	if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
+	// Only support unary and server streaming methods for now
+	if method.Desc.IsStreamingClient() {
 		return nil
 	}
 
@@ -331,16 +332,17 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 	}
 
 	return &MethodData{
-		Name:           methodName,
-		JSName:         jsName,
-		GoFuncName:     goFuncName,
-		ShouldGenerate: true,
-		RequestType:    g.getQualifiedTypeName(method.Input, packageAlias),
-		ResponseType:   g.getQualifiedTypeName(method.Output, packageAlias),
-		RequestTSType:  string(method.Input.GoIdent.GoName),
-		ResponseTSType: string(method.Output.GoIdent.GoName),
-		Comment:        strings.TrimSpace(string(method.Comments.Leading)),
-		IsAsync:        isAsync,
+		Name:              methodName,
+		JSName:            jsName,
+		GoFuncName:        goFuncName,
+		ShouldGenerate:    true,
+		RequestType:       g.getQualifiedTypeName(method.Input, packageAlias),
+		ResponseType:      g.getQualifiedTypeName(method.Output, packageAlias),
+		RequestTSType:     string(method.Input.GoIdent.GoName),
+		ResponseTSType:    string(method.Output.GoIdent.GoName),
+		Comment:           strings.TrimSpace(string(method.Comments.Leading)),
+		IsAsync:           isAsync,
+		IsServerStreaming: method.Desc.IsStreamingServer(),
 	}
 }
 

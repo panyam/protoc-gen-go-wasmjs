@@ -1,5 +1,16 @@
 # Next Steps
 
+## Recently Completed (August 2025)
+
+- ✅ **Server Streaming Implementation (Phase 1)**: Complete server-side streaming support for WASM
+  - **Streaming API Generation**: Added `IsServerStreaming` field to MethodData and template logic
+  - **WASM Goroutine Implementation**: Server streaming methods run in goroutines with proper `stream.Recv()` loops
+  - **Callback-Based JavaScript API**: Generated TypeScript with `(response, error, done) => boolean` callback signature
+  - **User Stream Control**: JavaScript can stop streams by returning `false` from callback
+  - **Error Handling**: Proper `io.EOF` detection and error propagation to JavaScript
+  - **Interface Type Safety**: TypeScript interfaces correctly reflect streaming vs unary method signatures
+  - **Working Example**: `examples/streaming/` demonstrates complete server streaming functionality
+
 ## Recently Completed (January 2025)
 
 - ✅ **Connect4 Example Restoration & Documentation Overhaul**: Fixed corrupted demo and aligned docs with reality

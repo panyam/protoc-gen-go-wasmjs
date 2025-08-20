@@ -1,0 +1,13 @@
+version: v2
+modules:
+  - path: proto
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/protocolbuffers/wellknowntypes
+  # Note: wasmjs annotations are included via symlink, NOT from buf.build in dev mode
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE
