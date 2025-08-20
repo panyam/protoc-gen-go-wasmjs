@@ -13,7 +13,7 @@ import (
 	"your-module/path-to-generated/library_services"
 	
 	// Import the same protobuf types as the generated WASM file
-	libraryv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/library/gen/go/library/v1"
+	libraryv2 "github.com/panyam/protoc-gen-go-wasmjs/examples/library/gen/go/library/v2"
 )
 
 func main() {

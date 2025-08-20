@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"syscall/js"
 	"time"
 
@@ -65,7 +66,7 @@ func (exports *Library_all_servicesServicesExports) libraryServiceFindBooks(this
 	if exports.LibraryService == nil {
 		return createJSResponse(false, "LibraryService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
@@ -114,7 +115,7 @@ func (exports *Library_all_servicesServicesExports) libraryServiceCheckoutBook(t
 	if exports.LibraryService == nil {
 		return createJSResponse(false, "LibraryService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
@@ -163,7 +164,7 @@ func (exports *Library_all_servicesServicesExports) libraryServiceReturnBook(thi
 	if exports.LibraryService == nil {
 		return createJSResponse(false, "LibraryService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
@@ -212,7 +213,7 @@ func (exports *Library_all_servicesServicesExports) libraryServiceGetUserBooks(t
 	if exports.LibraryService == nil {
 		return createJSResponse(false, "LibraryService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
@@ -261,7 +262,7 @@ func (exports *Library_all_servicesServicesExports) userServiceGetUser(this js.V
 	if exports.UserService == nil {
 		return createJSResponse(false, "UserService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
@@ -310,7 +311,7 @@ func (exports *Library_all_servicesServicesExports) userServiceCreateUser(this j
 	if exports.UserService == nil {
 		return createJSResponse(false, "UserService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}

@@ -13,21 +13,21 @@ import (
 	"your-module/path-to-generated/admin_services"
 	
 	// Import the same protobuf types as the generated WASM file
-	libraryv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/library/gen/go/library/v1"
+	libraryv2 "github.com/panyam/protoc-gen-go-wasmjs/examples/library/gen/go/library/v2"
 )
 
 func main() {
 	// Initialize service implementations with your business logic
 	exports := &admin_services.Admin_servicesServicesExports{
-		// TODO: Replace with your actual LibraryService implementation
-		// LibraryService: &yourLibraryServiceImplementation{
+		// TODO: Replace with your actual AnalyticsService implementation
+		// AnalyticsService: &yourAnalyticsServiceImplementation{
 		//     // Initialize with database, config, etc.
 		//     db: database,
 		//     auth: authService,
 		//     config: appConfig,
 		// },
-		// TODO: Replace with your actual UserService implementation
-		// UserService: &yourUserServiceImplementation{
+		// TODO: Replace with your actual LibraryService implementation
+		// LibraryService: &yourLibraryServiceImplementation{
 		//     // Initialize with database, config, etc.
 		//     db: database,
 		//     auth: authService,

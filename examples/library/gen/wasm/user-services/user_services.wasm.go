@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"syscall/js"
 	"time"
 
@@ -50,7 +51,7 @@ func (exports *User_servicesServicesExports) userServiceGetUser(this js.Value, a
 	if exports.UserService == nil {
 		return createJSResponse(false, "UserService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
@@ -99,7 +100,7 @@ func (exports *User_servicesServicesExports) userServiceCreateUser(this js.Value
 	if exports.UserService == nil {
 		return createJSResponse(false, "UserService not initialized", nil)
 	}
-
+	// Synchronous method
 	if len(args) < 1 {
 		return createJSResponse(false, "Request JSON required", nil)
 	}
