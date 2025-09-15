@@ -21,12 +21,13 @@
 package wasmjsv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 )
 
 const (
@@ -373,8 +374,8 @@ const file_wasmjs_v1_annotations_proto_rawDesc = "" +
 	"\bstateful\x12\x1f.google.protobuf.ServiceOptions\x18Ն\x03 \x01(\v2\x1a.wasmjs.v1.StatefulOptionsR\bstateful:k\n" +
 	"\x0fstateful_method\x12\x1e.google.protobuf.MethodOptions\x18ֆ\x03 \x01(\v2 .wasmjs.v1.StatefulMethodOptionsR\x0estatefulMethod:b\n" +
 	"\fasync_method\x12\x1e.google.protobuf.MethodOptions\x18׆\x03 \x01(\v2\x1d.wasmjs.v1.AsyncMethodOptionsR\vasyncMethod:L\n" +
-	"\x10browser_provided\x12\x1f.google.protobuf.ServiceOptions\x18؆\x03 \x01(\bR\x0fbrowserProvidedB\xae\x01\n" +
-	"\rcom.wasmjs.v1B\x10AnnotationsProtoP\x01ZFgithub.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1;wasmjsv1\xa2\x02\x03WXX\xaa\x02\tWasmjs.V1\xca\x02\tWasmjs\\V1\xe2\x02\x15Wasmjs\\V1\\GPBMetadata\xea\x02\n" +
+	"\x10browser_provided\x12\x1f.google.protobuf.ServiceOptions\x18؆\x03 \x01(\bR\x0fbrowserProvidedB\xc3\x01\n" +
+	"\rcom.wasmjs.v1B\x10AnnotationsProtoP\x01Z[github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/wasmjs/v1;wasmjsv1\xa2\x02\x03WXX\xaa\x02\tWasmjs.V1\xca\x02\tWasmjs\\V1\xe2\x02\x15Wasmjs\\V1\\GPBMetadata\xea\x02\n" +
 	"Wasmjs::V1b\x06proto3"
 
 var (

@@ -1,0 +1,26 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go
+plugins:
+  # Generate standard Go protobuf types
+  - remote: buf.build/protocolbuffers/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate gRPC service interfaces
+  - remote: buf.build/grpc/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate WASM bindings and TypeScript clients (using installed plugin)
+  - local: ../../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm
+    opt:
+      - generate_typescript=true
+      - ts_export_path=./gen/ts
+      - js_structure=namespaced
+      - js_namespace=browserExample
+      - module_name=browser_example

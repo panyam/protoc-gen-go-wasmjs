@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package presenter.v1;
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1;presenterv1";
+
+// PresenterService runs in WASM and drives UI logic
+service PresenterService {
+    // LoadUserData fetches user data from API and stores it locally
+    rpc LoadUserData(LoadUserRequest) returns (LoadUserResponse);
+
+    // UpdateUIState processes state changes and returns UI updates
+    rpc UpdateUIState(StateUpdateRequest) returns (stream UIUpdate);
+
+    // SavePreferences saves user preferences to localStorage
+    rpc SavePreferences(PreferencesRequest) returns (PreferencesResponse);
+}
+
+// Request to load user data
+message LoadUserRequest {
+    string user_id = 1;
+}
+
+// Response with user data
+message LoadUserResponse {
+    string username = 1;
+    string email = 2;
+    repeated string permissions = 3;
+    bool from_cache = 4;
+}
+
+// Request to update state
+message StateUpdateRequest {
+    string action = 1;
+    map<string, string> params = 2;
+}
+
+// UI update message (streamed)
+message UIUpdate {
+    string component = 1;
+    string action = 2;
+    map<string, string> data = 3;
+}
+
+// Request to save preferences
+message PreferencesRequest {
+    map<string, string> preferences = 1;
+}
+
+// Response from preferences save
+message PreferencesResponse {
+    bool saved = 1;
+    int32 items_saved = 2;
+}

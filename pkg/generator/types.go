@@ -43,6 +43,10 @@ type TemplateData struct {
 	// Build info
 	GeneratedImports []string
 	BuildScript      string
+
+	// Browser services
+	BrowserServices []ServiceData // Services that are browser-provided
+	HasBrowserServices bool       // Whether there are any browser-provided services
 }
 
 // ImportInfo represents a Go package import with alias
@@ -53,12 +57,13 @@ type ImportInfo struct {
 
 // ServiceData represents a gRPC service for template generation
 type ServiceData struct {
-	Name         string       // Service name (e.g., "LibraryService")
-	GoType       string       // Go type for the service interface (qualified, e.g., "libraryv1.LibraryServiceServer")
-	JSName       string       // JavaScript name (e.g., "library")
-	Methods      []MethodData // All methods in the service
-	PackagePath  string       // Go package path for imports
-	PackageAlias string       // Package alias for qualified type names
+	Name            string       // Service name (e.g., "LibraryService")
+	GoType          string       // Go type for the service interface (qualified, e.g., "libraryv1.LibraryServiceServer")
+	JSName          string       // JavaScript name (e.g., "library")
+	Methods         []MethodData // All methods in the service
+	PackagePath     string       // Go package path for imports
+	PackageAlias    string       // Package alias for qualified type names
+	IsBrowserProvided bool       // Whether this service is provided by the browser
 }
 
 // MethodData represents a gRPC method for template generation
@@ -97,6 +102,13 @@ func NewFileGenerator(file *protogen.File, plugin *protogen.Plugin, config *Conf
 // SetPackageFiles sets all files that belong to the same package
 func (g *FileGenerator) SetPackageFiles(files []*protogen.File) {
 	g.packageFiles = files
+}
+
+// isFirstFileInGeneration checks if this is the first file being processed
+// Used to generate shared components only once
+func (g *FileGenerator) isFirstFileInGeneration() bool {
+	// Simple check: if this is the first file in the package files list
+	return len(g.packageFiles) > 0 && g.packageFiles[0] == g.file
 }
 
 // Generate generates WASM wrapper and TypeScript client for the proto file
@@ -150,6 +162,14 @@ func (g *FileGenerator) Generate() error {
 			}
 		}
 
+		// Generate BrowserServiceManager (shared component) - only once per generation run
+		// We check if this is the first file being processed to avoid duplicates
+		if g.isFirstFileInGeneration() {
+			if err := g.generateBrowserServiceManager(); err != nil {
+				return err
+			}
+		}
+
 		// Generate new TypeScript interfaces, models, factory, schemas, deserializers
 		// Generate these for ANY package that has messages or enums (not just services)
 		if hasMessages || hasEnums {
@@ -192,31 +212,47 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 
 	// Build service data from all files in the package
 	var services []ServiceData
+	var browserServices []ServiceData
+
 	for _, file := range g.packageFiles {
 		for _, service := range file.Services {
 			serviceData := g.buildServiceDataForFile(file, service, packageMap)
 			if serviceData != nil {
-				services = append(services, *serviceData)
+				if serviceData.IsBrowserProvided {
+					browserServices = append(browserServices, *serviceData)
+				} else {
+					services = append(services, *serviceData)
+				}
 			}
 		}
 	}
 
 	// Skip if no services to generate
-	if len(services) == 0 {
+	if len(services) == 0 && len(browserServices) == 0 {
 		return nil, nil
 	}
 
+	// Add import for wasm library if we have browser services
+	if len(browserServices) > 0 {
+		imports = append(imports, ImportInfo{
+			Path:  "github.com/panyam/protoc-gen-go-wasmjs/pkg/wasm",
+			Alias: "wasm",
+		})
+	}
+
 	return &TemplateData{
-		PackageName:  packageName,
-		SourcePath:   g.file.Desc.Path(),
-		GoPackage:    string(g.file.GoImportPath),
-		Services:     services,
-		Config:       g.config,
-		JSNamespace:  g.config.GetDefaultJSNamespace(packageName),
-		ModuleName:   g.config.GetDefaultModuleName(packageName),
-		APIStructure: g.config.JSStructure,
-		Imports:      imports,
-		PackageMap:   packageMap,
+		PackageName:        packageName,
+		SourcePath:         g.file.Desc.Path(),
+		GoPackage:          string(g.file.GoImportPath),
+		Services:           services,
+		BrowserServices:    browserServices,
+		HasBrowserServices: len(browserServices) > 0,
+		Config:             g.config,
+		JSNamespace:        g.config.GetDefaultJSNamespace(packageName),
+		ModuleName:         g.config.GetDefaultModuleName(packageName),
+		APIStructure:       g.config.JSStructure,
+		Imports:            imports,
+		PackageMap:         packageMap,
 	}, nil
 }
 
@@ -276,6 +312,16 @@ func (g *FileGenerator) buildServiceDataForFile(file *protogen.File, service *pr
 		return nil
 	}
 
+	// Check if this service is browser-provided
+	isBrowserProvided := false
+	if service.Desc.Options() != nil {
+		if browserOpts := proto.GetExtension(service.Desc.Options(), wasmjsv1.E_BrowserProvided); browserOpts != nil {
+			if provided, ok := browserOpts.(bool); ok {
+				isBrowserProvided = provided
+			}
+		}
+	}
+
 	// Get package alias for this service
 	packagePath := string(file.GoImportPath)
 	packageAlias := packageMap[packagePath]
@@ -294,13 +340,20 @@ func (g *FileGenerator) buildServiceDataForFile(file *protogen.File, service *pr
 		return nil
 	}
 
+	// For browser-provided services, we generate a Client type instead of Server
+	goType := packageAlias + "." + string(service.GoName) + "Server"
+	if isBrowserProvided {
+		goType = packageAlias + "." + string(service.GoName) + "Client"
+	}
+
 	return &ServiceData{
-		Name:         serviceName,
-		GoType:       packageAlias + "." + string(service.GoName) + "Server", // Qualified type name
-		JSName:       strings.ToLower(serviceName[:1]) + serviceName[1:],     // camelCase
-		Methods:      methods,
-		PackagePath:  packagePath,
-		PackageAlias: packageAlias,
+		Name:              serviceName,
+		GoType:            goType,
+		JSName:            strings.ToLower(serviceName[:1]) + serviceName[1:],     // camelCase
+		Methods:           methods,
+		PackagePath:       packagePath,
+		PackageAlias:      packageAlias,
+		IsBrowserProvided: isBrowserProvided,
 	}
 }
 

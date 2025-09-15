@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package browser.v1;
+
+import "wasmjs/v1/annotations.proto";
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/browser/v1;browserv1";
+
+// BrowserAPI provides access to browser functionality from WASM
+service BrowserAPI {
+    option (wasmjs.v1.browser_provided) = true;
+
+    // Fetch makes an HTTP request from the browser
+    rpc Fetch(FetchRequest) returns (FetchResponse);
+
+    // GetLocalStorage retrieves a value from localStorage
+    rpc GetLocalStorage(StorageKeyRequest) returns (StorageValueResponse);
+
+    // SetLocalStorage stores a value in localStorage
+    rpc SetLocalStorage(StorageSetRequest) returns (StorageSetResponse);
+
+    // GetCookie retrieves a cookie value
+    rpc GetCookie(CookieRequest) returns (CookieResponse);
+
+    // Alert shows a browser alert dialog
+    rpc Alert(AlertRequest) returns (AlertResponse);
+}
+
+// Request to fetch data from a URL
+message FetchRequest {
+    string url = 1;
+    string method = 2;  // GET, POST, etc.
+    map<string, string> headers = 3;
+    string body = 4;
+}
+
+// Response from fetch
+message FetchResponse {
+    int32 status = 1;
+    string status_text = 2;
+    map<string, string> headers = 3;
+    string body = 4;
+}
+
+// Request for localStorage key
+message StorageKeyRequest {
+    string key = 1;
+}
+
+// Response with localStorage value
+message StorageValueResponse {
+    string value = 1;
+    bool exists = 2;
+}
+
+// Request to set localStorage
+message StorageSetRequest {
+    string key = 1;
+    string value = 2;
+}
+
+// Response from localStorage set
+message StorageSetResponse {
+    bool success = 1;
+}
+
+// Request for cookie
+message CookieRequest {
+    string name = 1;
+}
+
+// Response with cookie value
+message CookieResponse {
+    string value = 1;
+    bool exists = 2;
+}
+
+// Request to show alert
+message AlertRequest {
+    string message = 1;
+}
+
+// Response from alert
+message AlertResponse {
+    bool shown = 1;
+}

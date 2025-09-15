@@ -14,6 +14,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
 {{- range .Imports }}
 	{{ .Alias }} {{ .Path | printf "%q" }}
@@ -25,11 +26,23 @@ type {{ .ModuleName | title }}ServicesExports struct {
 {{- range .Services }}
 	{{ .Name }} {{ .GoType }}
 {{- end }}
+{{- if .HasBrowserServices }}
+
+	// Browser-provided services (clients)
+{{- range .BrowserServices }}
+	{{ .Name }} *{{ .Name }}Client
+{{- end }}
+{{- end }}
 }
 
 // RegisterAPI registers the services with the JavaScript global namespace
 func (exports *{{ .ModuleName | title }}ServicesExports) RegisterAPI() {
 	fmt.Println("{{ .ModuleName }} WASM module loading...")
+{{- if .HasBrowserServices }}
+
+	// Initialize browser channel for browser-provided services
+	_ = wasm.GetBrowserChannel()
+{{- end }}
 
 {{- if eq .APIStructure "namespaced" }}
 	// Create namespaced API structure
@@ -125,48 +138,22 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		// Call streaming service method
-		stream, err := exports.{{ $serviceName }}.{{ .Name }}(ctx, req)
+		// Create a stream wrapper for server-side streaming
+		streamWrapper := &serverStreamWrapper{{ .Name }}{
+			ctx: ctx,
+			callback: callback,
+		}
+
+		// Call the server streaming method
+		err := exports.{{ $serviceName }}.{{ .Name }}(req, streamWrapper)
 		if err != nil {
 			// Call callback with error and done=true
 			callback.Invoke(js.Null(), err.Error(), true)
 			return
 		}
 
-		// Stream responses until done
-		for {
-			resp, err := stream.Recv()
-			if err == io.EOF {
-				// Stream completed successfully - signal done with no error
-				callback.Invoke(js.Null(), js.Null(), true)
-				break
-			}
-			if err != nil {
-				// Stream error - signal done with error
-				callback.Invoke(js.Null(), err.Error(), true)
-				break
-			}
-
-			// Marshal and send response
-			marshalOpts := protojson.MarshalOptions{
-				UseProtoNames:   false,
-				EmitUnpopulated: false,
-				UseEnumNumbers:  false,
-			}
-			responseJSON, err := marshalOpts.Marshal(resp)
-			if err != nil {
-				callback.Invoke(js.Null(), fmt.Sprintf("Failed to marshal response: %v", err), true)
-				break
-			}
-
-			// Call callback with response, no error, not done - returns boolean to continue
-			shouldContinue := callback.Invoke(string(responseJSON), js.Null(), false)
-			
-			// Check if JS wants to stop the stream
-			if !shouldContinue.Bool() {
-				break
-			}
-		}
+		// Signal completion
+		callback.Invoke(js.Null(), js.Null(), true)
 	}()
 
 	// Return immediately for streaming methods
@@ -214,7 +201,7 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 		// Marshal response
 		marshalOpts := protojson.MarshalOptions{
 			UseProtoNames:   false,
-			EmitUnpopulated: false,
+			EmitUnpopulated: true,  // Emit zero values to avoid undefined in JavaScript
 			UseEnumNumbers:  false,
 		}
 		responseJSON, err := marshalOpts.Marshal(resp)
@@ -263,7 +250,7 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 	// Marshal response with options for better TypeScript compatibility
 	marshalOpts := protojson.MarshalOptions{
 		UseProtoNames:   false, // Use JSON names (camelCase) instead of proto names
-		EmitUnpopulated: false, // Don't emit zero values
+		EmitUnpopulated: true,  // Emit zero values to avoid undefined in JavaScript
 		UseEnumNumbers:  false, // Use enum string values
 	}
 	responseJSON, err := marshalOpts.Marshal(resp)
@@ -278,23 +265,85 @@ func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this
 	{{- end }}
 {{- end }}
 
+{{- if .Services }}
+// =============================================================================
+// Server Stream Wrappers
+// =============================================================================
+
+{{- range .Services }}
+{{- range .Methods }}
+{{- if .IsServerStreaming }}
+
+// serverStreamWrapper{{ .Name }} implements the server stream interface for {{ .Name }}
+type serverStreamWrapper{{ .Name }} struct {
+	ctx context.Context
+	callback js.Value
+}
+
+func (s *serverStreamWrapper{{ .Name }}) Send(resp *{{ .ResponseType }}) error {
+	// Marshal response
+	marshalOpts := protojson.MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: false,
+		UseEnumNumbers:  false,
+	}
+	responseJSON, err := marshalOpts.Marshal(resp)
+	if err != nil {
+		s.callback.Invoke(js.Null(), fmt.Sprintf("Failed to marshal response: %v", err), true)
+		return err
+	}
+
+	// Call callback with response, no error, not done - returns boolean to continue
+	shouldContinue := s.callback.Invoke(string(responseJSON), js.Null(), false)
+
+	// Check if JS wants to stop the stream
+	if !shouldContinue.Bool() {
+		return fmt.Errorf("stream cancelled by client")
+	}
+
+	return nil
+}
+
+func (s *serverStreamWrapper{{ .Name }}) Context() context.Context {
+	return s.ctx
+}
+
+// Implement other required methods for the stream interface
+func (s *serverStreamWrapper{{ .Name }}) SetHeader(metadata.MD) error { return nil }
+func (s *serverStreamWrapper{{ .Name }}) SendHeader(metadata.MD) error { return nil }
+func (s *serverStreamWrapper{{ .Name }}) SetTrailer(metadata.MD) {}
+func (s *serverStreamWrapper{{ .Name }}) SendMsg(m interface{}) error {
+	if msg, ok := m.(*{{ .ResponseType }}); ok {
+		return s.Send(msg)
+	}
+	return fmt.Errorf("unexpected message type")
+}
+func (s *serverStreamWrapper{{ .Name }}) RecvMsg(m interface{}) error { return nil }
+
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
 
-// createJSResponse creates a JavaScript-compatible response
+// createJSResponse is a wrapper for the library function
 func createJSResponse(success bool, message string, data any) any {
+{{- if .HasBrowserServices }}
+	return wasm.CreateJSResponse(success, message, data)
+{{- else }}
+	// Inline implementation when no browser services (no wasm import)
 	response := map[string]any{
 		"success": success,
 		"message": message,
 		"data":    data,
 	}
 
-	// Convert to JS Value
 	responseBytes, err := json.Marshal(response)
 	if err != nil {
 		fmt.Printf("Failed to marshal JSON response: %v\n", err)
-		// Return a simple error response
 		errorResponse := map[string]any{
 			"success": false,
 			"message": fmt.Sprintf("JSON marshal error: %v", err),
@@ -305,4 +354,62 @@ func createJSResponse(success bool, message string, data any) any {
 	}
 
 	return js.Global().Get("JSON").Call("parse", string(responseBytes))
+{{- end }}
 }
+
+{{- if .HasBrowserServices }}
+
+// =============================================================================
+// Browser Service Client Implementations
+// =============================================================================
+
+{{- range $service := .BrowserServices }}
+
+// {{ $service.Name }}Client is a client for the browser-provided {{ $service.Name }} service
+type {{ $service.Name }}Client struct {
+	channel *wasm.BrowserServiceChannel
+}
+
+// New{{ $service.Name }}Client creates a new client for the browser-provided {{ $service.Name }} service
+func New{{ $service.Name }}Client() *{{ $service.Name }}Client {
+	return &{{ $service.Name }}Client{
+		channel: wasm.GetBrowserChannel(),
+	}
+}
+
+{{- range .Methods }}
+
+// {{ .Name }} calls the browser-provided {{ .Name }} method
+func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) (*{{ .ResponseType }}, error) {
+	// Marshal the request
+	opts := protojson.MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: true,  // Emit zero values to avoid undefined in JavaScript
+		UseEnumNumbers:  false,
+	}
+	requestData, err := opts.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Call browser service through the channel
+	responseData, err := c.channel.QueueCall(ctx, "{{ $service.Name }}", "{{ .Name }}", requestData, 30*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the response
+	resp := &{{ .ResponseType }}{}
+	unmarshalOpts := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+		AllowPartial:   true,
+	}
+	if err := unmarshalOpts.Unmarshal(responseData, resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return resp, nil
+}
+{{- end }}
+{{- end }}
+{{- end }}

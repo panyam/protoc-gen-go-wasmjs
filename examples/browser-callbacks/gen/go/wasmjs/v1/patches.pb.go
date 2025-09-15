@@ -21,11 +21,12 @@
 package wasmjsv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -510,8 +511,8 @@ const file_wasmjs_v1_patches_proto_rawDesc = "" +
 	"\x06REMOTE\x10\x01\x12\n" +
 	"\n" +
 	"\x06SERVER\x10\x02\x12\v\n" +
-	"\aSTORAGE\x10\x03B\xaa\x01\n" +
-	"\rcom.wasmjs.v1B\fPatchesProtoP\x01ZFgithub.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1;wasmjsv1\xa2\x02\x03WXX\xaa\x02\tWasmjs.V1\xca\x02\tWasmjs\\V1\xe2\x02\x15Wasmjs\\V1\\GPBMetadata\xea\x02\n" +
+	"\aSTORAGE\x10\x03B\xbf\x01\n" +
+	"\rcom.wasmjs.v1B\fPatchesProtoP\x01Z[github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/wasmjs/v1;wasmjsv1\xa2\x02\x03WXX\xaa\x02\tWasmjs.V1\xca\x02\tWasmjs\\V1\xe2\x02\x15Wasmjs\\V1\\GPBMetadata\xea\x02\n" +
 	"Wasmjs::V1b\x06proto3"
 
 var (

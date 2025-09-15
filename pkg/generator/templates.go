@@ -25,6 +25,9 @@ var wasmTemplate string
 //go:embed templates/client_simple.ts.tmpl
 var typescriptTemplate string
 
+//go:embed templates/browser_service_manager.ts.tmpl
+var browserServiceManagerTemplate string
+
 //go:embed templates/build.sh.tmpl
 var buildScriptTemplate string
 

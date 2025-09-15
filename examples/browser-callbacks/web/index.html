@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Callbacks Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #e9ecef;
+        }
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        #output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .ui-updates {
+            list-style: none;
+            padding: 0;
+        }
+        .ui-update {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .pref-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Browser Callbacks Example</h1>
+    <div id="status" class="status">Initializing WASM module...</div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Presenter Service (WASM → Browser)</h2>
+            <p>These actions run in WASM and call browser APIs</p>
+
+            <h3>Load User Data</h3>
+            <input type="text" id="userId" placeholder="Enter User ID" value="user123">
+            <button id="loadUserBtn" disabled>Load User Data</button>
+
+            <h3>Update UI State</h3>
+            <select id="stateAction">
+                <option value="refresh">Refresh</option>
+                <option value="navigate">Navigate</option>
+                <option value="custom">Custom Action</option>
+            </select>
+            <button id="updateStateBtn" disabled>Update State</button>
+
+            <h3>Save Preferences</h3>
+            <div class="pref-row">
+                <input type="text" placeholder="Key" id="prefKey1" value="theme">
+                <input type="text" placeholder="Value" id="prefValue1" value="dark">
+            </div>
+            <div class="pref-row">
+                <input type="text" placeholder="Key" id="prefKey2" value="language">
+                <input type="text" placeholder="Value" id="prefValue2" value="en">
+            </div>
+            <button id="savePrefsBtn" disabled>Save Preferences</button>
+        </div>
+
+        <div class="panel">
+            <h2>Browser API Implementation</h2>
+            <p>Browser services that WASM can call</p>
+
+            <h3>UI Updates from WASM</h3>
+            <ul id="uiUpdates" class="ui-updates"></ul>
+
+            <h3>Console Output</h3>
+            <div id="output"></div>
+        </div>
+    </div>
+
+    <script src="wasm_exec.js"></script>
+    <script type="module">
+        // Import the generated client
+        import { Browser_exampleClient, BrowserServiceManager } from '../gen/wasm/browser_exampleClient.client.js';
+
+        // Log function
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+            console.log(`[${type}]`, message);
+        }
+
+        // Add UI update to list
+        function addUIUpdate(update) {
+            const list = document.getElementById('uiUpdates');
+            const item = document.createElement('li');
+            item.className = 'ui-update';
+            item.innerHTML = `
+                <strong>${update.component}.${update.action}</strong>
+                <pre>${JSON.stringify(update.data, null, 2)}</pre>
+            `;
+            list.insertBefore(item, list.firstChild);
+
+            // Keep only last 5 updates
+            while (list.children.length > 5) {
+                list.removeChild(list.lastChild);
+            }
+        }
+
+        // Update status
+        function setStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        // Browser API Implementation
+        class BrowserAPIImpl {
+            async fetch(request) {
+                log(`Fetch called: ${request.method} ${request.url}`);
+
+                // Simulate API response for demo
+                if (request.url.includes('/users/')) {
+                    return {
+                        status: 200,
+                        statusText: 'OK',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({
+                            username: 'john_doe',
+                            email: 'john@example.com',
+                            permissions: ['read', 'write', 'admin']
+                        })
+                    };
+                }
+
+                return {
+                    status: 404,
+                    statusText: 'Not Found',
+                    headers: {},
+                    body: ''
+                };
+            }
+
+            async getLocalStorage(request) {
+                log(`GetLocalStorage: ${request.key}`);
+                const value = localStorage.getItem(request.key);
+                return {
+                    value: value || '',
+                    exists: value !== null
+                };
+            }
+
+            async setLocalStorage(request) {
+                log(`SetLocalStorage: ${request.key} = ${request.value}`);
+                try {
+                    localStorage.setItem(request.key, request.value);
+                    return { success: true };
+                } catch (e) {
+                    log(`Failed to set localStorage: ${e.message}`, 'error');
+                    return { success: false };
+                }
+            }
+
+            async getCookie(request) {
+                log(`GetCookie: ${request.name}`);
+                const cookies = document.cookie.split(';');
+                for (const cookie of cookies) {
+                    const [name, value] = cookie.trim().split('=');
+                    if (name === request.name) {
+                        return { value, exists: true };
+                    }
+                }
+                return { value: '', exists: false };
+            }
+
+            async alert(request) {
+                log(`Alert: ${request.message}`);
+                alert(request.message);
+                return { shown: true };
+            }
+        }
+
+        // Initialize
+        async function init() {
+            try {
+                setStatus('Loading WASM module...', 'loading');
+
+                // Create client
+                const client = new Browser_exampleClient();
+
+                // Register browser API implementation
+                client.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
+
+                // Load WASM
+                await client.loadWasm('../gen/wasm/browser_example.wasm');
+
+                setStatus('WASM module loaded successfully!', 'success');
+                log('WASM module initialized', 'success');
+
+                // Enable buttons
+                document.getElementById('loadUserBtn').disabled = false;
+                document.getElementById('updateStateBtn').disabled = false;
+                document.getElementById('savePrefsBtn').disabled = false;
+
+                // Wire up button handlers
+                document.getElementById('loadUserBtn').onclick = async () => {
+                    const userId = document.getElementById('userId').value;
+                    log(`Loading user data for: ${userId}`);
+
+                    try {
+                        const response = await client.presenterService.loadUserData({
+                            userId: userId
+                        });
+
+                        log(`User loaded: ${response.username} (${response.email})`, 'success');
+                        log(`Permissions: ${response.permissions.join(', ')}`);
+                        log(`From cache: ${response.fromCache}`);
+                    } catch (error) {
+                        log(`Failed to load user: ${error.message}`, 'error');
+                    }
+                };
+
+                document.getElementById('updateStateBtn').onclick = async () => {
+                    const action = document.getElementById('stateAction').value;
+                    log(`Updating UI state: ${action}`);
+
+                    const params = action === 'navigate' ?
+                        { page: '/dashboard' } :
+                        { timestamp: new Date().toISOString() };
+
+                    try {
+                        await client.presenterService.updateUIState(
+                            { action, params },
+                            (update, error, done) => {
+                                if (error) {
+                                    log(`Stream error: ${error}`, 'error');
+                                    return false;
+                                }
+                                if (done) {
+                                    log('UI update stream complete', 'success');
+                                    return false;
+                                }
+
+                                addUIUpdate(update);
+                                return true; // Continue stream
+                            }
+                        );
+                    } catch (error) {
+                        log(`Failed to update state: ${error.message}`, 'error');
+                    }
+                };
+
+                document.getElementById('savePrefsBtn').onclick = async () => {
+                    const preferences = {};
+
+                    const key1 = document.getElementById('prefKey1').value;
+                    const value1 = document.getElementById('prefValue1').value;
+                    if (key1) preferences[key1] = value1;
+
+                    const key2 = document.getElementById('prefKey2').value;
+                    const value2 = document.getElementById('prefValue2').value;
+                    if (key2) preferences[key2] = value2;
+
+                    log(`Saving preferences: ${JSON.stringify(preferences)}`);
+
+                    try {
+                        const response = await client.presenterService.savePreferences({
+                            preferences
+                        });
+
+                        log(`Preferences saved: ${response.itemsSaved} items`, 'success');
+                    } catch (error) {
+                        log(`Failed to save preferences: ${error.message}`, 'error');
+                    }
+                };
+
+            } catch (error) {
+                setStatus(`Failed to initialize: ${error.message}`, 'error');
+                log(`Initialization failed: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Start initialization when page loads
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

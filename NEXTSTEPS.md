@@ -1,5 +1,17 @@
 # Next Steps
 
+## Recently Completed (September 2025)
+
+- ✅ **Browser Callbacks Implementation**: Complete browser service callback architecture
+  - **browser_provided Annotation**: Added protobuf annotation to mark browser-implemented services
+  - **Browser Channel Manager**: Created singleton FIFO queue manager as reusable library (`pkg/wasm/browser_channel.go`)
+  - **BrowserServiceManager TypeScript**: Generated shared component for managing browser service implementations
+  - **Cross-Package Support**: Browser services can be defined in separate packages from main services
+  - **Streaming JSON Parsing**: Fixed streaming responses to properly parse JSON before passing to callbacks
+  - **Zero Value Handling**: Set EmitUnpopulated=true to include zero values in responses
+  - **Working Example**: `examples/browser-callbacks/` demonstrates MVP pattern with WASM as presenter
+  - **Memory Management**: Implemented reference counting and timeout cleanup for pending calls
+
 ## Recently Completed (August 2025)
 
 - ✅ **Server Streaming Implementation (Phase 1)**: Complete server-side streaming support for WASM
@@ -58,6 +70,13 @@
   - **Documentation**: Created SETUP.md guides for both examples explaining production vs development workflows
 
 ## Immediate Tasks (Current Priority)
+
+- [ ] **Complete Browser Service Implementation**: Implement actual browser service methods in the example
+  - Wire up localStorage get/set functionality
+  - Implement fetch wrapper for HTTP requests
+  - Add cookie management methods
+  - Connect alert/confirm dialogs
+  - Test full round-trip browser service calls from WASM
 - ✅ **External Package Import Support**: Implemented comprehensive external type mapping system
   - **Google Protobuf Types**: Full support for `google.protobuf.Timestamp` → `Date`, `google.protobuf.FieldMask` → `string[]`
   - **Import Generation**: Automatic detection and exclusion of external types from factory dependencies

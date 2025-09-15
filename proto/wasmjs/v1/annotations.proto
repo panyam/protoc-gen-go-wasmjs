@@ -158,3 +158,20 @@ message AsyncMethodOptions {
   // Whether this method should be generated as async with callback parameter
   bool is_async = 1;
 }
+
+// browser_provided marks a service as implemented by the browser, not WASM.
+// When enabled, generates a client on the WASM side that calls into browser-provided implementations.
+// This is used for services that need to access browser APIs like fetch, localStorage, IndexedDB, etc.
+//
+// Example usage:
+//   service BrowserAPI {
+//     option (wasmjs.v1.browser_provided) = true;
+//     rpc Fetch(FetchRequest) returns (FetchResponse);
+//     rpc GetLocalStorage(KeyRequest) returns (ValueResponse);
+//   }
+//
+// On WASM side: Generates BrowserAPIClient that calls into JavaScript
+// On JS side: User implements BrowserAPIServer interface
+extend google.protobuf.ServiceOptions {
+  bool browser_provided = 50008;
+}
