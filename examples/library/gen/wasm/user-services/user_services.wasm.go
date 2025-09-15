@@ -148,19 +148,18 @@ func (exports *User_servicesServicesExports) userServiceCreateUser(this js.Value
 // Helper Functions
 // =============================================================================
 
-// createJSResponse creates a JavaScript-compatible response
+// createJSResponse is a wrapper for the library function
 func createJSResponse(success bool, message string, data any) any {
+	// Inline implementation when no browser services (no wasm import)
 	response := map[string]any{
 		"success": success,
 		"message": message,
 		"data":    data,
 	}
 
-	// Convert to JS Value
 	responseBytes, err := json.Marshal(response)
 	if err != nil {
 		fmt.Printf("Failed to marshal JSON response: %v\n", err)
-		// Return a simple error response
 		errorResponse := map[string]any{
 			"success": false,
 			"message": fmt.Sprintf("JSON marshal error: %v", err),
