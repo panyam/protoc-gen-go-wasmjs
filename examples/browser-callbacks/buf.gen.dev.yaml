@@ -15,12 +15,17 @@ plugins:
     out: ./gen/go
     opt: paths=source_relative
 
-  # Generate WASM bindings and TypeScript clients (using local plugin)
+  # Generate WASM bindings and TypeScript clients (using local)
   - local: ../../bin/protoc-gen-go-wasmjs
-    out: ./gen/wasm
+    out: ./gen/wasm/go
     opt:
-      - generate_typescript=true
-      - ts_export_path=./gen/ts
+      - generate_typescript=false
       - js_structure=namespaced
-      - js_namespace=browserExample
-      - module_name=browser_example
+
+  # Generate TypeScript clients separately
+  - local: ../../bin/protoc-gen-go-wasmjs
+    out: ./gen/wasm/ts
+    opt:
+      - generate_wasm=false
+      - generate_typescript=true
+      - js_structure=namespaced

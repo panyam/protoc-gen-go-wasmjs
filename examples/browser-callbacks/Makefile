@@ -5,7 +5,7 @@ buf:
 	goimports -w `find gen | grep "\.go"`
 
 # Development mode: uses local plugin and symlinked wasmjs annotations
-buf-dev: parent symlink-wasmjs
+bufdev: parent symlink-wasmjs
 	rm -Rf gen
 	# Update dependencies for dev config to avoid conflicts
 	rm -f buf.lock
@@ -42,8 +42,9 @@ build-wasm:
 	@echo "Copying wasm_exec.js..."
 	@cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" web/
 	@echo "Transpiling TypeScript files to JavaScript..."
-	@esbuild gen/wasm/browserServiceManager.ts --outfile=gen/wasm/browserServiceManager.js --format=esm --target=es2020
-	@esbuild gen/wasm/browser_exampleClient.client.ts --outfile=gen/wasm/browser_exampleClient.client.js --format=esm --target=es2020
+	@esbuild gen/wasm/ts/browserServiceManager.ts --outfile=gen/wasm/js/browserServiceManager.js --format=esm --target=es2020
+	@esbuild gen/wasm/ts/browser_v1_servicesClient.client.ts --outfile=gen/wasm/js/browser_v1_servicesClient.client.js --format=esm --target=es2020
+	@esbuild gen/wasm/ts/presenter_v1_servicesClient.client.ts --outfile=gen/wasm/js/presenter_v1_servicesClient.client.js --format=esm --target=es2020
 
 # Serve the example with Python HTTP server
 serve: build-wasm

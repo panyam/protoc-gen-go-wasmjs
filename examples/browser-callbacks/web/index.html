@@ -134,6 +134,14 @@
                 <input type="text" placeholder="Value" id="prefValue2" value="en">
             </div>
             <button id="savePrefsBtn" disabled>Save Preferences</button>
+
+            <h3>🔄 Browser Callback Demo</h3>
+            <p style="background: #e3f2fd; padding: 10px; border-radius: 4px; font-size: 14px;">
+                <strong>This demonstrates true callbacks:</strong><br>
+                WASM will prompt you 3 times and log responses
+            </p>
+            <button id="callbackDemoBtn" disabled>Start Callback Demo</button>
+            <div id="callbackResult" style="margin-top: 10px;"></div>
         </div>
 
         <div class="panel">
@@ -143,6 +151,9 @@
             <h3>UI Updates from WASM</h3>
             <ul id="uiUpdates" class="ui-updates"></ul>
 
+            <h3>Callback Logs</h3>
+            <div id="log-output" style="border: 1px solid #ddd; background: #f9f9f9; padding: 10px; margin: 10px 0; height: 150px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px;"></div>
+
             <h3>Console Output</h3>
             <div id="output"></div>
         </div>
@@ -151,7 +162,9 @@
     <script src="wasm_exec.js"></script>
     <script type="module">
         // Import the generated client
-        import { Browser_exampleClient, BrowserServiceManager } from '../gen/wasm/browser_exampleClient.client.js';
+        import { Browser_v1_servicesClient } from '../gen/wasm/js/browser_v1_servicesClient.client.js';
+        import { Presenter_v1_servicesClient } from '../gen/wasm/js/presenter_v1_servicesClient.client.js';
+        import { BrowserServiceManager } from '../gen/wasm/js/browserServiceManager.js';
 
         // Log function
         function log(message, type = 'info') {
@@ -251,6 +264,39 @@
                 alert(request.message);
                 return { shown: true };
             }
+
+            async promptUser(request) {
+                log(`PromptUser: ${request.message}`);
+                const result = window.prompt(request.message, request.defaultValue || '');
+                return {
+                    value: result || '',
+                    cancelled: result === null
+                };
+            }
+
+            async logToWindow(request) {
+                const logOutput = document.getElementById('log-output');
+                if (logOutput) {
+                    const logEntry = document.createElement('div');
+                    const timestamp = new Date().toLocaleTimeString();
+
+                    const levelColors = {
+                        'error': '#ff0000',
+                        'warning': '#ff9900',
+                        'success': '#00cc00',
+                        'info': '#0066cc'
+                    };
+
+                    const color = levelColors[request.level || 'info'] || '#000000';
+                    logEntry.style.color = color;
+                    logEntry.textContent = `[${timestamp}] [${request.level || 'info'}] ${request.message}`;
+
+                    logOutput.appendChild(logEntry);
+                    logOutput.scrollTop = logOutput.scrollHeight;
+                }
+                log(`LogToWindow [${request.level}]: ${request.message}`);
+                return { logged: true };
+            }
         }
 
         // Initialize
@@ -258,14 +304,16 @@
             try {
                 setStatus('Loading WASM module...', 'loading');
 
-                // Create client
-                const client = new Browser_exampleClient();
+                // Create both clients
+                const browserClient = new Browser_v1_servicesClient();
+                const presenterClient = new Presenter_v1_servicesClient();
 
-                // Register browser API implementation
-                client.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
+                // Register browser API implementation with both clients (they share the same browser service manager)
+                browserClient.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
+                presenterClient.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
 
-                // Load WASM
-                await client.loadWasm('../gen/wasm/browser_example.wasm');
+                // Load WASM (both clients can load the same WASM module)
+                await presenterClient.loadWasm('../gen/wasm/browser_example.wasm');
 
                 setStatus('WASM module loaded successfully!', 'success');
                 log('WASM module initialized', 'success');
@@ -274,6 +322,7 @@
                 document.getElementById('loadUserBtn').disabled = false;
                 document.getElementById('updateStateBtn').disabled = false;
                 document.getElementById('savePrefsBtn').disabled = false;
+                document.getElementById('callbackDemoBtn').disabled = false;
 
                 // Wire up button handlers
                 document.getElementById('loadUserBtn').onclick = async () => {
@@ -281,7 +330,7 @@
                     log(`Loading user data for: ${userId}`);
 
                     try {
-                        const response = await client.presenterService.loadUserData({
+                        const response = await presenterClient.presenterService.loadUserData({
                             userId: userId
                         });
 
@@ -302,7 +351,7 @@
                         { timestamp: new Date().toISOString() };
 
                     try {
-                        await client.presenterService.updateUIState(
+                        await presenterClient.presenterService.updateUIState(
                             { action, params },
                             (update, error, done) => {
                                 if (error) {
@@ -337,13 +386,53 @@
                     log(`Saving preferences: ${JSON.stringify(preferences)}`);
 
                     try {
-                        const response = await client.presenterService.savePreferences({
+                        const response = await presenterClient.presenterService.savePreferences({
                             preferences
                         });
 
                         log(`Preferences saved: ${response.itemsSaved} items`, 'success');
                     } catch (error) {
                         log(`Failed to save preferences: ${error.message}`, 'error');
+                    }
+                };
+
+                document.getElementById('callbackDemoBtn').onclick = async () => {
+                    const button = document.getElementById('callbackDemoBtn');
+                    const resultDiv = document.getElementById('callbackResult');
+
+                    button.disabled = true;
+                    button.textContent = '⏳ Running demo...';
+                    resultDiv.innerHTML = '<div style="color: #856404;">Demo in progress... Watch for prompts!</div>';
+
+                    // Clear previous logs
+                    document.getElementById('log-output').innerHTML = '';
+
+                    try {
+                        const response = await presenterClient.presenterService.runCallbackDemo({
+                            demoName: 'User Input Collection'
+                        });
+
+                        if (response.completed) {
+                            resultDiv.innerHTML = `
+                                <div style="color: #155724; background: #d4edda; padding: 10px; border-radius: 4px;">
+                                    ✅ Demo completed!<br>
+                                    Collected: ${response.collectedInputs.join(', ')}
+                                </div>
+                            `;
+                        } else {
+                            resultDiv.innerHTML = `
+                                <div style="color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px;">
+                                    ❌ Demo was cancelled<br>
+                                    Partial: ${response.collectedInputs.join(', ') || 'None'}
+                                </div>
+                            `;
+                        }
+                    } catch (error) {
+                        resultDiv.innerHTML = `<div style="color: #721c24;">Error: ${error.message}</div>`;
+                        log(`Callback demo error: ${error.message}`, 'error');
+                    } finally {
+                        button.disabled = false;
+                        button.textContent = 'Start Callback Demo';
                     }
                 };
 
