@@ -1,22 +1,29 @@
-// Example main.go for browser_example WASM module
+// Example main.go for presenter_v1_services WASM module
 // Copy this file to your project and customize the service implementations
 //
 // To use:
-// 1. Run `buf generate` to generate the WASM package (browser_example.wasm.go)
+// 1. Run `buf generate` to generate the WASM package (presenter_v1_services.wasm.go)
 // 2. Copy this file to your project and update the import path below
-// 3. Implement your services and build with: GOOS=js GOARCH=wasm go build -o browser_example.wasm
+// 3. Implement your services and build with: GOOS=js GOARCH=wasm go build -o presenter_v1_services.wasm
 
 package main
 
 import (
 	// Import the generated WASM package - UPDATE THIS PATH
-	"your-module/path-to-generated/browser_example"
-	// Import the same protobuf types as the generated WASM file
+	"your-module/path-to-generated/presenter_v1_services"
 )
 
 func main() {
 	// Initialize service implementations with your business logic
-	exports := &browser_example.Browser_exampleServicesExports{}
+	exports := &presenter_v1_services.Presenter_v1_servicesServicesExports{
+		// TODO: Replace with your actual PresenterService implementation
+		// PresenterService: &yourPresenterServiceImplementation{
+		//     // Initialize with database, config, etc.
+		//     db: database,
+		//     auth: authService,
+		//     config: appConfig,
+		// },
+	}
 
 	// Register the JavaScript API
 	exports.RegisterAPI()
