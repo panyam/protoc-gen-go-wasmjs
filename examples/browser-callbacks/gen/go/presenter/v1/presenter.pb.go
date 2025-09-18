@@ -348,6 +348,104 @@ func (x *PreferencesResponse) GetItemsSaved() int32 {
 	return 0
 }
 
+// Request to run callback demo
+type CallbackDemoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DemoName      string                 `protobuf:"bytes,1,opt,name=demo_name,json=demoName,proto3" json:"demo_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallbackDemoRequest) Reset() {
+	*x = CallbackDemoRequest{}
+	mi := &file_presenter_v1_presenter_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallbackDemoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallbackDemoRequest) ProtoMessage() {}
+
+func (x *CallbackDemoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_presenter_v1_presenter_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallbackDemoRequest.ProtoReflect.Descriptor instead.
+func (*CallbackDemoRequest) Descriptor() ([]byte, []int) {
+	return file_presenter_v1_presenter_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CallbackDemoRequest) GetDemoName() string {
+	if x != nil {
+		return x.DemoName
+	}
+	return ""
+}
+
+// Response from callback demo
+type CallbackDemoResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CollectedInputs []string               `protobuf:"bytes,1,rep,name=collected_inputs,json=collectedInputs,proto3" json:"collected_inputs,omitempty"`
+	Completed       bool                   `protobuf:"varint,2,opt,name=completed,proto3" json:"completed,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CallbackDemoResponse) Reset() {
+	*x = CallbackDemoResponse{}
+	mi := &file_presenter_v1_presenter_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallbackDemoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallbackDemoResponse) ProtoMessage() {}
+
+func (x *CallbackDemoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_presenter_v1_presenter_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallbackDemoResponse.ProtoReflect.Descriptor instead.
+func (*CallbackDemoResponse) Descriptor() ([]byte, []int) {
+	return file_presenter_v1_presenter_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CallbackDemoResponse) GetCollectedInputs() []string {
+	if x != nil {
+		return x.CollectedInputs
+	}
+	return nil
+}
+
+func (x *CallbackDemoResponse) GetCompleted() bool {
+	if x != nil {
+		return x.Completed
+	}
+	return false
+}
+
 var File_presenter_v1_presenter_proto protoreflect.FileDescriptor
 
 const file_presenter_v1_presenter_proto_rawDesc = "" +
@@ -382,11 +480,17 @@ const file_presenter_v1_presenter_proto_rawDesc = "" +
 	"\x13PreferencesResponse\x12\x14\n" +
 	"\x05saved\x18\x01 \x01(\bR\x05saved\x12\x1f\n" +
 	"\vitems_saved\x18\x02 \x01(\x05R\n" +
-	"itemsSaved2\x86\x02\n" +
+	"itemsSaved\"2\n" +
+	"\x13CallbackDemoRequest\x12\x1b\n" +
+	"\tdemo_name\x18\x01 \x01(\tR\bdemoName\"_\n" +
+	"\x14CallbackDemoResponse\x12)\n" +
+	"\x10collected_inputs\x18\x01 \x03(\tR\x0fcollectedInputs\x12\x1c\n" +
+	"\tcompleted\x18\x02 \x01(\bR\tcompleted2\xe0\x02\n" +
 	"\x10PresenterService\x12M\n" +
 	"\fLoadUserData\x12\x1d.presenter.v1.LoadUserRequest\x1a\x1e.presenter.v1.LoadUserResponse\x12K\n" +
 	"\rUpdateUIState\x12 .presenter.v1.StateUpdateRequest\x1a\x16.presenter.v1.UIUpdate0\x01\x12V\n" +
-	"\x0fSavePreferences\x12 .presenter.v1.PreferencesRequest\x1a!.presenter.v1.PreferencesResponseB\xd6\x01\n" +
+	"\x0fSavePreferences\x12 .presenter.v1.PreferencesRequest\x1a!.presenter.v1.PreferencesResponse\x12X\n" +
+	"\x0fRunCallbackDemo\x12!.presenter.v1.CallbackDemoRequest\x1a\".presenter.v1.CallbackDemoResponseB\xd6\x01\n" +
 	"\x10com.presenter.v1B\x0ePresenterProtoP\x01Zagithub.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1;presenterv1\xa2\x02\x03PXX\xaa\x02\fPresenter.V1\xca\x02\fPresenter\\V1\xe2\x02\x18Presenter\\V1\\GPBMetadata\xea\x02\rPresenter::V1b\x06proto3"
 
 var (
@@ -401,33 +505,37 @@ func file_presenter_v1_presenter_proto_rawDescGZIP() []byte {
 	return file_presenter_v1_presenter_proto_rawDescData
 }
 
-var file_presenter_v1_presenter_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_presenter_v1_presenter_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_presenter_v1_presenter_proto_goTypes = []any{
-	(*LoadUserRequest)(nil),     // 0: presenter.v1.LoadUserRequest
-	(*LoadUserResponse)(nil),    // 1: presenter.v1.LoadUserResponse
-	(*StateUpdateRequest)(nil),  // 2: presenter.v1.StateUpdateRequest
-	(*UIUpdate)(nil),            // 3: presenter.v1.UIUpdate
-	(*PreferencesRequest)(nil),  // 4: presenter.v1.PreferencesRequest
-	(*PreferencesResponse)(nil), // 5: presenter.v1.PreferencesResponse
-	nil,                         // 6: presenter.v1.StateUpdateRequest.ParamsEntry
-	nil,                         // 7: presenter.v1.UIUpdate.DataEntry
-	nil,                         // 8: presenter.v1.PreferencesRequest.PreferencesEntry
+	(*LoadUserRequest)(nil),      // 0: presenter.v1.LoadUserRequest
+	(*LoadUserResponse)(nil),     // 1: presenter.v1.LoadUserResponse
+	(*StateUpdateRequest)(nil),   // 2: presenter.v1.StateUpdateRequest
+	(*UIUpdate)(nil),             // 3: presenter.v1.UIUpdate
+	(*PreferencesRequest)(nil),   // 4: presenter.v1.PreferencesRequest
+	(*PreferencesResponse)(nil),  // 5: presenter.v1.PreferencesResponse
+	(*CallbackDemoRequest)(nil),  // 6: presenter.v1.CallbackDemoRequest
+	(*CallbackDemoResponse)(nil), // 7: presenter.v1.CallbackDemoResponse
+	nil,                          // 8: presenter.v1.StateUpdateRequest.ParamsEntry
+	nil,                          // 9: presenter.v1.UIUpdate.DataEntry
+	nil,                          // 10: presenter.v1.PreferencesRequest.PreferencesEntry
 }
 var file_presenter_v1_presenter_proto_depIdxs = []int32{
-	6, // 0: presenter.v1.StateUpdateRequest.params:type_name -> presenter.v1.StateUpdateRequest.ParamsEntry
-	7, // 1: presenter.v1.UIUpdate.data:type_name -> presenter.v1.UIUpdate.DataEntry
-	8, // 2: presenter.v1.PreferencesRequest.preferences:type_name -> presenter.v1.PreferencesRequest.PreferencesEntry
-	0, // 3: presenter.v1.PresenterService.LoadUserData:input_type -> presenter.v1.LoadUserRequest
-	2, // 4: presenter.v1.PresenterService.UpdateUIState:input_type -> presenter.v1.StateUpdateRequest
-	4, // 5: presenter.v1.PresenterService.SavePreferences:input_type -> presenter.v1.PreferencesRequest
-	1, // 6: presenter.v1.PresenterService.LoadUserData:output_type -> presenter.v1.LoadUserResponse
-	3, // 7: presenter.v1.PresenterService.UpdateUIState:output_type -> presenter.v1.UIUpdate
-	5, // 8: presenter.v1.PresenterService.SavePreferences:output_type -> presenter.v1.PreferencesResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	8,  // 0: presenter.v1.StateUpdateRequest.params:type_name -> presenter.v1.StateUpdateRequest.ParamsEntry
+	9,  // 1: presenter.v1.UIUpdate.data:type_name -> presenter.v1.UIUpdate.DataEntry
+	10, // 2: presenter.v1.PreferencesRequest.preferences:type_name -> presenter.v1.PreferencesRequest.PreferencesEntry
+	0,  // 3: presenter.v1.PresenterService.LoadUserData:input_type -> presenter.v1.LoadUserRequest
+	2,  // 4: presenter.v1.PresenterService.UpdateUIState:input_type -> presenter.v1.StateUpdateRequest
+	4,  // 5: presenter.v1.PresenterService.SavePreferences:input_type -> presenter.v1.PreferencesRequest
+	6,  // 6: presenter.v1.PresenterService.RunCallbackDemo:input_type -> presenter.v1.CallbackDemoRequest
+	1,  // 7: presenter.v1.PresenterService.LoadUserData:output_type -> presenter.v1.LoadUserResponse
+	3,  // 8: presenter.v1.PresenterService.UpdateUIState:output_type -> presenter.v1.UIUpdate
+	5,  // 9: presenter.v1.PresenterService.SavePreferences:output_type -> presenter.v1.PreferencesResponse
+	7,  // 10: presenter.v1.PresenterService.RunCallbackDemo:output_type -> presenter.v1.CallbackDemoResponse
+	7,  // [7:11] is the sub-list for method output_type
+	3,  // [3:7] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_presenter_v1_presenter_proto_init() }
@@ -441,7 +549,7 @@ func file_presenter_v1_presenter_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_presenter_v1_presenter_proto_rawDesc), len(file_presenter_v1_presenter_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

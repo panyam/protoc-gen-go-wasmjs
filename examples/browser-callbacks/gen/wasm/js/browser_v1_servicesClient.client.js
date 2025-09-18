@@ -9,14 +9,12 @@ class WasmError extends Error {
     this.name = "WasmError";
   }
 }
-class Browser_exampleClient {
+class Browser_v1_servicesClient {
+  // Service-specific clients
   constructor() {
     __publicField(this, "wasm");
     __publicField(this, "wasmLoadPromise", null);
     __publicField(this, "browserServiceManager", null);
-    // Service-specific clients
-    __publicField(this, "presenterService");
-    this.presenterService = new PresenterServiceClientImpl(this);
     this.browserServiceManager = new BrowserServiceManager();
   }
   /**
@@ -32,7 +30,7 @@ class Browser_exampleClient {
   /**
    * Load the WASM module asynchronously
    */
-  async loadWasm(wasmPath = "./browser_example.wasm") {
+  async loadWasm(wasmPath = "./browser_v1_services.wasm") {
     if (this.wasmLoadPromise) {
       return this.wasmLoadPromise;
     }
@@ -137,10 +135,10 @@ class Browser_exampleClient {
    * Load the WASM module implementation
    */
   async loadWASMModule(wasmPath) {
-    console.log("Loading browser_example WASM module...");
-    if (window.browserExample) {
+    console.log("Loading browser_v1_services WASM module...");
+    if (window.browser_v1) {
       console.log("WASM module already loaded (pre-loaded in test environment)");
-      this.wasm = window.browserExample;
+      this.wasm = window.browser_v1;
       return;
     }
     if (!window.Go) {
@@ -162,11 +160,11 @@ class Browser_exampleClient {
       this.browserServiceManager.setWasmModule(window);
       this.browserServiceManager.startProcessing();
     }
-    if (!window.browserExample) {
+    if (!window.browser_v1) {
       throw new Error("WASM APIs not found - module may not have loaded correctly");
     }
-    this.wasm = window.browserExample;
-    console.log("browser_example WASM module loaded successfully");
+    this.wasm = window.browser_v1;
+    console.log("browser_v1_services WASM module loaded successfully");
   }
   /**
    * Ensure WASM module is loaded (synchronous version for service calls)
@@ -191,24 +189,10 @@ class Browser_exampleClient {
     return current;
   }
 }
-class PresenterServiceClientImpl {
-  constructor(parent) {
-    this.parent = parent;
-  }
-  async loadUserData(request) {
-    return this.parent.callMethod("presenterService.loadUserData", request);
-  }
-  updateUIState(request, callback) {
-    return this.parent.callStreamingMethod("presenterService.updateUIState", request, callback);
-  }
-  async savePreferences(request) {
-    return this.parent.callMethod("presenterService.savePreferences", request);
-  }
-}
-var browser_exampleClient_client_default = Browser_exampleClient;
+var browser_v1_servicesClient_client_default = Browser_v1_servicesClient;
 export {
   BrowserServiceManager,
-  Browser_exampleClient,
+  Browser_v1_servicesClient,
   WasmError,
-  browser_exampleClient_client_default as default
+  browser_v1_servicesClient_client_default as default
 };

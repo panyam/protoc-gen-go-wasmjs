@@ -1,4 +1,4 @@
-import { LoadUserRequest as LoadUserRequestInterface, LoadUserResponse as LoadUserResponseInterface, StateUpdateRequest as StateUpdateRequestInterface, UIUpdate as UIUpdateInterface, PreferencesRequest as PreferencesRequestInterface, PreferencesResponse as PreferencesResponseInterface } from "./interfaces";
+import { LoadUserRequest as LoadUserRequestInterface, LoadUserResponse as LoadUserResponseInterface, StateUpdateRequest as StateUpdateRequestInterface, UIUpdate as UIUpdateInterface, PreferencesRequest as PreferencesRequestInterface, PreferencesResponse as PreferencesResponseInterface, CallbackDemoRequest as CallbackDemoRequestInterface, CallbackDemoResponse as CallbackDemoResponseInterface } from "./interfaces";
 import { PresenterV1Deserializer } from "./deserializer";
 
 
@@ -137,6 +137,51 @@ export class PreferencesResponse implements PreferencesResponseInterface {
    */
   static from(data: any) {
     return PresenterV1Deserializer.from<PreferencesResponse>(PreferencesResponse.MESSAGE_TYPE, data);
+  }
+}
+
+
+/**
+ * Request to run callback demo
+ */
+export class CallbackDemoRequest implements CallbackDemoRequestInterface {
+  /**
+   * Fully qualified message type for schema resolution
+   */
+  static readonly MESSAGE_TYPE = "presenter.v1.CallbackDemoRequest";
+
+  demoName: string = "";
+
+  /**
+   * Create and deserialize an instance from raw data
+   * @param data Raw data to deserialize
+   * @returns Deserialized CallbackDemoRequest instance or null if creation failed
+   */
+  static from(data: any) {
+    return PresenterV1Deserializer.from<CallbackDemoRequest>(CallbackDemoRequest.MESSAGE_TYPE, data);
+  }
+}
+
+
+/**
+ * Response from callback demo
+ */
+export class CallbackDemoResponse implements CallbackDemoResponseInterface {
+  /**
+   * Fully qualified message type for schema resolution
+   */
+  static readonly MESSAGE_TYPE = "presenter.v1.CallbackDemoResponse";
+
+  collectedInputs: string[] = [];
+  completed: boolean = false;
+
+  /**
+   * Create and deserialize an instance from raw data
+   * @param data Raw data to deserialize
+   * @returns Deserialized CallbackDemoResponse instance or null if creation failed
+   */
+  static from(data: any) {
+    return PresenterV1Deserializer.from<CallbackDemoResponse>(CallbackDemoResponse.MESSAGE_TYPE, data);
   }
 }
 

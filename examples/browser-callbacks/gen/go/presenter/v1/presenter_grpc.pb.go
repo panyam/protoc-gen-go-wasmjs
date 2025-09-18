@@ -23,6 +23,7 @@ const (
 	PresenterService_LoadUserData_FullMethodName    = "/presenter.v1.PresenterService/LoadUserData"
 	PresenterService_UpdateUIState_FullMethodName   = "/presenter.v1.PresenterService/UpdateUIState"
 	PresenterService_SavePreferences_FullMethodName = "/presenter.v1.PresenterService/SavePreferences"
+	PresenterService_RunCallbackDemo_FullMethodName = "/presenter.v1.PresenterService/RunCallbackDemo"
 )
 
 // PresenterServiceClient is the client API for PresenterService service.
@@ -37,6 +38,8 @@ type PresenterServiceClient interface {
 	UpdateUIState(ctx context.Context, in *StateUpdateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[UIUpdate], error)
 	// SavePreferences saves user preferences to localStorage
 	SavePreferences(ctx context.Context, in *PreferencesRequest, opts ...grpc.CallOption) (*PreferencesResponse, error)
+	// RunCallbackDemo demonstrates browser callbacks by prompting user 3 times
+	RunCallbackDemo(ctx context.Context, in *CallbackDemoRequest, opts ...grpc.CallOption) (*CallbackDemoResponse, error)
 }
 
 type presenterServiceClient struct {
@@ -86,6 +89,16 @@ func (c *presenterServiceClient) SavePreferences(ctx context.Context, in *Prefer
 	return out, nil
 }
 
+func (c *presenterServiceClient) RunCallbackDemo(ctx context.Context, in *CallbackDemoRequest, opts ...grpc.CallOption) (*CallbackDemoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CallbackDemoResponse)
+	err := c.cc.Invoke(ctx, PresenterService_RunCallbackDemo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PresenterServiceServer is the server API for PresenterService service.
 // All implementations must embed UnimplementedPresenterServiceServer
 // for forward compatibility.
@@ -98,6 +111,8 @@ type PresenterServiceServer interface {
 	UpdateUIState(*StateUpdateRequest, grpc.ServerStreamingServer[UIUpdate]) error
 	// SavePreferences saves user preferences to localStorage
 	SavePreferences(context.Context, *PreferencesRequest) (*PreferencesResponse, error)
+	// RunCallbackDemo demonstrates browser callbacks by prompting user 3 times
+	RunCallbackDemo(context.Context, *CallbackDemoRequest) (*CallbackDemoResponse, error)
 	mustEmbedUnimplementedPresenterServiceServer()
 }
 
@@ -116,6 +131,9 @@ func (UnimplementedPresenterServiceServer) UpdateUIState(*StateUpdateRequest, gr
 }
 func (UnimplementedPresenterServiceServer) SavePreferences(context.Context, *PreferencesRequest) (*PreferencesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SavePreferences not implemented")
+}
+func (UnimplementedPresenterServiceServer) RunCallbackDemo(context.Context, *CallbackDemoRequest) (*CallbackDemoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunCallbackDemo not implemented")
 }
 func (UnimplementedPresenterServiceServer) mustEmbedUnimplementedPresenterServiceServer() {}
 func (UnimplementedPresenterServiceServer) testEmbeddedByValue()                          {}
@@ -185,6 +203,24 @@ func _PresenterService_SavePreferences_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PresenterService_RunCallbackDemo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CallbackDemoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PresenterServiceServer).RunCallbackDemo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PresenterService_RunCallbackDemo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PresenterServiceServer).RunCallbackDemo(ctx, req.(*CallbackDemoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PresenterService_ServiceDesc is the grpc.ServiceDesc for PresenterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -199,6 +235,10 @@ var PresenterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SavePreferences",
 			Handler:    _PresenterService_SavePreferences_Handler,
+		},
+		{
+			MethodName: "RunCallbackDemo",
+			Handler:    _PresenterService_RunCallbackDemo_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

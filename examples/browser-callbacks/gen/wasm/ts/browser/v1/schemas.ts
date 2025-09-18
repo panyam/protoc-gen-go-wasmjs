@@ -202,6 +202,81 @@ export const AlertResponseSchema: MessageSchema = {
 };
 
 
+/**
+ * Schema for PromptRequest message
+ */
+export const PromptRequestSchema: MessageSchema = {
+  name: "PromptRequest",
+  fields: [
+    {
+      name: "message",
+      type: FieldType.STRING,
+      id: 1,
+    },
+    {
+      name: "defaultValue",
+      type: FieldType.STRING,
+      id: 2,
+    },
+  ],
+};
+
+
+/**
+ * Schema for PromptResponse message
+ */
+export const PromptResponseSchema: MessageSchema = {
+  name: "PromptResponse",
+  fields: [
+    {
+      name: "value",
+      type: FieldType.STRING,
+      id: 1,
+    },
+    {
+      name: "cancelled",
+      type: FieldType.BOOLEAN,
+      id: 2,
+    },
+  ],
+};
+
+
+/**
+ * Schema for LogRequest message
+ */
+export const LogRequestSchema: MessageSchema = {
+  name: "LogRequest",
+  fields: [
+    {
+      name: "message",
+      type: FieldType.STRING,
+      id: 1,
+    },
+    {
+      name: "level",
+      type: FieldType.STRING,
+      id: 2,
+    },
+  ],
+};
+
+
+/**
+ * Schema for LogResponse message
+ */
+export const LogResponseSchema: MessageSchema = {
+  name: "LogResponse",
+  fields: [
+    {
+      name: "logged",
+      type: FieldType.BOOLEAN,
+      id: 1,
+    },
+  ],
+};
+
+
 
 /**
  * Package-scoped schema registry for browser.v1
@@ -217,6 +292,10 @@ export const BrowserV1SchemaRegistry: Record<string, MessageSchema> = {
   "browser.v1.CookieResponse": CookieResponseSchema,
   "browser.v1.AlertRequest": AlertRequestSchema,
   "browser.v1.AlertResponse": AlertResponseSchema,
+  "browser.v1.PromptRequest": PromptRequestSchema,
+  "browser.v1.PromptResponse": PromptResponseSchema,
+  "browser.v1.LogRequest": LogRequestSchema,
+  "browser.v1.LogResponse": LogResponseSchema,
 };
 
 /**

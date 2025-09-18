@@ -90,3 +90,38 @@ export interface AlertResponse {
   shown: boolean;
 }
 
+
+/**
+ * Request for user prompt
+ */
+export interface PromptRequest {
+  message: string;
+  defaultValue: string;
+}
+
+
+/**
+ * Response from user prompt
+ */
+export interface PromptResponse {
+  value: string;
+  cancelled: boolean;
+}
+
+
+/**
+ * Request to log to window
+ */
+export interface LogRequest {
+  message: string;
+  level: string;
+}
+
+
+/**
+ * Response from log to window
+ */
+export interface LogResponse {
+  logged: boolean;
+}
+

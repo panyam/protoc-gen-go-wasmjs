@@ -1,9 +1,9 @@
 
 
-import { FetchRequest as FetchRequestInterface, FetchResponse as FetchResponseInterface, StorageKeyRequest as StorageKeyRequestInterface, StorageValueResponse as StorageValueResponseInterface, StorageSetRequest as StorageSetRequestInterface, StorageSetResponse as StorageSetResponseInterface, CookieRequest as CookieRequestInterface, CookieResponse as CookieResponseInterface, AlertRequest as AlertRequestInterface, AlertResponse as AlertResponseInterface } from "./interfaces";
+import { LoadUserRequest as LoadUserRequestInterface, LoadUserResponse as LoadUserResponseInterface, StateUpdateRequest as StateUpdateRequestInterface, UIUpdate as UIUpdateInterface, PreferencesRequest as PreferencesRequestInterface, PreferencesResponse as PreferencesResponseInterface, CallbackDemoRequest as CallbackDemoRequestInterface, CallbackDemoResponse as CallbackDemoResponseInterface } from "./interfaces";
 
 
-import { FetchRequest as ConcreteFetchRequest, FetchResponse as ConcreteFetchResponse, StorageKeyRequest as ConcreteStorageKeyRequest, StorageValueResponse as ConcreteStorageValueResponse, StorageSetRequest as ConcreteStorageSetRequest, StorageSetResponse as ConcreteStorageSetResponse, CookieRequest as ConcreteCookieRequest, CookieResponse as ConcreteCookieResponse, AlertRequest as ConcreteAlertRequest, AlertResponse as ConcreteAlertResponse } from "./models";
+import { LoadUserRequest as ConcreteLoadUserRequest, LoadUserResponse as ConcreteLoadUserResponse, StateUpdateRequest as ConcreteStateUpdateRequest, UIUpdate as ConcreteUIUpdate, PreferencesRequest as ConcretePreferencesRequest, PreferencesResponse as ConcretePreferencesResponse, CallbackDemoRequest as ConcreteCallbackDemoRequest, CallbackDemoResponse as ConcreteCallbackDemoResponse } from "./models";
 
 
 
@@ -18,204 +18,164 @@ export interface FactoryResult<T> {
 /**
  * Enhanced factory with context-aware object construction
  */
-export class BrowserV1Factory {
+export class PresenterV1Factory {
 
 
   /**
-   * Enhanced factory method for FetchRequest
+   * Enhanced factory method for LoadUserRequest
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newFetchRequest = (
+  newLoadUserRequest = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<FetchRequestInterface> => {
-    const out = new ConcreteFetchRequest();
+  ): FactoryResult<LoadUserRequestInterface> => {
+    const out = new ConcreteLoadUserRequest();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
   /**
-   * Enhanced factory method for FetchResponse
+   * Enhanced factory method for LoadUserResponse
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newFetchResponse = (
+  newLoadUserResponse = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<FetchResponseInterface> => {
-    const out = new ConcreteFetchResponse();
+  ): FactoryResult<LoadUserResponseInterface> => {
+    const out = new ConcreteLoadUserResponse();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
   /**
-   * Enhanced factory method for StorageKeyRequest
+   * Enhanced factory method for StateUpdateRequest
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newStorageKeyRequest = (
+  newStateUpdateRequest = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<StorageKeyRequestInterface> => {
-    const out = new ConcreteStorageKeyRequest();
+  ): FactoryResult<StateUpdateRequestInterface> => {
+    const out = new ConcreteStateUpdateRequest();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
   /**
-   * Enhanced factory method for StorageValueResponse
+   * Enhanced factory method for UIUpdate
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newStorageValueResponse = (
+  newUIUpdate = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<StorageValueResponseInterface> => {
-    const out = new ConcreteStorageValueResponse();
+  ): FactoryResult<UIUpdateInterface> => {
+    const out = new ConcreteUIUpdate();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
   /**
-   * Enhanced factory method for StorageSetRequest
+   * Enhanced factory method for PreferencesRequest
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newStorageSetRequest = (
+  newPreferencesRequest = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<StorageSetRequestInterface> => {
-    const out = new ConcreteStorageSetRequest();
+  ): FactoryResult<PreferencesRequestInterface> => {
+    const out = new ConcretePreferencesRequest();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
   /**
-   * Enhanced factory method for StorageSetResponse
+   * Enhanced factory method for PreferencesResponse
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newStorageSetResponse = (
+  newPreferencesResponse = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<StorageSetResponseInterface> => {
-    const out = new ConcreteStorageSetResponse();
+  ): FactoryResult<PreferencesResponseInterface> => {
+    const out = new ConcretePreferencesResponse();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
   /**
-   * Enhanced factory method for CookieRequest
+   * Enhanced factory method for CallbackDemoRequest
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newCookieRequest = (
+  newCallbackDemoRequest = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<CookieRequestInterface> => {
-    const out = new ConcreteCookieRequest();
+  ): FactoryResult<CallbackDemoRequestInterface> => {
+    const out = new ConcreteCallbackDemoRequest();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
   /**
-   * Enhanced factory method for CookieResponse
+   * Enhanced factory method for CallbackDemoResponse
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  newCookieResponse = (
+  newCallbackDemoResponse = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<CookieResponseInterface> => {
-    const out = new ConcreteCookieResponse();
-    
-    // Factory does not populate by default - let deserializer handle it
-    return { instance: out, fullyLoaded: false };
-  }
-
-  /**
-   * Enhanced factory method for AlertRequest
-   * @param parent Parent object containing this field
-   * @param attributeName Field name in parent object
-   * @param attributeKey Array index, map key, or union tag (for containers)
-   * @param data Raw data to potentially populate from
-   * @returns Factory result with instance and population status
-   */
-  newAlertRequest = (
-    parent?: any,
-    attributeName?: string,
-    attributeKey?: string | number,
-    data?: any
-  ): FactoryResult<AlertRequestInterface> => {
-    const out = new ConcreteAlertRequest();
-    
-    // Factory does not populate by default - let deserializer handle it
-    return { instance: out, fullyLoaded: false };
-  }
-
-  /**
-   * Enhanced factory method for AlertResponse
-   * @param parent Parent object containing this field
-   * @param attributeName Field name in parent object
-   * @param attributeKey Array index, map key, or union tag (for containers)
-   * @param data Raw data to potentially populate from
-   * @returns Factory result with instance and population status
-   */
-  newAlertResponse = (
-    parent?: any,
-    attributeName?: string,
-    attributeKey?: string | number,
-    data?: any
-  ): FactoryResult<AlertResponseInterface> => {
-    const out = new ConcreteAlertResponse();
+  ): FactoryResult<CallbackDemoResponseInterface> => {
+    const out = new ConcreteCallbackDemoResponse();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
@@ -239,7 +199,7 @@ export class BrowserV1Factory {
     const methodName = 'new' + typeName;
     
     // Check if this is our own package first
-    const currentPackage = "browser.v1";
+    const currentPackage = "presenter.v1";
     if (packageName === currentPackage) {
       return (this as any)[methodName];
     }

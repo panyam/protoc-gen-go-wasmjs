@@ -25,6 +25,8 @@ const (
 	BrowserAPI_SetLocalStorage_FullMethodName = "/browser.v1.BrowserAPI/SetLocalStorage"
 	BrowserAPI_GetCookie_FullMethodName       = "/browser.v1.BrowserAPI/GetCookie"
 	BrowserAPI_Alert_FullMethodName           = "/browser.v1.BrowserAPI/Alert"
+	BrowserAPI_PromptUser_FullMethodName      = "/browser.v1.BrowserAPI/PromptUser"
+	BrowserAPI_LogToWindow_FullMethodName     = "/browser.v1.BrowserAPI/LogToWindow"
 )
 
 // BrowserAPIClient is the client API for BrowserAPI service.
@@ -43,6 +45,10 @@ type BrowserAPIClient interface {
 	GetCookie(ctx context.Context, in *CookieRequest, opts ...grpc.CallOption) (*CookieResponse, error)
 	// Alert shows a browser alert dialog
 	Alert(ctx context.Context, in *AlertRequest, opts ...grpc.CallOption) (*AlertResponse, error)
+	// PromptUser shows a prompt dialog and returns the user's input
+	PromptUser(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error)
+	// LogToWindow appends a log message to the DOM
+	LogToWindow(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
 }
 
 type browserAPIClient struct {
@@ -103,6 +109,26 @@ func (c *browserAPIClient) Alert(ctx context.Context, in *AlertRequest, opts ...
 	return out, nil
 }
 
+func (c *browserAPIClient) PromptUser(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PromptResponse)
+	err := c.cc.Invoke(ctx, BrowserAPI_PromptUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserAPIClient) LogToWindow(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LogResponse)
+	err := c.cc.Invoke(ctx, BrowserAPI_LogToWindow_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BrowserAPIServer is the server API for BrowserAPI service.
 // All implementations must embed UnimplementedBrowserAPIServer
 // for forward compatibility.
@@ -119,6 +145,10 @@ type BrowserAPIServer interface {
 	GetCookie(context.Context, *CookieRequest) (*CookieResponse, error)
 	// Alert shows a browser alert dialog
 	Alert(context.Context, *AlertRequest) (*AlertResponse, error)
+	// PromptUser shows a prompt dialog and returns the user's input
+	PromptUser(context.Context, *PromptRequest) (*PromptResponse, error)
+	// LogToWindow appends a log message to the DOM
+	LogToWindow(context.Context, *LogRequest) (*LogResponse, error)
 	mustEmbedUnimplementedBrowserAPIServer()
 }
 
@@ -143,6 +173,12 @@ func (UnimplementedBrowserAPIServer) GetCookie(context.Context, *CookieRequest) 
 }
 func (UnimplementedBrowserAPIServer) Alert(context.Context, *AlertRequest) (*AlertResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Alert not implemented")
+}
+func (UnimplementedBrowserAPIServer) PromptUser(context.Context, *PromptRequest) (*PromptResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PromptUser not implemented")
+}
+func (UnimplementedBrowserAPIServer) LogToWindow(context.Context, *LogRequest) (*LogResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LogToWindow not implemented")
 }
 func (UnimplementedBrowserAPIServer) mustEmbedUnimplementedBrowserAPIServer() {}
 func (UnimplementedBrowserAPIServer) testEmbeddedByValue()                    {}
@@ -255,6 +291,42 @@ func _BrowserAPI_Alert_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BrowserAPI_PromptUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PromptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserAPIServer).PromptUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BrowserAPI_PromptUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserAPIServer).PromptUser(ctx, req.(*PromptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BrowserAPI_LogToWindow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserAPIServer).LogToWindow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BrowserAPI_LogToWindow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserAPIServer).LogToWindow(ctx, req.(*LogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BrowserAPI_ServiceDesc is the grpc.ServiceDesc for BrowserAPI service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -281,6 +353,14 @@ var BrowserAPI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Alert",
 			Handler:    _BrowserAPI_Alert_Handler,
+		},
+		{
+			MethodName: "PromptUser",
+			Handler:    _BrowserAPI_PromptUser_Handler,
+		},
+		{
+			MethodName: "LogToWindow",
+			Handler:    _BrowserAPI_LogToWindow_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

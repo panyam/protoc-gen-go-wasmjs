@@ -56,3 +56,20 @@ export interface PreferencesResponse {
   itemsSaved: number;
 }
 
+
+/**
+ * Request to run callback demo
+ */
+export interface CallbackDemoRequest {
+  demoName: string;
+}
+
+
+/**
+ * Response from callback demo
+ */
+export interface CallbackDemoResponse {
+  collectedInputs: string[];
+  completed: boolean;
+}
+

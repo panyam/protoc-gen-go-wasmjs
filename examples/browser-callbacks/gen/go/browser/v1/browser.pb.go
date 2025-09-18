@@ -545,6 +545,210 @@ func (x *AlertResponse) GetShown() bool {
 	return false
 }
 
+// Request for user prompt
+type PromptRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	DefaultValue  string                 `protobuf:"bytes,2,opt,name=default_value,json=defaultValue,proto3" json:"default_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PromptRequest) Reset() {
+	*x = PromptRequest{}
+	mi := &file_browser_v1_browser_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PromptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PromptRequest) ProtoMessage() {}
+
+func (x *PromptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_browser_v1_browser_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PromptRequest.ProtoReflect.Descriptor instead.
+func (*PromptRequest) Descriptor() ([]byte, []int) {
+	return file_browser_v1_browser_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *PromptRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *PromptRequest) GetDefaultValue() string {
+	if x != nil {
+		return x.DefaultValue
+	}
+	return ""
+}
+
+// Response from user prompt
+type PromptResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Cancelled     bool                   `protobuf:"varint,2,opt,name=cancelled,proto3" json:"cancelled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PromptResponse) Reset() {
+	*x = PromptResponse{}
+	mi := &file_browser_v1_browser_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PromptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PromptResponse) ProtoMessage() {}
+
+func (x *PromptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_browser_v1_browser_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PromptResponse.ProtoReflect.Descriptor instead.
+func (*PromptResponse) Descriptor() ([]byte, []int) {
+	return file_browser_v1_browser_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *PromptResponse) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *PromptResponse) GetCancelled() bool {
+	if x != nil {
+		return x.Cancelled
+	}
+	return false
+}
+
+// Request to log to window
+type LogRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Level         string                 `protobuf:"bytes,2,opt,name=level,proto3" json:"level,omitempty"` // info, warning, error, success
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogRequest) Reset() {
+	*x = LogRequest{}
+	mi := &file_browser_v1_browser_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogRequest) ProtoMessage() {}
+
+func (x *LogRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_browser_v1_browser_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogRequest.ProtoReflect.Descriptor instead.
+func (*LogRequest) Descriptor() ([]byte, []int) {
+	return file_browser_v1_browser_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *LogRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *LogRequest) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+// Response from log to window
+type LogResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Logged        bool                   `protobuf:"varint,1,opt,name=logged,proto3" json:"logged,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogResponse) Reset() {
+	*x = LogResponse{}
+	mi := &file_browser_v1_browser_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogResponse) ProtoMessage() {}
+
+func (x *LogResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_browser_v1_browser_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogResponse.ProtoReflect.Descriptor instead.
+func (*LogResponse) Descriptor() ([]byte, []int) {
+	return file_browser_v1_browser_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *LogResponse) GetLogged() bool {
+	if x != nil {
+		return x.Logged
+	}
+	return false
+}
+
 var File_browser_v1_browser_proto protoreflect.FileDescriptor
 
 const file_browser_v1_browser_proto_rawDesc = "" +
@@ -586,14 +790,29 @@ const file_browser_v1_browser_proto_rawDesc = "" +
 	"\fAlertRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"%\n" +
 	"\rAlertResponse\x12\x14\n" +
-	"\x05shown\x18\x01 \x01(\bR\x05shown2\xf8\x02\n" +
+	"\x05shown\x18\x01 \x01(\bR\x05shown\"N\n" +
+	"\rPromptRequest\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12#\n" +
+	"\rdefault_value\x18\x02 \x01(\tR\fdefaultValue\"D\n" +
+	"\x0ePromptResponse\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\x12\x1c\n" +
+	"\tcancelled\x18\x02 \x01(\bR\tcancelled\"<\n" +
+	"\n" +
+	"LogRequest\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x14\n" +
+	"\x05level\x18\x02 \x01(\tR\x05level\"%\n" +
+	"\vLogResponse\x12\x16\n" +
+	"\x06logged\x18\x01 \x01(\bR\x06logged2\xfd\x03\n" +
 	"\n" +
 	"BrowserAPI\x12<\n" +
 	"\x05Fetch\x12\x18.browser.v1.FetchRequest\x1a\x19.browser.v1.FetchResponse\x12R\n" +
 	"\x0fGetLocalStorage\x12\x1d.browser.v1.StorageKeyRequest\x1a .browser.v1.StorageValueResponse\x12P\n" +
 	"\x0fSetLocalStorage\x12\x1d.browser.v1.StorageSetRequest\x1a\x1e.browser.v1.StorageSetResponse\x12B\n" +
 	"\tGetCookie\x12\x19.browser.v1.CookieRequest\x1a\x1a.browser.v1.CookieResponse\x12<\n" +
-	"\x05Alert\x12\x18.browser.v1.AlertRequest\x1a\x19.browser.v1.AlertResponse\x1a\x04\xc0\xb5\x18\x01B\xc6\x01\n" +
+	"\x05Alert\x12\x18.browser.v1.AlertRequest\x1a\x19.browser.v1.AlertResponse\x12C\n" +
+	"\n" +
+	"PromptUser\x12\x19.browser.v1.PromptRequest\x1a\x1a.browser.v1.PromptResponse\x12>\n" +
+	"\vLogToWindow\x12\x16.browser.v1.LogRequest\x1a\x17.browser.v1.LogResponse\x1a\x04\xc0\xb5\x18\x01B\xc6\x01\n" +
 	"\x0ecom.browser.v1B\fBrowserProtoP\x01Z]github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/browser/v1;browserv1\xa2\x02\x03BXX\xaa\x02\n" +
 	"Browser.V1\xca\x02\n" +
 	"Browser\\V1\xe2\x02\x16Browser\\V1\\GPBMetadata\xea\x02\vBrowser::V1b\x06proto3"
@@ -610,7 +829,7 @@ func file_browser_v1_browser_proto_rawDescGZIP() []byte {
 	return file_browser_v1_browser_proto_rawDescData
 }
 
-var file_browser_v1_browser_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_browser_v1_browser_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_browser_v1_browser_proto_goTypes = []any{
 	(*FetchRequest)(nil),         // 0: browser.v1.FetchRequest
 	(*FetchResponse)(nil),        // 1: browser.v1.FetchResponse
@@ -622,24 +841,32 @@ var file_browser_v1_browser_proto_goTypes = []any{
 	(*CookieResponse)(nil),       // 7: browser.v1.CookieResponse
 	(*AlertRequest)(nil),         // 8: browser.v1.AlertRequest
 	(*AlertResponse)(nil),        // 9: browser.v1.AlertResponse
-	nil,                          // 10: browser.v1.FetchRequest.HeadersEntry
-	nil,                          // 11: browser.v1.FetchResponse.HeadersEntry
+	(*PromptRequest)(nil),        // 10: browser.v1.PromptRequest
+	(*PromptResponse)(nil),       // 11: browser.v1.PromptResponse
+	(*LogRequest)(nil),           // 12: browser.v1.LogRequest
+	(*LogResponse)(nil),          // 13: browser.v1.LogResponse
+	nil,                          // 14: browser.v1.FetchRequest.HeadersEntry
+	nil,                          // 15: browser.v1.FetchResponse.HeadersEntry
 }
 var file_browser_v1_browser_proto_depIdxs = []int32{
-	10, // 0: browser.v1.FetchRequest.headers:type_name -> browser.v1.FetchRequest.HeadersEntry
-	11, // 1: browser.v1.FetchResponse.headers:type_name -> browser.v1.FetchResponse.HeadersEntry
+	14, // 0: browser.v1.FetchRequest.headers:type_name -> browser.v1.FetchRequest.HeadersEntry
+	15, // 1: browser.v1.FetchResponse.headers:type_name -> browser.v1.FetchResponse.HeadersEntry
 	0,  // 2: browser.v1.BrowserAPI.Fetch:input_type -> browser.v1.FetchRequest
 	2,  // 3: browser.v1.BrowserAPI.GetLocalStorage:input_type -> browser.v1.StorageKeyRequest
 	4,  // 4: browser.v1.BrowserAPI.SetLocalStorage:input_type -> browser.v1.StorageSetRequest
 	6,  // 5: browser.v1.BrowserAPI.GetCookie:input_type -> browser.v1.CookieRequest
 	8,  // 6: browser.v1.BrowserAPI.Alert:input_type -> browser.v1.AlertRequest
-	1,  // 7: browser.v1.BrowserAPI.Fetch:output_type -> browser.v1.FetchResponse
-	3,  // 8: browser.v1.BrowserAPI.GetLocalStorage:output_type -> browser.v1.StorageValueResponse
-	5,  // 9: browser.v1.BrowserAPI.SetLocalStorage:output_type -> browser.v1.StorageSetResponse
-	7,  // 10: browser.v1.BrowserAPI.GetCookie:output_type -> browser.v1.CookieResponse
-	9,  // 11: browser.v1.BrowserAPI.Alert:output_type -> browser.v1.AlertResponse
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
+	10, // 7: browser.v1.BrowserAPI.PromptUser:input_type -> browser.v1.PromptRequest
+	12, // 8: browser.v1.BrowserAPI.LogToWindow:input_type -> browser.v1.LogRequest
+	1,  // 9: browser.v1.BrowserAPI.Fetch:output_type -> browser.v1.FetchResponse
+	3,  // 10: browser.v1.BrowserAPI.GetLocalStorage:output_type -> browser.v1.StorageValueResponse
+	5,  // 11: browser.v1.BrowserAPI.SetLocalStorage:output_type -> browser.v1.StorageSetResponse
+	7,  // 12: browser.v1.BrowserAPI.GetCookie:output_type -> browser.v1.CookieResponse
+	9,  // 13: browser.v1.BrowserAPI.Alert:output_type -> browser.v1.AlertResponse
+	11, // 14: browser.v1.BrowserAPI.PromptUser:output_type -> browser.v1.PromptResponse
+	13, // 15: browser.v1.BrowserAPI.LogToWindow:output_type -> browser.v1.LogResponse
+	9,  // [9:16] is the sub-list for method output_type
+	2,  // [2:9] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -656,7 +883,7 @@ func file_browser_v1_browser_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_browser_v1_browser_proto_rawDesc), len(file_browser_v1_browser_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

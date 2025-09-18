@@ -29,13 +29,14 @@ export interface PresenterServiceMethods {
 	loadUserData(request: any): Promise<any>;
 	updateUIState(request: any, callback: (response: any | null, error: string | null, done: boolean) => boolean): void;
 	savePreferences(request: any): Promise<any>;
+	runCallbackDemo(request: any): Promise<any>;
 }
 
 /**
- * browser_example WASM client
+ * presenter_v1_services WASM client
  * Provides a clean interface between UI components and the Go WASM service implementations
  */
-export class Browser_exampleClient {
+export class Presenter_v1_servicesClient {
     private wasm: any;
     private wasmLoadPromise: Promise<void> | null = null;
     private browserServiceManager: BrowserServiceManager | null = null;
@@ -62,7 +63,7 @@ export class Browser_exampleClient {
     /**
      * Load the WASM module asynchronously
      */
-    public async loadWasm(wasmPath: string = './browser_example.wasm'): Promise<void> {
+    public async loadWasm(wasmPath: string = './presenter_v1_services.wasm'): Promise<void> {
         if (this.wasmLoadPromise) {
             return this.wasmLoadPromise;
         }
@@ -207,12 +208,12 @@ export class Browser_exampleClient {
      * Load the WASM module implementation
      */
     private async loadWASMModule(wasmPath: string): Promise<void> {
-        console.log('Loading browser_example WASM module...');
+        console.log('Loading presenter_v1_services WASM module...');
 
         // Check if WASM is already loaded (for testing environments)
-        if ((window as any).browserExample) {
+        if ((window as any).presenter_v1) {
             console.log('WASM module already loaded (pre-loaded in test environment)');
-            this.wasm = (window as any).browserExample;
+            this.wasm = (window as any).presenter_v1;
             return;
         }
 
@@ -245,12 +246,12 @@ export class Browser_exampleClient {
         }
 
         // Verify WASM APIs are available
-        if (!(window as any).browserExample) {
+        if (!(window as any).presenter_v1) {
             throw new Error('WASM APIs not found - module may not have loaded correctly');
         }
-        this.wasm = (window as any).browserExample;
+        this.wasm = (window as any).presenter_v1;
 
-        console.log('browser_example WASM module loaded successfully');
+        console.log('presenter_v1_services WASM module loaded successfully');
     }
 
     /**
@@ -282,7 +283,7 @@ export class Browser_exampleClient {
  * PresenterService service client implementation
  */
 class PresenterServiceClientImpl implements PresenterServiceMethods {
-    constructor(private parent: Browser_exampleClient) {}
+    constructor(private parent: Presenter_v1_servicesClient) {}
     async loadUserData(request: any): Promise<any> {
         return this.parent.callMethod('presenterService.loadUserData', request);
     }
@@ -295,10 +296,13 @@ class PresenterServiceClientImpl implements PresenterServiceMethods {
     async savePreferences(request: any): Promise<any> {
         return this.parent.callMethod('presenterService.savePreferences', request);
     }
+    async runCallbackDemo(request: any): Promise<any> {
+        return this.parent.callMethod('presenterService.runCallbackDemo', request);
+    }
 }
 
 // Re-export BrowserServiceManager for cross-package use
 export { BrowserServiceManager };
 
 // Export the main client class as default
-export default Browser_exampleClient;
+export default Presenter_v1_servicesClient;

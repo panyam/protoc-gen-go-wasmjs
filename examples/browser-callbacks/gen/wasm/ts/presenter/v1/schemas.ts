@@ -134,6 +134,42 @@ export const PreferencesResponseSchema: MessageSchema = {
 };
 
 
+/**
+ * Schema for CallbackDemoRequest message
+ */
+export const CallbackDemoRequestSchema: MessageSchema = {
+  name: "CallbackDemoRequest",
+  fields: [
+    {
+      name: "demoName",
+      type: FieldType.STRING,
+      id: 1,
+    },
+  ],
+};
+
+
+/**
+ * Schema for CallbackDemoResponse message
+ */
+export const CallbackDemoResponseSchema: MessageSchema = {
+  name: "CallbackDemoResponse",
+  fields: [
+    {
+      name: "collectedInputs",
+      type: FieldType.REPEATED,
+      id: 1,
+      repeated: true,
+    },
+    {
+      name: "completed",
+      type: FieldType.BOOLEAN,
+      id: 2,
+    },
+  ],
+};
+
+
 
 /**
  * Package-scoped schema registry for presenter.v1
@@ -145,6 +181,8 @@ export const PresenterV1SchemaRegistry: Record<string, MessageSchema> = {
   "presenter.v1.UIUpdate": UIUpdateSchema,
   "presenter.v1.PreferencesRequest": PreferencesRequestSchema,
   "presenter.v1.PreferencesResponse": PreferencesResponseSchema,
+  "presenter.v1.CallbackDemoRequest": CallbackDemoRequestSchema,
+  "presenter.v1.CallbackDemoResponse": CallbackDemoResponseSchema,
 };
 
 /**

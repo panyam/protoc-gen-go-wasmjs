@@ -18,13 +18,13 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// Browser_exampleServicesExports provides WASM exports for dependency injection
-type Browser_exampleServicesExports struct {
+// Presenter_v1ServicesExports provides WASM exports for dependency injection
+type Presenter_v1ServicesExports struct {
 	PresenterService presenterv1.PresenterServiceServer
 }
 
 // RegisterAPI registers the services with the JavaScript global namespace
-func (exports *Browser_exampleServicesExports) RegisterAPI() {
+func (exports *Presenter_v1ServicesExports) RegisterAPI() {
 	fmt.Println("browser_example WASM module loading...")
 	// Create namespaced API structure
 	browserExample := map[string]interface{}{
@@ -38,6 +38,9 @@ func (exports *Browser_exampleServicesExports) RegisterAPI() {
 			"savePreferences": js.FuncOf(func(this js.Value, args []js.Value) any {
 				return exports.presenterServiceSavePreferences(this, args)
 			}),
+			"runCallbackDemo": js.FuncOf(func(this js.Value, args []js.Value) any {
+				return exports.presenterServiceRunCallbackDemo(this, args)
+			}),
 		},
 	}
 	js.Global().Set("browserExample", js.ValueOf(browserExample))
@@ -50,7 +53,7 @@ func (exports *Browser_exampleServicesExports) RegisterAPI() {
 // =============================================================================
 
 // presenterServiceLoadUserData handles the LoadUserData method for PresenterService
-func (exports *Browser_exampleServicesExports) presenterServiceLoadUserData(this js.Value, args []js.Value) any {
+func (exports *Presenter_v1ServicesExports) presenterServiceLoadUserData(this js.Value, args []js.Value) any {
 	if exports.PresenterService == nil {
 		return createJSResponse(false, "PresenterService not initialized", nil)
 	}
@@ -99,7 +102,7 @@ func (exports *Browser_exampleServicesExports) presenterServiceLoadUserData(this
 }
 
 // presenterServiceUpdateUIState handles the UpdateUIState method for PresenterService
-func (exports *Browser_exampleServicesExports) presenterServiceUpdateUIState(this js.Value, args []js.Value) any {
+func (exports *Presenter_v1ServicesExports) presenterServiceUpdateUIState(this js.Value, args []js.Value) any {
 	if exports.PresenterService == nil {
 		return createJSResponse(false, "PresenterService not initialized", nil)
 	}
@@ -156,7 +159,7 @@ func (exports *Browser_exampleServicesExports) presenterServiceUpdateUIState(thi
 }
 
 // presenterServiceSavePreferences handles the SavePreferences method for PresenterService
-func (exports *Browser_exampleServicesExports) presenterServiceSavePreferences(this js.Value, args []js.Value) any {
+func (exports *Presenter_v1ServicesExports) presenterServiceSavePreferences(this js.Value, args []js.Value) any {
 	if exports.PresenterService == nil {
 		return createJSResponse(false, "PresenterService not initialized", nil)
 	}
@@ -186,6 +189,55 @@ func (exports *Browser_exampleServicesExports) presenterServiceSavePreferences(t
 
 	// Call service method
 	resp, err := exports.PresenterService.SavePreferences(ctx, req)
+	if err != nil {
+		return createJSResponse(false, fmt.Sprintf("Service call failed: %v", err), nil)
+	}
+
+	// Marshal response with options for better TypeScript compatibility
+	marshalOpts := protojson.MarshalOptions{
+		UseProtoNames:   false, // Use JSON names (camelCase) instead of proto names
+		EmitUnpopulated: true,  // Emit zero values to avoid undefined in JavaScript
+		UseEnumNumbers:  false, // Use enum string values
+	}
+	responseJSON, err := marshalOpts.Marshal(resp)
+	if err != nil {
+		return createJSResponse(false, fmt.Sprintf("Failed to marshal response: %v", err), nil)
+	}
+
+	return createJSResponse(true, "Success", json.RawMessage(responseJSON))
+}
+
+// presenterServiceRunCallbackDemo handles the RunCallbackDemo method for PresenterService
+func (exports *Presenter_v1ServicesExports) presenterServiceRunCallbackDemo(this js.Value, args []js.Value) any {
+	if exports.PresenterService == nil {
+		return createJSResponse(false, "PresenterService not initialized", nil)
+	}
+	// Synchronous method
+	if len(args) < 1 {
+		return createJSResponse(false, "Request JSON required", nil)
+	}
+
+	requestJSON := args[0].String()
+	if requestJSON == "" {
+		return createJSResponse(false, "Request JSON is empty", nil)
+	}
+
+	// Parse request
+	req := &presenterv1.CallbackDemoRequest{}
+	opts := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+		AllowPartial:   true, // Allow partial messages for better compatibility
+	}
+	if err := opts.Unmarshal([]byte(requestJSON), req); err != nil {
+		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
+	}
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Call service method
+	resp, err := exports.PresenterService.RunCallbackDemo(ctx, req)
 	if err != nil {
 		return createJSResponse(false, fmt.Sprintf("Service call failed: %v", err), nil)
 	}

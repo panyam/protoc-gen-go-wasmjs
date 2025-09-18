@@ -11,19 +11,12 @@ package main
 import (
 	// Import the generated WASM package - UPDATE THIS PATH
 	"your-module/path-to-generated/browser_example"
+	// Import the same protobuf types as the generated WASM file
 )
 
 func main() {
 	// Initialize service implementations with your business logic
-	exports := &browser_example.Browser_exampleServicesExports{
-		// TODO: Replace with your actual PresenterService implementation
-		// PresenterService: &yourPresenterServiceImplementation{
-		//     // Initialize with database, config, etc.
-		//     db: database,
-		//     auth: authService,
-		//     config: appConfig,
-		// },
-	}
+	exports := &browser_example.Browser_exampleServicesExports{}
 
 	// Register the JavaScript API
 	exports.RegisterAPI()

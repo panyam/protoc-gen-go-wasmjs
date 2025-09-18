@@ -24,6 +24,12 @@ service BrowserAPI {
 
     // Alert shows a browser alert dialog
     rpc Alert(AlertRequest) returns (AlertResponse);
+
+    // PromptUser shows a prompt dialog and returns the user's input
+    rpc PromptUser(PromptRequest) returns (PromptResponse);
+
+    // LogToWindow appends a log message to the DOM
+    rpc LogToWindow(LogRequest) returns (LogResponse);
 }
 
 // Request to fetch data from a URL
@@ -83,4 +89,27 @@ message AlertRequest {
 // Response from alert
 message AlertResponse {
     bool shown = 1;
+}
+
+// Request for user prompt
+message PromptRequest {
+    string message = 1;
+    string default_value = 2;
+}
+
+// Response from user prompt
+message PromptResponse {
+    string value = 1;
+    bool cancelled = 2;
+}
+
+// Request to log to window
+message LogRequest {
+    string message = 1;
+    string level = 2;  // info, warning, error, success
+}
+
+// Response from log to window
+message LogResponse {
+    bool logged = 1;
 }

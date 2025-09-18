@@ -1,4 +1,4 @@
-import { FetchRequest as FetchRequestInterface, FetchResponse as FetchResponseInterface, StorageKeyRequest as StorageKeyRequestInterface, StorageValueResponse as StorageValueResponseInterface, StorageSetRequest as StorageSetRequestInterface, StorageSetResponse as StorageSetResponseInterface, CookieRequest as CookieRequestInterface, CookieResponse as CookieResponseInterface, AlertRequest as AlertRequestInterface, AlertResponse as AlertResponseInterface } from "./interfaces";
+import { FetchRequest as FetchRequestInterface, FetchResponse as FetchResponseInterface, StorageKeyRequest as StorageKeyRequestInterface, StorageValueResponse as StorageValueResponseInterface, StorageSetRequest as StorageSetRequestInterface, StorageSetResponse as StorageSetResponseInterface, CookieRequest as CookieRequestInterface, CookieResponse as CookieResponseInterface, AlertRequest as AlertRequestInterface, AlertResponse as AlertResponseInterface, PromptRequest as PromptRequestInterface, PromptResponse as PromptResponseInterface, LogRequest as LogRequestInterface, LogResponse as LogResponseInterface } from "./interfaces";
 import { BrowserV1Deserializer } from "./deserializer";
 
 
@@ -227,6 +227,97 @@ export class AlertResponse implements AlertResponseInterface {
    */
   static from(data: any) {
     return BrowserV1Deserializer.from<AlertResponse>(AlertResponse.MESSAGE_TYPE, data);
+  }
+}
+
+
+/**
+ * Request for user prompt
+ */
+export class PromptRequest implements PromptRequestInterface {
+  /**
+   * Fully qualified message type for schema resolution
+   */
+  static readonly MESSAGE_TYPE = "browser.v1.PromptRequest";
+
+  message: string = "";
+  defaultValue: string = "";
+
+  /**
+   * Create and deserialize an instance from raw data
+   * @param data Raw data to deserialize
+   * @returns Deserialized PromptRequest instance or null if creation failed
+   */
+  static from(data: any) {
+    return BrowserV1Deserializer.from<PromptRequest>(PromptRequest.MESSAGE_TYPE, data);
+  }
+}
+
+
+/**
+ * Response from user prompt
+ */
+export class PromptResponse implements PromptResponseInterface {
+  /**
+   * Fully qualified message type for schema resolution
+   */
+  static readonly MESSAGE_TYPE = "browser.v1.PromptResponse";
+
+  value: string = "";
+  cancelled: boolean = false;
+
+  /**
+   * Create and deserialize an instance from raw data
+   * @param data Raw data to deserialize
+   * @returns Deserialized PromptResponse instance or null if creation failed
+   */
+  static from(data: any) {
+    return BrowserV1Deserializer.from<PromptResponse>(PromptResponse.MESSAGE_TYPE, data);
+  }
+}
+
+
+/**
+ * Request to log to window
+ */
+export class LogRequest implements LogRequestInterface {
+  /**
+   * Fully qualified message type for schema resolution
+   */
+  static readonly MESSAGE_TYPE = "browser.v1.LogRequest";
+
+  message: string = "";
+  level: string = "";
+
+  /**
+   * Create and deserialize an instance from raw data
+   * @param data Raw data to deserialize
+   * @returns Deserialized LogRequest instance or null if creation failed
+   */
+  static from(data: any) {
+    return BrowserV1Deserializer.from<LogRequest>(LogRequest.MESSAGE_TYPE, data);
+  }
+}
+
+
+/**
+ * Response from log to window
+ */
+export class LogResponse implements LogResponseInterface {
+  /**
+   * Fully qualified message type for schema resolution
+   */
+  static readonly MESSAGE_TYPE = "browser.v1.LogResponse";
+
+  logged: boolean = false;
+
+  /**
+   * Create and deserialize an instance from raw data
+   * @param data Raw data to deserialize
+   * @returns Deserialized LogResponse instance or null if creation failed
+   */
+  static from(data: any) {
+    return BrowserV1Deserializer.from<LogResponse>(LogResponse.MESSAGE_TYPE, data);
   }
 }
 
