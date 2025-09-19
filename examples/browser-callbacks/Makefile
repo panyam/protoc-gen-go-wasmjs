@@ -12,28 +12,6 @@ bufdev: parent symlink-wasmjs
 	buf generate --template buf.gen.dev.yaml --config buf.dev.yaml
 	goimports -w `find gen | grep "\.go"`
 
-# Old generator mode (backward compatibility)
-bufold: parent
-	rm -Rf gen
-	# Generate only with old generator targets (uses wasm-old output)
-	buf generate
-	# Move old generated files to expected location for testing
-	@if [ -d gen/wasm-old ]; then \
-		echo "Using old generator output from gen/wasm-old"; \
-	fi
-	goimports -w `find gen | grep "\.go"`
-
-# Development mode with old generator
-bufdevold: parent symlink-wasmjs
-	rm -Rf gen
-	rm -f buf.lock
-	buf generate --template buf.gen.dev.yaml --config buf.dev.yaml
-	# Move old generated files to expected location for testing
-	@if [ -d gen/wasm-old ]; then \
-		echo "Using old generator output from gen/wasm-old"; \
-	fi
-	goimports -w `find gen | grep "\.go"`
-
 clean:
 	rm -Rf gen
 
