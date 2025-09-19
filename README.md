@@ -550,27 +550,36 @@ To publish this plugin to buf.build (for maintainers):
 └── PLAN.md                      # Development progress tracking
 ```
 
-## Contributing
-
-1. Fork the repository and create a feature branch
-2. Make changes and add tests
-3. Ensure all tests pass: `go test ./...`
-4. Update documentation as needed
-5. Submit a pull request
-
 ## Development
 
+For detailed development instructions, testing guidelines, and contribution workflows, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+### Quick Start
+
 ```bash
-# Build the plugin
-go build ./cmd/protoc-gen-go-wasmjs
+# Run the test suite
+./test.sh
+
+# Build the plugin  
+make tool
 
 # Test with examples
 cd examples/library && buf generate
 cd examples/connect4 && make all
 
-# Run tests
-go test ./...
+# Run core utility tests
+go test ./pkg/core/... -v
 ```
+
+## Contributing
+
+1. Fork the repository and create a feature branch
+2. Make changes and add comprehensive tests
+3. Run the test suite: `./test.sh`
+4. Update documentation as needed
+5. Submit a pull request
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed contribution guidelines, testing requirements, and code quality standards.
 
 ## License
 

@@ -11,11 +11,6 @@ import { FieldType, FieldSchema, MessageSchema } from "./deserializer_schemas";
 export const LoadUserRequestSchema: MessageSchema = {
   name: "LoadUserRequest",
   fields: [
-    {
-      name: "userId",
-      type: FieldType.STRING,
-      id: 1,
-    },
   ],
 };
 
@@ -26,27 +21,6 @@ export const LoadUserRequestSchema: MessageSchema = {
 export const LoadUserResponseSchema: MessageSchema = {
   name: "LoadUserResponse",
   fields: [
-    {
-      name: "username",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "email",
-      type: FieldType.STRING,
-      id: 2,
-    },
-    {
-      name: "permissions",
-      type: FieldType.REPEATED,
-      id: 3,
-      repeated: true,
-    },
-    {
-      name: "fromCache",
-      type: FieldType.BOOLEAN,
-      id: 4,
-    },
   ],
 };
 
@@ -57,17 +31,6 @@ export const LoadUserResponseSchema: MessageSchema = {
 export const StateUpdateRequestSchema: MessageSchema = {
   name: "StateUpdateRequest",
   fields: [
-    {
-      name: "action",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "params",
-      type: FieldType.MESSAGE,
-      id: 2,
-      messageType: "presenter.v1.ParamsEntry",
-    },
   ],
 };
 
@@ -78,22 +41,6 @@ export const StateUpdateRequestSchema: MessageSchema = {
 export const UIUpdateSchema: MessageSchema = {
   name: "UIUpdate",
   fields: [
-    {
-      name: "component",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "action",
-      type: FieldType.STRING,
-      id: 2,
-    },
-    {
-      name: "data",
-      type: FieldType.MESSAGE,
-      id: 3,
-      messageType: "presenter.v1.DataEntry",
-    },
   ],
 };
 
@@ -104,12 +51,6 @@ export const UIUpdateSchema: MessageSchema = {
 export const PreferencesRequestSchema: MessageSchema = {
   name: "PreferencesRequest",
   fields: [
-    {
-      name: "preferences",
-      type: FieldType.MESSAGE,
-      id: 1,
-      messageType: "presenter.v1.PreferencesEntry",
-    },
   ],
 };
 
@@ -120,16 +61,6 @@ export const PreferencesRequestSchema: MessageSchema = {
 export const PreferencesResponseSchema: MessageSchema = {
   name: "PreferencesResponse",
   fields: [
-    {
-      name: "saved",
-      type: FieldType.BOOLEAN,
-      id: 1,
-    },
-    {
-      name: "itemsSaved",
-      type: FieldType.NUMBER,
-      id: 2,
-    },
   ],
 };
 
@@ -140,11 +71,6 @@ export const PreferencesResponseSchema: MessageSchema = {
 export const CallbackDemoRequestSchema: MessageSchema = {
   name: "CallbackDemoRequest",
   fields: [
-    {
-      name: "demoName",
-      type: FieldType.STRING,
-      id: 1,
-    },
   ],
 };
 
@@ -155,17 +81,6 @@ export const CallbackDemoRequestSchema: MessageSchema = {
 export const CallbackDemoResponseSchema: MessageSchema = {
   name: "CallbackDemoResponse",
   fields: [
-    {
-      name: "collectedInputs",
-      type: FieldType.REPEATED,
-      id: 1,
-      repeated: true,
-    },
-    {
-      name: "completed",
-      type: FieldType.BOOLEAN,
-      id: 2,
-    },
   ],
 };
 
@@ -174,7 +89,7 @@ export const CallbackDemoResponseSchema: MessageSchema = {
 /**
  * Package-scoped schema registry for presenter.v1
  */
-export const PresenterV1SchemaRegistry: Record<string, MessageSchema> = {
+export const presenter_v1SchemaRegistry: Record<string, MessageSchema> = {
   "presenter.v1.LoadUserRequest": LoadUserRequestSchema,
   "presenter.v1.LoadUserResponse": LoadUserResponseSchema,
   "presenter.v1.StateUpdateRequest": StateUpdateRequestSchema,
@@ -189,7 +104,7 @@ export const PresenterV1SchemaRegistry: Record<string, MessageSchema> = {
  * Get schema for a message type from presenter.v1 package
  */
 export function getSchema(messageType: string): MessageSchema | undefined {
-  return PresenterV1SchemaRegistry[messageType];
+  return presenter_v1SchemaRegistry[messageType];
 }
 
 /**

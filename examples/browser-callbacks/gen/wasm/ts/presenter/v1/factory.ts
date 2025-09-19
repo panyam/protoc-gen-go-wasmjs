@@ -18,7 +18,7 @@ export interface FactoryResult<T> {
 /**
  * Enhanced factory with context-aware object construction
  */
-export class PresenterV1Factory {
+export class Presenter_v1Factory {
 
 
   /**

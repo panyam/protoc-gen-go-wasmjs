@@ -5,17 +5,24 @@ buf:
 	buf generate
 
 # Development mode: uses local plugin and symlinked wasmjs annotations
-buf-dev: parent symlink-wasmjs
+bufdev: parent symlink-wasmjs
 	rm -Rf gen
 	# Update dependencies for dev config to avoid conflicts
 	rm -f buf.lock
 	buf generate --template buf.gen.dev.yaml --config buf.dev.yaml
 
+# Split generators mode: uses new layered architecture generators  
+bufsplit: parent symlink-wasmjs
+	rm -Rf gen
+	# Update dependencies for dev config to avoid conflicts
+	rm -f buf.lock
+	buf generate --template buf.gen.split.yaml --config buf.dev.yaml
+
 clean:
 	rm -Rf gen
 
 parent:
-	cd ../../ && make
+	cd ../../ && make split
 
 # Create symlink to wasmjs annotations for development
 symlink-wasmjs:

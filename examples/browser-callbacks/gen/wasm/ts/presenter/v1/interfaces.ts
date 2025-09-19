@@ -6,7 +6,6 @@
  * Request to load user data
  */
 export interface LoadUserRequest {
-  userId: string;
 }
 
 
@@ -14,10 +13,6 @@ export interface LoadUserRequest {
  * Response with user data
  */
 export interface LoadUserResponse {
-  username: string;
-  email: string;
-  permissions: string[];
-  fromCache: boolean;
 }
 
 
@@ -25,8 +20,6 @@ export interface LoadUserResponse {
  * Request to update state
  */
 export interface StateUpdateRequest {
-  action: string;
-  params?: Map<string, string>;
 }
 
 
@@ -34,9 +27,6 @@ export interface StateUpdateRequest {
  * UI update message (streamed)
  */
 export interface UIUpdate {
-  component: string;
-  action: string;
-  data?: Map<string, string>;
 }
 
 
@@ -44,7 +34,6 @@ export interface UIUpdate {
  * Request to save preferences
  */
 export interface PreferencesRequest {
-  preferences?: Map<string, string>;
 }
 
 
@@ -52,8 +41,6 @@ export interface PreferencesRequest {
  * Response from preferences save
  */
 export interface PreferencesResponse {
-  saved: boolean;
-  itemsSaved: number;
 }
 
 
@@ -61,7 +48,6 @@ export interface PreferencesResponse {
  * Request to run callback demo
  */
 export interface CallbackDemoRequest {
-  demoName: string;
 }
 
 
@@ -69,7 +55,5 @@ export interface CallbackDemoRequest {
  * Response from callback demo
  */
 export interface CallbackDemoResponse {
-  collectedInputs: string[];
-  completed: boolean;
 }
 

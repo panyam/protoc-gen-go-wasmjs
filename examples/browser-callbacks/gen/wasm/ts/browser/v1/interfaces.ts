@@ -6,10 +6,6 @@
  * Request to fetch data from a URL
  */
 export interface FetchRequest {
-  url: string;
-  method: string;
-  headers?: Map<string, string>;
-  body: string;
 }
 
 
@@ -17,10 +13,6 @@ export interface FetchRequest {
  * Response from fetch
  */
 export interface FetchResponse {
-  status: number;
-  statusText: string;
-  headers?: Map<string, string>;
-  body: string;
 }
 
 
@@ -28,7 +20,6 @@ export interface FetchResponse {
  * Request for localStorage key
  */
 export interface StorageKeyRequest {
-  key: string;
 }
 
 
@@ -36,8 +27,6 @@ export interface StorageKeyRequest {
  * Response with localStorage value
  */
 export interface StorageValueResponse {
-  value: string;
-  exists: boolean;
 }
 
 
@@ -45,8 +34,6 @@ export interface StorageValueResponse {
  * Request to set localStorage
  */
 export interface StorageSetRequest {
-  key: string;
-  value: string;
 }
 
 
@@ -54,7 +41,6 @@ export interface StorageSetRequest {
  * Response from localStorage set
  */
 export interface StorageSetResponse {
-  success: boolean;
 }
 
 
@@ -62,7 +48,6 @@ export interface StorageSetResponse {
  * Request for cookie
  */
 export interface CookieRequest {
-  name: string;
 }
 
 
@@ -70,8 +55,6 @@ export interface CookieRequest {
  * Response with cookie value
  */
 export interface CookieResponse {
-  value: string;
-  exists: boolean;
 }
 
 
@@ -79,7 +62,6 @@ export interface CookieResponse {
  * Request to show alert
  */
 export interface AlertRequest {
-  message: string;
 }
 
 
@@ -87,7 +69,6 @@ export interface AlertRequest {
  * Response from alert
  */
 export interface AlertResponse {
-  shown: boolean;
 }
 
 
@@ -95,8 +76,6 @@ export interface AlertResponse {
  * Request for user prompt
  */
 export interface PromptRequest {
-  message: string;
-  defaultValue: string;
 }
 
 
@@ -104,8 +83,6 @@ export interface PromptRequest {
  * Response from user prompt
  */
 export interface PromptResponse {
-  value: string;
-  cancelled: boolean;
 }
 
 
@@ -113,8 +90,6 @@ export interface PromptResponse {
  * Request to log to window
  */
 export interface LogRequest {
-  message: string;
-  level: string;
 }
 
 
@@ -122,6 +97,5 @@ export interface LogRequest {
  * Response from log to window
  */
 export interface LogResponse {
-  logged: boolean;
 }
 

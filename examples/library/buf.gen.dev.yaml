@@ -26,7 +26,7 @@ plugins:
   # =================================================================
   
   # Default target - All services (backwards compatibility)
-  - local: ../../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs-old
     out: ./gen/wasm/all-services
     opt:
       - js_structure=namespaced
@@ -35,7 +35,7 @@ plugins:
 
   # User management target (dual-target approach)
   # Target 1: Generate WASM wrapper only for UserService
-  - local: ../../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs-old
     out: ./gen/wasm/user-services
     opt:
       - js_structure=namespaced
@@ -45,7 +45,7 @@ plugins:
       - generate_typescript=false  # Only generate WASM
 
   # Target 2: Generate TypeScript client only for UserService  
-  - local: ../../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs-old
     out: ./gen/wasmts/user-services
     opt:
       - js_structure=namespaced
@@ -55,7 +55,7 @@ plugins:
       - generate_wasm=false  # Only generate TypeScript
 
   # Library target - Only LibraryService (optimized for book browsing)
-  - local: ../../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs-old
     out: ./gen/wasm/library-services
     opt:
       - js_structure=namespaced
@@ -64,7 +64,7 @@ plugins:
       - services=LibraryService
 
   # Admin target - All services with different namespace (admin dashboard)
-  - local: ../../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs-old
     out: ./gen/wasm/admin-services
     opt:
       - js_structure=namespaced

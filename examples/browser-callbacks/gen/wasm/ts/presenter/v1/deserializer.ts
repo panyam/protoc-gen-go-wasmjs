@@ -2,12 +2,12 @@
 // Generated TypeScript schema-aware deserializer
 // DO NOT EDIT - This file is auto-generated
 
-import { FieldType, FieldSchema, MessageSchema } from "./deserializer_schemas";
-import { PresenterV1Factory } from "./factory";
-import { PresenterV1SchemaRegistry } from "./schemas";
+import { FieldType, FieldSchema, MessageSchema } from "./presenter_v1_schemas";
+import { Presenter_v1Factory } from "./factory";
+import { presenter_v1SchemaRegistry } from "./schemas";
 
 // Shared factory instance to avoid creating new instances on every deserializer construction
-const DEFAULT_FACTORY = new PresenterV1Factory();
+const DEFAULT_FACTORY = new Presenter_v1Factory();
 
 /**
  * Factory interface that deserializer expects
@@ -31,9 +31,9 @@ export interface FactoryResult<T> {
 /**
  * Schema-aware deserializer for presenter.v1 package
  */
-export class PresenterV1Deserializer {
+export class Presenter_v1Deserializer {
   constructor(
-    private schemaRegistry: Record<string, MessageSchema> = PresenterV1SchemaRegistry,
+    private schemaRegistry: Record<string, MessageSchema> = presenter_v1SchemaRegistry,
     private factory: FactoryInterface = DEFAULT_FACTORY
   ) {}
 
@@ -261,7 +261,7 @@ export class PresenterV1Deserializer {
    * @returns Deserialized instance or null if creation failed
    */
   static from<T>(messageType: string, data: any) {
-    const deserializer = new PresenterV1Deserializer(); // Uses default factory and schema registry
+    const deserializer = new Presenter_v1Deserializer(); // Uses default factory and schema registry
     return deserializer.createAndDeserialize<T>(messageType, data);
   }
 }

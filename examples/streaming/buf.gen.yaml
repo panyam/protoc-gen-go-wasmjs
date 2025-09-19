@@ -20,7 +20,7 @@ plugins:
   # =================================================================
 
   # Target 1: Generate WASM wrapper
-  - local: ../../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs-old
     out: ./gen/wasm
     opt:
       - js_structure=namespaced
@@ -29,7 +29,7 @@ plugins:
       - generate_typescript=false  # Only generate WASM
 
   # Target 2: Generate TypeScript client  
-  - local: ../../bin/protoc-gen-go-wasmjs
+  - local: ../../bin/protoc-gen-go-wasmjs-old
     out: ./web/gen/wasmts
     opt:
       - js_structure=namespaced

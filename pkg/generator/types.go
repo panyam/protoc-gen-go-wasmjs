@@ -17,10 +17,22 @@ package generator
 import (
 	"strings"
 
+	wasmjsv1 "github.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
-	wasmjsv1 "github.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1"
 )
+
+// IsBrowserProvidedService checks if a service is marked as browser-provided
+func IsBrowserProvidedService(service *protogen.Service) bool {
+	if service.Desc.Options() != nil {
+		if browserOpts := proto.GetExtension(service.Desc.Options(), wasmjsv1.E_BrowserProvided); browserOpts != nil {
+			if provided, ok := browserOpts.(bool); ok {
+				return provided
+			}
+		}
+	}
+	return false
+}
 
 // TemplateData holds all data needed for template generation
 type TemplateData struct {
@@ -45,8 +57,8 @@ type TemplateData struct {
 	BuildScript      string
 
 	// Browser services
-	BrowserServices []ServiceData // Services that are browser-provided
-	HasBrowserServices bool       // Whether there are any browser-provided services
+	BrowserServices    []ServiceData // Services that are browser-provided
+	HasBrowserServices bool          // Whether there are any browser-provided services
 }
 
 // ImportInfo represents a Go package import with alias
@@ -57,13 +69,13 @@ type ImportInfo struct {
 
 // ServiceData represents a gRPC service for template generation
 type ServiceData struct {
-	Name            string       // Service name (e.g., "LibraryService")
-	GoType          string       // Go type for the service interface (qualified, e.g., "libraryv1.LibraryServiceServer")
-	JSName          string       // JavaScript name (e.g., "library")
-	Methods         []MethodData // All methods in the service
-	PackagePath     string       // Go package path for imports
-	PackageAlias    string       // Package alias for qualified type names
-	IsBrowserProvided bool       // Whether this service is provided by the browser
+	Name              string       // Service name (e.g., "LibraryService")
+	GoType            string       // Go type for the service interface (qualified, e.g., "libraryv1.LibraryServiceServer")
+	JSName            string       // JavaScript name (e.g., "library")
+	Methods           []MethodData // All methods in the service
+	PackagePath       string       // Go package path for imports
+	PackageAlias      string       // Package alias for qualified type names
+	IsBrowserProvided bool         // Whether this service is provided by the browser
 }
 
 // MethodData represents a gRPC method for template generation
@@ -81,12 +93,19 @@ type MethodData struct {
 	IsServerStreaming bool   // Whether this method uses server-side streaming
 }
 
+// BrowserServiceInfo holds information about a browser-provided service
+type BrowserServiceInfo struct {
+	File    *protogen.File
+	Service *protogen.Service
+}
+
 // FileGenerator handles generation for a single proto file
 type FileGenerator struct {
-	file         *protogen.File
-	plugin       *protogen.Plugin
-	config       *Config
-	packageFiles []*protogen.File // All files in the same package
+	file               *protogen.File
+	plugin             *protogen.Plugin
+	config             *Config
+	packageFiles       []*protogen.File      // All files in the same package
+	allBrowserServices []*BrowserServiceInfo // All browser services from all packages
 }
 
 // NewFileGenerator creates a new file generator
@@ -102,6 +121,11 @@ func NewFileGenerator(file *protogen.File, plugin *protogen.Plugin, config *Conf
 // SetPackageFiles sets all files that belong to the same package
 func (g *FileGenerator) SetPackageFiles(files []*protogen.File) {
 	g.packageFiles = files
+}
+
+// SetAllBrowserServices sets all browser services from all packages
+func (g *FileGenerator) SetAllBrowserServices(services []*BrowserServiceInfo) {
+	g.allBrowserServices = services
 }
 
 // isFirstFileInGeneration checks if this is the first file being processed
@@ -214,16 +238,26 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 	var services []ServiceData
 	var browserServices []ServiceData
 
+	// First collect regular services from package files
 	for _, file := range g.packageFiles {
 		for _, service := range file.Services {
 			serviceData := g.buildServiceDataForFile(file, service, packageMap)
 			if serviceData != nil {
 				if serviceData.IsBrowserProvided {
-					browserServices = append(browserServices, *serviceData)
+					// Skip browser services from the same package - they'll be added from allBrowserServices
+					continue
 				} else {
 					services = append(services, *serviceData)
 				}
 			}
+		}
+	}
+
+	// Now add ALL browser services from all packages
+	for _, browserServiceInfo := range g.allBrowserServices {
+		serviceData := g.buildServiceDataForFile(browserServiceInfo.File, browserServiceInfo.Service, packageMap)
+		if serviceData != nil {
+			browserServices = append(browserServices, *serviceData)
 		}
 	}
 
@@ -240,6 +274,9 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 		})
 	}
 
+	jsNamespace := g.config.GetDefaultJSNamespace(packageName)
+	moduleName := g.config.GetDefaultModuleName(packageName)
+
 	return &TemplateData{
 		PackageName:        packageName,
 		SourcePath:         g.file.Desc.Path(),
@@ -248,8 +285,8 @@ func (g *FileGenerator) buildTemplateData() (*TemplateData, error) {
 		BrowserServices:    browserServices,
 		HasBrowserServices: len(browserServices) > 0,
 		Config:             g.config,
-		JSNamespace:        g.config.GetDefaultJSNamespace(packageName),
-		ModuleName:         g.config.GetDefaultModuleName(packageName),
+		JSNamespace:        jsNamespace,
+		ModuleName:         moduleName,
 		APIStructure:       g.config.JSStructure,
 		Imports:            imports,
 		PackageMap:         packageMap,
@@ -279,6 +316,20 @@ func (g *FileGenerator) collectUniqueImports() ([]ImportInfo, map[string]string)
 				})
 				packageMap[packagePath] = alias
 			}
+		}
+	}
+
+	// Also collect imports from all browser services
+	for _, browserServiceInfo := range g.allBrowserServices {
+		packagePath := string(browserServiceInfo.File.GoImportPath)
+		if !packagePaths[packagePath] {
+			packagePaths[packagePath] = true
+			alias := g.generatePackageAlias(packagePath)
+			imports = append(imports, ImportInfo{
+				Path:  packagePath,
+				Alias: alias,
+			})
+			packageMap[packagePath] = alias
 		}
 	}
 
@@ -349,7 +400,7 @@ func (g *FileGenerator) buildServiceDataForFile(file *protogen.File, service *pr
 	return &ServiceData{
 		Name:              serviceName,
 		GoType:            goType,
-		JSName:            strings.ToLower(serviceName[:1]) + serviceName[1:],     // camelCase
+		JSName:            strings.ToLower(serviceName[:1]) + serviceName[1:], // camelCase
 		Methods:           methods,
 		PackagePath:       packagePath,
 		PackageAlias:      packageAlias,
@@ -371,7 +422,21 @@ func (g *FileGenerator) buildMethodData(method *protogen.Method, serviceName, pa
 		return nil
 	}
 
-	jsName := g.config.GetMethodJSName(methodName)
+	// First check for wasm_method_name annotation
+	jsName := ""
+	if method.Desc.Options() != nil {
+		if nameOpt := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_WasmMethodName); nameOpt != nil {
+			if name, ok := nameOpt.(string); ok && name != "" {
+				jsName = name
+			}
+		}
+	}
+
+	// Fall back to config-based naming if no annotation
+	if jsName == "" {
+		jsName = g.config.GetMethodJSName(methodName)
+	}
+
 	goFuncName := strings.ToLower(serviceName[:1]) + serviceName[1:] + methodName
 
 	// Check if method is marked as async
@@ -411,28 +476,28 @@ func (g *FileGenerator) getQualifiedTypeName(message *protogen.Message, packageA
 
 // MessageInfo represents a proto message for TypeScript generation
 type MessageInfo struct {
-	Name                string      // Message name (e.g., "Book")
-	GoName              string      // Go struct name (e.g., "Book")
-	TSName              string      // TypeScript interface name (e.g., "Book")
-	Fields              []FieldInfo // All fields in the message
-	PackageName         string      // Proto package name
-	ProtoFile           string      // Source proto file path
-	IsNested            bool        // Whether this is a nested message
-	Comment             string      // Leading comment from proto
-	MethodName          string      // Factory method name (e.g., "newBook") - for template use
-	OneofGroups         []string    // List of oneof group names in this message
-	FullyQualifiedName  string      // Fully qualified message type (e.g., "library.v2.Book")
+	Name               string      // Message name (e.g., "Book")
+	GoName             string      // Go struct name (e.g., "Book")
+	TSName             string      // TypeScript interface name (e.g., "Book")
+	Fields             []FieldInfo // All fields in the message
+	PackageName        string      // Proto package name
+	ProtoFile          string      // Source proto file path
+	IsNested           bool        // Whether this is a nested message
+	Comment            string      // Leading comment from proto
+	MethodName         string      // Factory method name (e.g., "newBook") - for template use
+	OneofGroups        []string    // List of oneof group names in this message
+	FullyQualifiedName string      // Fully qualified message type (e.g., "library.v2.Book")
 }
 
 // EnumInfo represents a proto enum for TypeScript generation
 type EnumInfo struct {
-	Name               string           // Enum name (e.g., "GameStatus")
-	TSName             string           // TypeScript enum name (e.g., "GameStatus")
-	Values             []EnumValueInfo  // All values in the enum
-	PackageName        string           // Proto package name
-	ProtoFile          string           // Source proto file path
-	Comment            string           // Leading comment from proto
-	FullyQualifiedName string           // Fully qualified enum type (e.g., "connect4.GameStatus")
+	Name               string          // Enum name (e.g., "GameStatus")
+	TSName             string          // TypeScript enum name (e.g., "GameStatus")
+	Values             []EnumValueInfo // All values in the enum
+	PackageName        string          // Proto package name
+	ProtoFile          string          // Source proto file path
+	Comment            string          // Leading comment from proto
+	FullyQualifiedName string          // Fully qualified enum type (e.g., "connect4.GameStatus")
 }
 
 // EnumValueInfo represents a proto enum value
@@ -585,7 +650,7 @@ func (g *FileGenerator) buildMessageInfo(message *protogen.Message, file *protog
 	// Build fully qualified name (e.g., "library.v2.Book")
 	packageName := string(file.Desc.Package())
 	fullyQualifiedName := packageName + "." + messageName
-	
+
 	return MessageInfo{
 		Name:               messageName,
 		GoName:             string(message.GoIdent.GoName),
@@ -730,12 +795,12 @@ func (g *FileGenerator) getBaseTSType(protoType string, field *protogen.Field) s
 			packageName := string(field.Message.Desc.ParentFile().Package())
 			messageName := string(field.Message.Desc.Name())
 			fullTypeName := packageName + "." + messageName
-			
+
 			// Check if there's an external type mapping for this type
 			if mapping, exists := g.config.GetExternalTypeMapping(fullTypeName); exists {
 				return mapping.TypeScript
 			}
-			
+
 			// Use the message name as interface reference
 			return string(field.Message.Desc.Name())
 		}
@@ -833,7 +898,7 @@ func (g *FileGenerator) isMapField(field *protogen.Field) bool {
 		// For map fields, protogen might not set IsList but the message will be a map entry
 		return field.Message.Desc.IsMapEntry()
 	}
-	
+
 	return false
 }
 

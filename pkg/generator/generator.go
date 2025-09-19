@@ -28,6 +28,9 @@ var templateFuncMap = template.FuncMap{
 		}
 		return strings.ToUpper(s[:1]) + s[1:]
 	},
+	"replaceAll": func(old, new, s string) string {
+		return strings.ReplaceAll(s, old, new)
+	},
 }
 
 const (
@@ -43,9 +46,10 @@ func (g *FileGenerator) generateWasmWrapper(data *TemplateData) error {
 		return nil // No services to generate
 	}
 
-	// Determine output filename
-	// baseName := strings.TrimSuffix(filepath.Base(g.file.Desc.Path()), ".proto")
-	filename := filepath.Join(g.config.WasmExportPath, data.ModuleName+WasmGeneratedFilenameExtension)
+	// Determine output filename using package structure
+	packagePath := strings.ReplaceAll(data.PackageName, ".", "/")
+	baseName := strings.ReplaceAll(data.PackageName, ".", "_")
+	filename := filepath.Join(packagePath, baseName+WasmGeneratedFilenameExtension)
 
 	// Create generated file
 	generatedFile := g.plugin.NewGeneratedFile(filename, "")

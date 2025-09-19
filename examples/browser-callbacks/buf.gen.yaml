@@ -15,17 +15,48 @@ plugins:
     out: ./gen/go
     opt: paths=source_relative
 
-  # Generate Go WASM bindings
-  - local: ../../bin/protoc-gen-go-wasmjs
+  # =================================================================
+  # Approach 1: Old Monolithic Generator (backward compatibility)
+  # NOTE: Commented out due to template compatibility issues - will fix separately
+  # =================================================================
+
+  # # Generate Go WASM bindings with old generator
+  # - local: ../../bin/protoc-gen-go-wasmjs-old
+  #   out: ./gen/wasm-old/go
+  #   opt:
+  #     - generate_typescript=false
+  #     - js_structure=namespaced
+  #     - js_namespace=browserCallbacks
+  #     - module_name=browser_callbacks
+
+  # # Generate TypeScript clients with old generator
+  # - local: ../../bin/protoc-gen-go-wasmjs-old
+  #   out: ./gen/wasm-old/ts
+  #   opt:
+  #     - generate_wasm=false
+  #     - generate_typescript=true
+  #     - js_structure=namespaced
+  #     - js_namespace=browserCallbacks
+
+  # =================================================================
+  # Approach 2: New Split Generators (default - recommended)
+  # =================================================================
+
+  # Generate Go WASM bindings with new Go generator
+  - local: ../../bin/protoc-gen-go-wasmjs-go
     out: ./gen/wasm/go
     opt:
-      - generate_typescript=false
+      - wasm_export_path=.
       - js_structure=namespaced
+      - js_namespace=browserCallbacks
+      - module_name=browser_callbacks
+      - generate_build_script=true
 
-  # Generate TypeScript clients separately
-  - local: ../../bin/protoc-gen-go-wasmjs
+  # Generate TypeScript clients with new TS generator
+  - local: ../../bin/protoc-gen-go-wasmjs-ts
     out: ./gen/wasm/ts
     opt:
-      - generate_wasm=false
-      - generate_typescript=true
-      - js_structure=namespaced
+      - ts_export_path=.
+      - generate_clients=true
+      - generate_types=true
+      - generate_factories=true

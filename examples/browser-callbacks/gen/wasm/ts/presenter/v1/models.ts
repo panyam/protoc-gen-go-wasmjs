@@ -1,5 +1,5 @@
 import { LoadUserRequest as LoadUserRequestInterface, LoadUserResponse as LoadUserResponseInterface, StateUpdateRequest as StateUpdateRequestInterface, UIUpdate as UIUpdateInterface, PreferencesRequest as PreferencesRequestInterface, PreferencesResponse as PreferencesResponseInterface, CallbackDemoRequest as CallbackDemoRequestInterface, CallbackDemoResponse as CallbackDemoResponseInterface } from "./interfaces";
-import { PresenterV1Deserializer } from "./deserializer";
+import { Presenter_v1Deserializer } from "./deserializer";
 
 
 /**
@@ -11,7 +11,6 @@ export class LoadUserRequest implements LoadUserRequestInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.LoadUserRequest";
 
-  userId: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -19,7 +18,7 @@ export class LoadUserRequest implements LoadUserRequestInterface {
    * @returns Deserialized LoadUserRequest instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<LoadUserRequest>(LoadUserRequest.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<LoadUserRequest>(LoadUserRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -33,10 +32,6 @@ export class LoadUserResponse implements LoadUserResponseInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.LoadUserResponse";
 
-  username: string = "";
-  email: string = "";
-  permissions: string[] = [];
-  fromCache: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -44,7 +39,7 @@ export class LoadUserResponse implements LoadUserResponseInterface {
    * @returns Deserialized LoadUserResponse instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<LoadUserResponse>(LoadUserResponse.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<LoadUserResponse>(LoadUserResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -58,8 +53,6 @@ export class StateUpdateRequest implements StateUpdateRequestInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.StateUpdateRequest";
 
-  action: string = "";
-  params?: Map<string, string>;
 
   /**
    * Create and deserialize an instance from raw data
@@ -67,7 +60,7 @@ export class StateUpdateRequest implements StateUpdateRequestInterface {
    * @returns Deserialized StateUpdateRequest instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<StateUpdateRequest>(StateUpdateRequest.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<StateUpdateRequest>(StateUpdateRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -81,9 +74,6 @@ export class UIUpdate implements UIUpdateInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.UIUpdate";
 
-  component: string = "";
-  action: string = "";
-  data?: Map<string, string>;
 
   /**
    * Create and deserialize an instance from raw data
@@ -91,7 +81,7 @@ export class UIUpdate implements UIUpdateInterface {
    * @returns Deserialized UIUpdate instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<UIUpdate>(UIUpdate.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<UIUpdate>(UIUpdate.MESSAGE_TYPE, data);
   }
 }
 
@@ -105,7 +95,6 @@ export class PreferencesRequest implements PreferencesRequestInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.PreferencesRequest";
 
-  preferences?: Map<string, string>;
 
   /**
    * Create and deserialize an instance from raw data
@@ -113,7 +102,7 @@ export class PreferencesRequest implements PreferencesRequestInterface {
    * @returns Deserialized PreferencesRequest instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<PreferencesRequest>(PreferencesRequest.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<PreferencesRequest>(PreferencesRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -127,8 +116,6 @@ export class PreferencesResponse implements PreferencesResponseInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.PreferencesResponse";
 
-  saved: boolean = false;
-  itemsSaved: number = 0;
 
   /**
    * Create and deserialize an instance from raw data
@@ -136,7 +123,7 @@ export class PreferencesResponse implements PreferencesResponseInterface {
    * @returns Deserialized PreferencesResponse instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<PreferencesResponse>(PreferencesResponse.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<PreferencesResponse>(PreferencesResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -150,7 +137,6 @@ export class CallbackDemoRequest implements CallbackDemoRequestInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.CallbackDemoRequest";
 
-  demoName: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -158,7 +144,7 @@ export class CallbackDemoRequest implements CallbackDemoRequestInterface {
    * @returns Deserialized CallbackDemoRequest instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<CallbackDemoRequest>(CallbackDemoRequest.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<CallbackDemoRequest>(CallbackDemoRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -172,8 +158,6 @@ export class CallbackDemoResponse implements CallbackDemoResponseInterface {
    */
   static readonly MESSAGE_TYPE = "presenter.v1.CallbackDemoResponse";
 
-  collectedInputs: string[] = [];
-  completed: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -181,7 +165,7 @@ export class CallbackDemoResponse implements CallbackDemoResponseInterface {
    * @returns Deserialized CallbackDemoResponse instance or null if creation failed
    */
   static from(data: any) {
-    return PresenterV1Deserializer.from<CallbackDemoResponse>(CallbackDemoResponse.MESSAGE_TYPE, data);
+    return Presenter_v1Deserializer.from<CallbackDemoResponse>(CallbackDemoResponse.MESSAGE_TYPE, data);
   }
 }
 

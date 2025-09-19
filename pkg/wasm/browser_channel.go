@@ -24,6 +24,9 @@ import (
 	"sync/atomic"
 	"syscall/js"
 	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // BrowserCall represents a call from WASM to a browser-provided service
@@ -35,6 +38,7 @@ type BrowserCall struct {
 	ResponseCh chan *CallResponse
 	Timeout    time.Duration
 	StartTime  time.Time
+	IsAsync    bool          // Whether this is an async browser method
 }
 
 // CallResponse represents the response from a browser service call
@@ -151,8 +155,18 @@ func (bc *BrowserServiceChannel) NextCallID() string {
 	return fmt.Sprintf("call_%d_%d", time.Now().UnixNano(), id)
 }
 
-// QueueCall queues a browser service call and waits for response
+// QueueCall queues a synchronous browser service call and waits for response
 func (bc *BrowserServiceChannel) QueueCall(ctx context.Context, service, method string, request []byte, timeout time.Duration) ([]byte, error) {
+	return bc.queueCallInternal(ctx, service, method, request, timeout, false)
+}
+
+// QueueCallAsync queues an async browser service call and waits for response
+func (bc *BrowserServiceChannel) QueueCallAsync(ctx context.Context, service, method string, request []byte, timeout time.Duration) ([]byte, error) {
+	return bc.queueCallInternal(ctx, service, method, request, timeout, true)
+}
+
+// queueCallInternal is the internal implementation for queuing calls
+func (bc *BrowserServiceChannel) queueCallInternal(ctx context.Context, service, method string, request []byte, timeout time.Duration, isAsync bool) ([]byte, error) {
 	callID := bc.NextCallID()
 	responseCh := make(chan *CallResponse, 1)
 
@@ -164,6 +178,7 @@ func (bc *BrowserServiceChannel) QueueCall(ctx context.Context, service, method 
 		ResponseCh: responseCh,
 		Timeout:    timeout,
 		StartTime:  time.Now(),
+		IsAsync:    isAsync,
 	}
 
 	// Queue the call
@@ -281,4 +296,99 @@ func (bc *BrowserServiceChannel) GetPendingCallCount() int {
 	bc.mu.RLock()
 	defer bc.mu.RUnlock()
 	return len(bc.pendingCalls)
+}
+
+// CallBrowserService is a generic helper for calling synchronous browser services
+// The browser method should return a value directly (not a Promise)
+func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx context.Context, serviceName, methodName string, req TReq) (TResp, error) {
+	var resp TResp
+
+	// Marshal the request using protojson
+	opts := protojson.MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: true,
+		UseEnumNumbers:  false,
+	}
+
+	// Use reflection to get the proto message interface
+	reqMsg, ok := any(req).(proto.Message)
+	if !ok {
+		return resp, fmt.Errorf("request is not a proto message")
+	}
+
+	requestData, err := opts.Marshal(reqMsg)
+	if err != nil {
+		return resp, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Call browser service through the channel
+	responseData, err := channel.QueueCall(ctx, serviceName, methodName, requestData, 30*time.Second)
+	if err != nil {
+		return resp, err
+	}
+
+	// Unmarshal the response
+	respMsg, ok := any(&resp).(proto.Message)
+	if !ok {
+		return resp, fmt.Errorf("response is not a proto message")
+	}
+
+	unmarshalOpts := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+		AllowPartial:   true,
+	}
+	if err := unmarshalOpts.Unmarshal(responseData, respMsg); err != nil {
+		return resp, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return resp, nil
+}
+
+// CallBrowserServiceAsync is a generic helper for calling async browser services
+// The browser method returns a Promise and we need to handle it with a callback
+// This is necessary for browser APIs that are inherently async (fetch, IndexedDB, etc.)
+func CallBrowserServiceAsync[TReq any, TResp any](channel *BrowserServiceChannel, ctx context.Context, serviceName, methodName string, req TReq) (TResp, error) {
+	var resp TResp
+
+	// For async methods, we need to tell the browser side to handle it as a Promise
+	// We'll add a special flag in the call to indicate async handling
+
+	// Marshal the request using protojson
+	opts := protojson.MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: true,
+		UseEnumNumbers:  false,
+	}
+
+	reqMsg, ok := any(req).(proto.Message)
+	if !ok {
+		return resp, fmt.Errorf("request is not a proto message")
+	}
+
+	requestData, err := opts.Marshal(reqMsg)
+	if err != nil {
+		return resp, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// For async calls, we use a longer timeout since they may involve network operations
+	responseData, err := channel.QueueCallAsync(ctx, serviceName, methodName, requestData, 60*time.Second)
+	if err != nil {
+		return resp, err
+	}
+
+	// Unmarshal the response
+	respMsg, ok := any(&resp).(proto.Message)
+	if !ok {
+		return resp, fmt.Errorf("response is not a proto message")
+	}
+
+	unmarshalOpts := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+		AllowPartial:   true,
+	}
+	if err := unmarshalOpts.Unmarshal(responseData, respMsg); err != nil {
+		return resp, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return resp, nil
 }

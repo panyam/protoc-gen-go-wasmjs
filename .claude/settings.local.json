@@ -5,7 +5,12 @@
       "WebFetch(domain:go.dev)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:withblue.ink)",
-      "WebFetch(domain:grpc.io)"
+      "WebFetch(domain:grpc.io)",
+      "Bash(cat:*)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(echo \"Updated: $file\")",
+      "Bash(done)"
     ],
     "deny": []
   }

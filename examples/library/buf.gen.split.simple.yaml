@@ -1,0 +1,25 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/panyam/protoc-gen-go-wasmjs/examples/library/gen/go
+plugins:
+  # Generate standard Go protobuf types
+  - remote: buf.build/protocolbuffers/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate gRPC service interfaces
+  - remote: buf.build/grpc/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Single Go WASM Generation Test
+  - local: ../../bin/protoc-gen-go-wasmjs-go
+    out: ./gen/wasm/test
+    opt:
+      - wasm_export_path=.
+      - js_structure=namespaced
+      - js_namespace=library
+      - module_name=library_services

@@ -2,12 +2,12 @@
 // Generated TypeScript schema-aware deserializer
 // DO NOT EDIT - This file is auto-generated
 
-import { FieldType, FieldSchema, MessageSchema } from "./deserializer_schemas";
-import { BrowserV1Factory } from "./factory";
-import { BrowserV1SchemaRegistry } from "./schemas";
+import { FieldType, FieldSchema, MessageSchema } from "./browser_v1_schemas";
+import { Browser_v1Factory } from "./factory";
+import { browser_v1SchemaRegistry } from "./schemas";
 
 // Shared factory instance to avoid creating new instances on every deserializer construction
-const DEFAULT_FACTORY = new BrowserV1Factory();
+const DEFAULT_FACTORY = new Browser_v1Factory();
 
 /**
  * Factory interface that deserializer expects
@@ -31,9 +31,9 @@ export interface FactoryResult<T> {
 /**
  * Schema-aware deserializer for browser.v1 package
  */
-export class BrowserV1Deserializer {
+export class Browser_v1Deserializer {
   constructor(
-    private schemaRegistry: Record<string, MessageSchema> = BrowserV1SchemaRegistry,
+    private schemaRegistry: Record<string, MessageSchema> = browser_v1SchemaRegistry,
     private factory: FactoryInterface = DEFAULT_FACTORY
   ) {}
 
@@ -261,7 +261,7 @@ export class BrowserV1Deserializer {
    * @returns Deserialized instance or null if creation failed
    */
   static from<T>(messageType: string, data: any) {
-    const deserializer = new BrowserV1Deserializer(); // Uses default factory and schema registry
+    const deserializer = new Browser_v1Deserializer(); // Uses default factory and schema registry
     return deserializer.createAndDeserialize<T>(messageType, data);
   }
 }

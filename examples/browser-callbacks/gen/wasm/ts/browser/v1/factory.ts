@@ -18,7 +18,7 @@ export interface FactoryResult<T> {
 /**
  * Enhanced factory with context-aware object construction
  */
-export class BrowserV1Factory {
+export class Browser_v1Factory {
 
 
   /**

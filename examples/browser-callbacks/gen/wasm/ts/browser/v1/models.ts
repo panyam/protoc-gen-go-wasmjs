@@ -1,5 +1,5 @@
 import { FetchRequest as FetchRequestInterface, FetchResponse as FetchResponseInterface, StorageKeyRequest as StorageKeyRequestInterface, StorageValueResponse as StorageValueResponseInterface, StorageSetRequest as StorageSetRequestInterface, StorageSetResponse as StorageSetResponseInterface, CookieRequest as CookieRequestInterface, CookieResponse as CookieResponseInterface, AlertRequest as AlertRequestInterface, AlertResponse as AlertResponseInterface, PromptRequest as PromptRequestInterface, PromptResponse as PromptResponseInterface, LogRequest as LogRequestInterface, LogResponse as LogResponseInterface } from "./interfaces";
-import { BrowserV1Deserializer } from "./deserializer";
+import { Browser_v1Deserializer } from "./deserializer";
 
 
 /**
@@ -11,10 +11,6 @@ export class FetchRequest implements FetchRequestInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.FetchRequest";
 
-  url: string = "";
-  method: string = "";
-  headers?: Map<string, string>;
-  body: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -22,7 +18,7 @@ export class FetchRequest implements FetchRequestInterface {
    * @returns Deserialized FetchRequest instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<FetchRequest>(FetchRequest.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<FetchRequest>(FetchRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -36,10 +32,6 @@ export class FetchResponse implements FetchResponseInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.FetchResponse";
 
-  status: number = 0;
-  statusText: string = "";
-  headers?: Map<string, string>;
-  body: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -47,7 +39,7 @@ export class FetchResponse implements FetchResponseInterface {
    * @returns Deserialized FetchResponse instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<FetchResponse>(FetchResponse.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<FetchResponse>(FetchResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -61,7 +53,6 @@ export class StorageKeyRequest implements StorageKeyRequestInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.StorageKeyRequest";
 
-  key: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -69,7 +60,7 @@ export class StorageKeyRequest implements StorageKeyRequestInterface {
    * @returns Deserialized StorageKeyRequest instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<StorageKeyRequest>(StorageKeyRequest.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<StorageKeyRequest>(StorageKeyRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -83,8 +74,6 @@ export class StorageValueResponse implements StorageValueResponseInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.StorageValueResponse";
 
-  value: string = "";
-  exists: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -92,7 +81,7 @@ export class StorageValueResponse implements StorageValueResponseInterface {
    * @returns Deserialized StorageValueResponse instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<StorageValueResponse>(StorageValueResponse.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<StorageValueResponse>(StorageValueResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -106,8 +95,6 @@ export class StorageSetRequest implements StorageSetRequestInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.StorageSetRequest";
 
-  key: string = "";
-  value: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -115,7 +102,7 @@ export class StorageSetRequest implements StorageSetRequestInterface {
    * @returns Deserialized StorageSetRequest instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<StorageSetRequest>(StorageSetRequest.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<StorageSetRequest>(StorageSetRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -129,7 +116,6 @@ export class StorageSetResponse implements StorageSetResponseInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.StorageSetResponse";
 
-  success: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -137,7 +123,7 @@ export class StorageSetResponse implements StorageSetResponseInterface {
    * @returns Deserialized StorageSetResponse instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<StorageSetResponse>(StorageSetResponse.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<StorageSetResponse>(StorageSetResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -151,7 +137,6 @@ export class CookieRequest implements CookieRequestInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.CookieRequest";
 
-  name: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -159,7 +144,7 @@ export class CookieRequest implements CookieRequestInterface {
    * @returns Deserialized CookieRequest instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<CookieRequest>(CookieRequest.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<CookieRequest>(CookieRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -173,8 +158,6 @@ export class CookieResponse implements CookieResponseInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.CookieResponse";
 
-  value: string = "";
-  exists: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -182,7 +165,7 @@ export class CookieResponse implements CookieResponseInterface {
    * @returns Deserialized CookieResponse instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<CookieResponse>(CookieResponse.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<CookieResponse>(CookieResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -196,7 +179,6 @@ export class AlertRequest implements AlertRequestInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.AlertRequest";
 
-  message: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -204,7 +186,7 @@ export class AlertRequest implements AlertRequestInterface {
    * @returns Deserialized AlertRequest instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<AlertRequest>(AlertRequest.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<AlertRequest>(AlertRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -218,7 +200,6 @@ export class AlertResponse implements AlertResponseInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.AlertResponse";
 
-  shown: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -226,7 +207,7 @@ export class AlertResponse implements AlertResponseInterface {
    * @returns Deserialized AlertResponse instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<AlertResponse>(AlertResponse.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<AlertResponse>(AlertResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -240,8 +221,6 @@ export class PromptRequest implements PromptRequestInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.PromptRequest";
 
-  message: string = "";
-  defaultValue: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -249,7 +228,7 @@ export class PromptRequest implements PromptRequestInterface {
    * @returns Deserialized PromptRequest instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<PromptRequest>(PromptRequest.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<PromptRequest>(PromptRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -263,8 +242,6 @@ export class PromptResponse implements PromptResponseInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.PromptResponse";
 
-  value: string = "";
-  cancelled: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -272,7 +249,7 @@ export class PromptResponse implements PromptResponseInterface {
    * @returns Deserialized PromptResponse instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<PromptResponse>(PromptResponse.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<PromptResponse>(PromptResponse.MESSAGE_TYPE, data);
   }
 }
 
@@ -286,8 +263,6 @@ export class LogRequest implements LogRequestInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.LogRequest";
 
-  message: string = "";
-  level: string = "";
 
   /**
    * Create and deserialize an instance from raw data
@@ -295,7 +270,7 @@ export class LogRequest implements LogRequestInterface {
    * @returns Deserialized LogRequest instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<LogRequest>(LogRequest.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<LogRequest>(LogRequest.MESSAGE_TYPE, data);
   }
 }
 
@@ -309,7 +284,6 @@ export class LogResponse implements LogResponseInterface {
    */
   static readonly MESSAGE_TYPE = "browser.v1.LogResponse";
 
-  logged: boolean = false;
 
   /**
    * Create and deserialize an instance from raw data
@@ -317,7 +291,7 @@ export class LogResponse implements LogResponseInterface {
    * @returns Deserialized LogResponse instance or null if creation failed
    */
   static from(data: any) {
-    return BrowserV1Deserializer.from<LogResponse>(LogResponse.MESSAGE_TYPE, data);
+    return Browser_v1Deserializer.from<LogResponse>(LogResponse.MESSAGE_TYPE, data);
   }
 }
 

@@ -39,12 +39,12 @@ type InterfaceTemplateData struct {
 	ExternalImports []ExternalImport
 }
 
-// ModelTemplateData holds data for model template generation  
+// ModelTemplateData holds data for model template generation
 type ModelTemplateData struct {
-	Messages        []MessageInfo
-	Enums           []EnumInfo
-	BaseName        string
-	ExternalImports []ExternalImport
+	Messages         []MessageInfo
+	Enums            []EnumInfo
+	BaseName         string
+	ExternalImports  []ExternalImport
 	DeserializerName string // e.g., "LibraryV2Deserializer"
 }
 
@@ -73,7 +73,7 @@ type TSGenerator struct {
 // collectFactoryDependencies analyzes messages to find cross-package dependencies
 func (ts *TSGenerator) collectFactoryDependencies(messages []MessageInfo, currentPackage string) []FactoryDependency {
 	dependencyMap := make(map[string]FactoryDependency)
-	
+
 	for _, message := range messages {
 		for _, field := range message.Fields {
 			// Check if field references a message from another package
@@ -82,28 +82,28 @@ func (ts *TSGenerator) collectFactoryDependencies(messages []MessageInfo, curren
 				if _, isExternal := ts.fileGen.config.GetExternalTypeMapping(field.MessageType); isExternal {
 					continue
 				}
-				
+
 				// Extract package name from fully qualified message type
 				parts := strings.Split(field.MessageType, ".")
 				if len(parts) >= 2 {
 					fieldPackage := strings.Join(parts[:len(parts)-1], ".")
-					
+
 					// Skip if it's the same package
 					if fieldPackage == currentPackage {
 						continue
 					}
-					
+
 					// Skip wasmjs annotation packages - these are framework types
 					if fieldPackage == "wasmjs.v1" {
 						continue
 					}
-					
+
 					// Create dependency if not already exists
 					if _, exists := dependencyMap[fieldPackage]; !exists {
 						factoryName := ts.getFactoryNameForPackage(fieldPackage)
 						importPath := ts.getFactoryImportPath(fieldPackage, currentPackage)
 						instanceName := ts.getFactoryInstanceName(fieldPackage)
-						
+
 						dependencyMap[fieldPackage] = FactoryDependency{
 							PackageName:  fieldPackage,
 							FactoryName:  factoryName,
@@ -115,26 +115,26 @@ func (ts *TSGenerator) collectFactoryDependencies(messages []MessageInfo, curren
 			}
 		}
 	}
-	
+
 	// Convert map to slice
 	var dependencies []FactoryDependency
 	for _, dep := range dependencyMap {
 		dependencies = append(dependencies, dep)
 	}
-	
+
 	return dependencies
 }
 
 // collectExternalImports analyzes messages to find external type imports needed
 func (ts *TSGenerator) collectExternalImports(messages []MessageInfo) []ExternalImport {
 	importMap := make(map[string]ExternalImport)
-	
+
 	// Get current package name for comparison
 	currentPackage := ""
 	if len(messages) > 0 {
 		currentPackage = messages[0].PackageName
 	}
-	
+
 	for _, message := range messages {
 		for _, field := range message.Fields {
 			// Check if field references an external type
@@ -155,11 +155,11 @@ func (ts *TSGenerator) collectExternalImports(messages []MessageInfo) []External
 						if fieldPackage == "wasmjs.v1" {
 							continue
 						}
-						
+
 						// This is a cross-package reference - generate import for it
 						messageName := ts.extractMessageName(field.MessageType)
 						importPath := ts.buildCrossPackageImportPath(currentPackage, fieldPackage)
-						
+
 						importMap[messageName] = ExternalImport{
 							TypeName:     messageName,
 							ImportSource: importPath,
@@ -170,13 +170,13 @@ func (ts *TSGenerator) collectExternalImports(messages []MessageInfo) []External
 			}
 		}
 	}
-	
+
 	// Convert map to slice
 	var imports []ExternalImport
 	for _, imp := range importMap {
 		imports = append(imports, imp)
 	}
-	
+
 	return imports
 }
 
@@ -207,29 +207,29 @@ func (ts *TSGenerator) extractMessageName(fullMessageType string) string {
 func (ts *TSGenerator) buildCrossPackageImportPath(currentPackage, targetPackage string) string {
 	currentParts := strings.Split(currentPackage, ".")
 	targetParts := strings.Split(targetPackage, ".")
-	
+
 	// Find common prefix
 	commonPrefixLen := 0
 	for i := 0; i < len(currentParts) && i < len(targetParts) && currentParts[i] == targetParts[i]; i++ {
 		commonPrefixLen++
 	}
-	
+
 	// Build relative path
 	var pathParts []string
-	
+
 	// Go up for each unique part in current package
 	for i := commonPrefixLen; i < len(currentParts); i++ {
 		pathParts = append(pathParts, "..")
 	}
-	
+
 	// Go down for each unique part in target package
 	for i := commonPrefixLen; i < len(targetParts); i++ {
 		pathParts = append(pathParts, targetParts[i])
 	}
-	
+
 	// Add "interfaces" at the end since we import from interfaces.ts
 	pathParts = append(pathParts, "interfaces")
-	
+
 	return strings.Join(pathParts, "/")
 }
 
@@ -250,7 +250,7 @@ func (ts *TSGenerator) getFactoryImportPath(dependencyPackage, currentPackage st
 	// e.g., from "library.v2" to "library.common" -> "../common/factory"
 	currentParts := strings.Split(currentPackage, ".")
 	depParts := strings.Split(dependencyPackage, ".")
-	
+
 	// Find common prefix
 	commonLen := 0
 	for i := 0; i < len(currentParts) && i < len(depParts); i++ {
@@ -260,20 +260,20 @@ func (ts *TSGenerator) getFactoryImportPath(dependencyPackage, currentPackage st
 			break
 		}
 	}
-	
+
 	// Calculate relative path
 	var pathParts []string
-	
+
 	// Go up for each unique part in current package
 	for i := commonLen; i < len(currentParts); i++ {
 		pathParts = append(pathParts, "..")
 	}
-	
+
 	// Go down for each unique part in dependency package
 	for i := commonLen; i < len(depParts); i++ {
 		pathParts = append(pathParts, depParts[i])
 	}
-	
+
 	pathParts = append(pathParts, "factory")
 	return strings.Join(pathParts, "/")
 }
@@ -296,47 +296,47 @@ func (ts *TSGenerator) GenerateAll(messages []MessageInfo, enums []EnumInfo, pac
 	if len(messages) == 0 && len(enums) == 0 {
 		return nil
 	}
-	
+
 	// Generate interfaces (includes both messages and enums)
 	if err := ts.generateInterfaces(messages, enums, packagePath); err != nil {
 		return err
 	}
-	
+
 	// Generate model classes (only for messages)
 	if len(messages) > 0 {
 		if err := ts.generateModels(messages, enums, packagePath); err != nil {
 			return err
 		}
 	}
-	
+
 	// Generate factory (only for messages)
 	if len(messages) > 0 {
 		if err := ts.generateFactory(messages, enums, packagePath); err != nil {
 			return err
 		}
 	}
-	
+
 	// Generate deserializer schemas (framework types) - only if we have messages
 	if len(messages) > 0 {
 		if err := ts.generateDeserializerSchemas(packagePath); err != nil {
 			return err
 		}
 	}
-	
+
 	// Generate schemas (only for messages)
 	if len(messages) > 0 {
 		if err := ts.generateSchemas(messages, packagePath); err != nil {
 			return err
 		}
 	}
-	
+
 	// Generate deserializer (only for messages)
 	if len(messages) > 0 {
 		if err := ts.generateDeserializers(messages, packagePath); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -346,7 +346,7 @@ func (ts *TSGenerator) generateInterfaces(messages []MessageInfo, enums []EnumIn
 	if err := ts.generatePackageInterfaceFile(messages, enums, packagePath); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -356,7 +356,7 @@ func (ts *TSGenerator) generateModels(messages []MessageInfo, enums []EnumInfo, 
 	if err := ts.generatePackageModelFile(messages, enums, packagePath); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -371,7 +371,7 @@ func (ts *TSGenerator) generateSchemas(messages []MessageInfo, packagePath strin
 	if err := ts.generatePackageSchemaFile(messages, packagePath); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -381,7 +381,7 @@ func (ts *TSGenerator) generateDeserializers(messages []MessageInfo, packagePath
 	if err := ts.generatePackageDeserializerFile(messages, packagePath); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -394,19 +394,19 @@ func (ts *TSGenerator) generatePackageInterfaceFile(messages []MessageInfo, enum
 	} else if len(enums) > 0 {
 		packageName = enums[0].PackageName
 	}
-	
+
 	// Create filename based on package name (e.g., "interfaces.ts")
 	filename := filepath.Join(packagePath, "interfaces.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate interface content
 	content, err := ts.generatePackageInterfaceContent(messages, enums, packageName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -418,19 +418,19 @@ func (ts *TSGenerator) generatePackageModelFile(messages []MessageInfo, enums []
 	if len(messages) > 0 {
 		packageName = messages[0].PackageName
 	}
-	
+
 	// Create filename based on package name (e.g., "models.ts")
 	filename := filepath.Join(packagePath, "models.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate model content
 	content, err := ts.generatePackageModelContent(messages, enums, packageName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -442,43 +442,43 @@ func (ts *TSGenerator) generatePackageSchemaFile(messages []MessageInfo, package
 	if len(messages) > 0 {
 		packageName = messages[0].PackageName
 	}
-	
+
 	// Create filename based on package name (e.g., "schemas.ts")
 	filename := filepath.Join(packagePath, "schemas.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate schema content
 	content, err := ts.generateSchemaContent(messages, packageName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
 
-// generatePackageDeserializerFile generates a single deserializer file for the entire package  
+// generatePackageDeserializerFile generates a single deserializer file for the entire package
 func (ts *TSGenerator) generatePackageDeserializerFile(messages []MessageInfo, packagePath string) error {
 	// Get package name from first message
 	packageName := ""
 	if len(messages) > 0 {
 		packageName = messages[0].PackageName
 	}
-	
+
 	// Create filename based on package name (e.g., "deserializer.ts")
 	filename := filepath.Join(packagePath, "deserializer.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate deserializer content
 	content, err := ts.generatePackageDeserializerContent(messages, packageName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -486,12 +486,12 @@ func (ts *TSGenerator) generatePackageDeserializerFile(messages []MessageInfo, p
 // groupMessagesByProtoFile groups messages by their source proto file
 func (ts *TSGenerator) groupMessagesByProtoFile(messages []MessageInfo) map[string][]MessageInfo {
 	fileMessages := make(map[string][]MessageInfo)
-	
+
 	for _, msg := range messages {
 		protoFile := msg.ProtoFile
 		fileMessages[protoFile] = append(fileMessages[protoFile], msg)
 	}
-	
+
 	return fileMessages
 }
 
@@ -500,16 +500,16 @@ func (ts *TSGenerator) generateInterfaceFile(protoFile string, messages []Messag
 	// Create filename: proto/path/file.proto -> proto_path_file_interfaces.ts
 	baseName := ts.getBaseFileName(protoFile)
 	filename := filepath.Join(packagePath, baseName+"_interfaces.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate TypeScript interfaces
 	content, err := ts.generateInterfaceContent(messages, baseName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -519,16 +519,16 @@ func (ts *TSGenerator) generateModelFile(protoFile string, messages []MessageInf
 	// Create filename: proto/path/file.proto -> proto_path_file_models.ts
 	baseName := ts.getBaseFileName(protoFile)
 	filename := filepath.Join(packagePath, baseName+"_models.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate TypeScript model classes
 	content, err := ts.generateModelContent(messages, baseName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -536,16 +536,16 @@ func (ts *TSGenerator) generateModelFile(protoFile string, messages []MessageInf
 // generateFactoryFile generates a TypeScript factory file
 func (ts *TSGenerator) generateFactoryFile(messages []MessageInfo, enums []EnumInfo, packagePath string) error {
 	filename := filepath.Join(packagePath, "factory.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate factory content
 	content, err := ts.generateFactoryContent(messages, enums)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -555,16 +555,16 @@ func (ts *TSGenerator) generateSchemaFile(protoFile string, messages []MessageIn
 	// Create filename: proto/path/file.proto -> proto_path_file_schemas.ts
 	baseName := ts.getBaseFileName(protoFile)
 	filename := filepath.Join(packagePath, baseName+"_schemas.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate TypeScript schemas
 	content, err := ts.generateSchemaContent(messages, baseName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -574,16 +574,16 @@ func (ts *TSGenerator) generateDeserializerFile(protoFile string, messages []Mes
 	// Create filename: proto/path/file.proto -> proto_path_file_deserializer.ts
 	baseName := ts.getBaseFileName(protoFile)
 	filename := filepath.Join(packagePath, baseName+"_deserializer.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate TypeScript deserializer
 	content, err := ts.generateDeserializerContent(messages, baseName)
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -604,18 +604,18 @@ func (ts *TSGenerator) generateInterfaceContent(messages []MessageInfo, baseName
 		BaseName:        baseName,
 		ExternalImports: ts.collectExternalImports(messages),
 	}
-	
+
 	tmpl, err := template.New("interfaces").Funcs(templateFuncMap).Parse(interfacesTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
@@ -626,31 +626,31 @@ func (ts *TSGenerator) generateModelContent(messages []MessageInfo, baseName str
 		BaseName:        baseName,
 		ExternalImports: ts.collectExternalImports(messages),
 	}
-	
+
 	tmpl, err := template.New("models").Funcs(templateFuncMap).Parse(modelsTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
 // generateFactoryContent generates the TypeScript factory file content using templates
 func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo, enums []EnumInfo) (string, error) {
 	// No longer need file-based imports since we use package-level imports in template
-	
+
 	// Generate factory class name from package
 	factoryName := ""
 	if len(messages) > 0 {
 		factoryName = ts.buildFactoryName(messages[0].PackageName)
 	}
-	
+
 	// Add method names to messages for template
 	messagesWithMethods := make([]MessageInfo, len(messages))
 	for i, msg := range messages {
@@ -658,14 +658,14 @@ func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo, enums []En
 		msgCopy.MethodName = "new" + msg.TSName
 		messagesWithMethods[i] = msgCopy
 	}
-	
+
 	// Collect factory dependencies
 	currentPackage := ""
 	if len(messages) > 0 {
 		currentPackage = messages[0].PackageName
 	}
 	dependencies := ts.collectFactoryDependencies(messages, currentPackage)
-	
+
 	data := FactoryTemplateData{
 		Messages:        messagesWithMethods,
 		Enums:           enums,
@@ -673,37 +673,37 @@ func (ts *TSGenerator) generateFactoryContent(messages []MessageInfo, enums []En
 		Dependencies:    dependencies,
 		ExternalImports: ts.collectExternalImports(messages),
 	}
-	
+
 	tmpl, err := template.New("factory").Funcs(templateFuncMap).Parse(factoryTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
 // SchemaTemplateData holds data for schema template generation
 type SchemaTemplateData struct {
-	Messages        []MessageInfo
-	BaseName        string
-	PackageName     string
-	RegistryName    string
+	Messages     []MessageInfo
+	BaseName     string
+	PackageName  string
+	RegistryName string
 }
 
 // DeserializerTemplateData holds data for deserializer template generation
 type DeserializerTemplateData struct {
-	Messages            []MessageInfo
-	BaseName            string
-	PackageName         string
-	DeserializerName    string
-	FactoryName         string // e.g., "LibraryV2Factory"
-	SchemaRegistryName  string // e.g., "libraryV2SchemaRegistry"
+	Messages           []MessageInfo
+	BaseName           string
+	PackageName        string
+	DeserializerName   string
+	FactoryName        string // e.g., "LibraryV2Factory"
+	SchemaRegistryName string // e.g., "libraryV2SchemaRegistry"
 }
 
 // generatePackageInterfaceContent generates TypeScript interface content for the entire package
@@ -714,18 +714,18 @@ func (ts *TSGenerator) generatePackageInterfaceContent(messages []MessageInfo, e
 		BaseName:        "interfaces",
 		ExternalImports: ts.collectExternalImports(messages),
 	}
-	
+
 	tmpl, err := template.New("interfaces").Funcs(templateFuncMap).Parse(interfacesTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
@@ -738,18 +738,18 @@ func (ts *TSGenerator) generatePackageModelContent(messages []MessageInfo, enums
 		ExternalImports:  ts.collectExternalImports(messages),
 		DeserializerName: ts.buildDeserializerName(packageName),
 	}
-	
+
 	tmpl, err := template.New("models").Funcs(templateFuncMap).Parse(modelsTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
@@ -759,7 +759,7 @@ func (ts *TSGenerator) generatePackageDeserializerContent(messages []MessageInfo
 	deserializerName := ts.buildDeserializerName(packageName)
 	factoryName := ts.buildFactoryName(packageName)
 	schemaRegistryName := ts.buildSchemaRegistryName(packageName)
-	
+
 	data := DeserializerTemplateData{
 		Messages:           messages,
 		BaseName:           "deserializer",
@@ -768,18 +768,18 @@ func (ts *TSGenerator) generatePackageDeserializerContent(messages []MessageInfo
 		FactoryName:        factoryName,
 		SchemaRegistryName: schemaRegistryName,
 	}
-	
+
 	tmpl, err := template.New("deserializer").Funcs(templateFuncMap).Parse(deserializerTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
@@ -790,31 +790,31 @@ func (ts *TSGenerator) generateSchemaContent(messages []MessageInfo, packageName
 	if packageName == "" && len(messages) > 0 {
 		packageName = messages[0].PackageName
 	}
-	
+
 	// Generate registry name from package (e.g., "library.v1" -> "LibraryV1SchemaRegistry")
 	registryName := ts.buildSchemaRegistryName(packageName)
-	
+
 	// For package-level generation, use "schemas" as base name
 	baseName := "schemas"
-	
+
 	data := SchemaTemplateData{
 		Messages:     messages,
 		BaseName:     baseName,
 		PackageName:  packageName,
 		RegistryName: registryName,
 	}
-	
+
 	tmpl, err := template.New("schemas").Funcs(templateFuncMap).Parse(schemasTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
@@ -825,28 +825,28 @@ func (ts *TSGenerator) generateDeserializerContent(messages []MessageInfo, baseN
 	if len(messages) > 0 {
 		packageName = messages[0].PackageName
 	}
-	
+
 	// Generate deserializer name from package (e.g., "library.v1" -> "LibraryV1Deserializer")
 	deserializerName := ts.buildDeserializerName(packageName)
-	
+
 	data := DeserializerTemplateData{
 		Messages:         messages,
 		BaseName:         baseName,
 		PackageName:      packageName,
 		DeserializerName: deserializerName,
 	}
-	
+
 	tmpl, err := template.New("deserializer").Funcs(templateFuncMap).Parse(deserializerTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 
@@ -854,16 +854,16 @@ func (ts *TSGenerator) generateDeserializerContent(messages []MessageInfo, baseN
 func (ts *TSGenerator) generateDeserializerSchemas(packagePath string) error {
 	// Create filename for deserializer schemas
 	filename := filepath.Join(packagePath, "deserializer_schemas.ts")
-	
+
 	// Create generated file
 	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-	
+
 	// Generate deserializer schema content (no template data needed - just static types)
 	content, err := ts.generateDeserializerSchemaContent()
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = generatedFile.Write([]byte(content))
 	return err
 }
@@ -872,18 +872,18 @@ func (ts *TSGenerator) generateDeserializerSchemas(packagePath string) error {
 func (ts *TSGenerator) generateDeserializerSchemaContent() (string, error) {
 	// Use empty data since this template doesn't need any dynamic content
 	var emptyData struct{}
-	
+
 	tmpl, err := template.New("deserializer_schemas").Funcs(templateFuncMap).Parse(deserializerSchemasTemplate)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var result strings.Builder
 	err = tmpl.Execute(&result, emptyData)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return result.String(), nil
 }
 

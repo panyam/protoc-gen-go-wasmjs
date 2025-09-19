@@ -15,6 +15,7 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/generator"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -52,6 +53,18 @@ func main() {
 	protogen.Options{
 		ParamFunc: flagSet.Set,
 	}.Run(func(gen *protogen.Plugin) error {
+		log.Printf("OLD GENERATOR: Plugin callback started")
+		log.Printf("OLD GENERATOR: Request has %d files", len(gen.Files))
+		log.Printf("OLD GENERATOR: Request parameters: %+v", gen.Request.GetParameter())
+		
+		defer func() {
+			log.Printf("OLD GENERATOR: Plugin callback ending")
+			log.Printf("OLD GENERATOR: Response has %d files", len(gen.Response().File))
+			for i, file := range gen.Response().File {
+				log.Printf("OLD GENERATOR: Response file %d: %s (%d bytes)", 
+					i, file.GetName(), len(file.GetContent()))
+			}
+		}()
 		// Create configuration from parsed flags
 		config := &generator.Config{
 			// Core integration
@@ -84,19 +97,32 @@ func main() {
 		// Group files by package to generate one WASM module per package
 		packageFiles := make(map[string][]*protogen.File)
 
-		// Group files by package
+		// Collect all browser-provided services across all packages
+		allBrowserServices := make([]*generator.BrowserServiceInfo, 0)
+
+		// Group files by package and collect browser services
 		for _, f := range gen.Files {
 			if !f.Generate {
 				continue
 			}
 			packageName := string(f.Desc.Package())
-			
+
 			// Skip wasmjs annotation packages - they are library files, not user code
 			if packageName == "wasmjs.v1" {
 				continue
 			}
-			
+
 			packageFiles[packageName] = append(packageFiles[packageName], f)
+
+			// Collect browser-provided services from this file
+			for _, service := range f.Services {
+				if generator.IsBrowserProvidedService(service) {
+					allBrowserServices = append(allBrowserServices, &generator.BrowserServiceInfo{
+						File:    f,
+						Service: service,
+					})
+				}
+			}
 		}
 
 		// Generate one WASM module per package
@@ -111,6 +137,9 @@ func main() {
 
 			// Set the additional files for this package
 			fileGen.SetPackageFiles(files)
+
+			// Set all browser services so they can be included in generation
+			fileGen.SetAllBrowserServices(allBrowserServices)
 
 			if err := fileGen.Generate(); err != nil {
 				return err

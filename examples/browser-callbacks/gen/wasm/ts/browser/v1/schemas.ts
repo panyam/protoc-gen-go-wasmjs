@@ -11,27 +11,6 @@ import { FieldType, FieldSchema, MessageSchema } from "./deserializer_schemas";
 export const FetchRequestSchema: MessageSchema = {
   name: "FetchRequest",
   fields: [
-    {
-      name: "url",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "method",
-      type: FieldType.STRING,
-      id: 2,
-    },
-    {
-      name: "headers",
-      type: FieldType.MESSAGE,
-      id: 3,
-      messageType: "browser.v1.HeadersEntry",
-    },
-    {
-      name: "body",
-      type: FieldType.STRING,
-      id: 4,
-    },
   ],
 };
 
@@ -42,27 +21,6 @@ export const FetchRequestSchema: MessageSchema = {
 export const FetchResponseSchema: MessageSchema = {
   name: "FetchResponse",
   fields: [
-    {
-      name: "status",
-      type: FieldType.NUMBER,
-      id: 1,
-    },
-    {
-      name: "statusText",
-      type: FieldType.STRING,
-      id: 2,
-    },
-    {
-      name: "headers",
-      type: FieldType.MESSAGE,
-      id: 3,
-      messageType: "browser.v1.HeadersEntry",
-    },
-    {
-      name: "body",
-      type: FieldType.STRING,
-      id: 4,
-    },
   ],
 };
 
@@ -73,11 +31,6 @@ export const FetchResponseSchema: MessageSchema = {
 export const StorageKeyRequestSchema: MessageSchema = {
   name: "StorageKeyRequest",
   fields: [
-    {
-      name: "key",
-      type: FieldType.STRING,
-      id: 1,
-    },
   ],
 };
 
@@ -88,16 +41,6 @@ export const StorageKeyRequestSchema: MessageSchema = {
 export const StorageValueResponseSchema: MessageSchema = {
   name: "StorageValueResponse",
   fields: [
-    {
-      name: "value",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "exists",
-      type: FieldType.BOOLEAN,
-      id: 2,
-    },
   ],
 };
 
@@ -108,16 +51,6 @@ export const StorageValueResponseSchema: MessageSchema = {
 export const StorageSetRequestSchema: MessageSchema = {
   name: "StorageSetRequest",
   fields: [
-    {
-      name: "key",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "value",
-      type: FieldType.STRING,
-      id: 2,
-    },
   ],
 };
 
@@ -128,11 +61,6 @@ export const StorageSetRequestSchema: MessageSchema = {
 export const StorageSetResponseSchema: MessageSchema = {
   name: "StorageSetResponse",
   fields: [
-    {
-      name: "success",
-      type: FieldType.BOOLEAN,
-      id: 1,
-    },
   ],
 };
 
@@ -143,11 +71,6 @@ export const StorageSetResponseSchema: MessageSchema = {
 export const CookieRequestSchema: MessageSchema = {
   name: "CookieRequest",
   fields: [
-    {
-      name: "name",
-      type: FieldType.STRING,
-      id: 1,
-    },
   ],
 };
 
@@ -158,16 +81,6 @@ export const CookieRequestSchema: MessageSchema = {
 export const CookieResponseSchema: MessageSchema = {
   name: "CookieResponse",
   fields: [
-    {
-      name: "value",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "exists",
-      type: FieldType.BOOLEAN,
-      id: 2,
-    },
   ],
 };
 
@@ -178,11 +91,6 @@ export const CookieResponseSchema: MessageSchema = {
 export const AlertRequestSchema: MessageSchema = {
   name: "AlertRequest",
   fields: [
-    {
-      name: "message",
-      type: FieldType.STRING,
-      id: 1,
-    },
   ],
 };
 
@@ -193,11 +101,6 @@ export const AlertRequestSchema: MessageSchema = {
 export const AlertResponseSchema: MessageSchema = {
   name: "AlertResponse",
   fields: [
-    {
-      name: "shown",
-      type: FieldType.BOOLEAN,
-      id: 1,
-    },
   ],
 };
 
@@ -208,16 +111,6 @@ export const AlertResponseSchema: MessageSchema = {
 export const PromptRequestSchema: MessageSchema = {
   name: "PromptRequest",
   fields: [
-    {
-      name: "message",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "defaultValue",
-      type: FieldType.STRING,
-      id: 2,
-    },
   ],
 };
 
@@ -228,16 +121,6 @@ export const PromptRequestSchema: MessageSchema = {
 export const PromptResponseSchema: MessageSchema = {
   name: "PromptResponse",
   fields: [
-    {
-      name: "value",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "cancelled",
-      type: FieldType.BOOLEAN,
-      id: 2,
-    },
   ],
 };
 
@@ -248,16 +131,6 @@ export const PromptResponseSchema: MessageSchema = {
 export const LogRequestSchema: MessageSchema = {
   name: "LogRequest",
   fields: [
-    {
-      name: "message",
-      type: FieldType.STRING,
-      id: 1,
-    },
-    {
-      name: "level",
-      type: FieldType.STRING,
-      id: 2,
-    },
   ],
 };
 
@@ -268,11 +141,6 @@ export const LogRequestSchema: MessageSchema = {
 export const LogResponseSchema: MessageSchema = {
   name: "LogResponse",
   fields: [
-    {
-      name: "logged",
-      type: FieldType.BOOLEAN,
-      id: 1,
-    },
   ],
 };
 
@@ -281,7 +149,7 @@ export const LogResponseSchema: MessageSchema = {
 /**
  * Package-scoped schema registry for browser.v1
  */
-export const BrowserV1SchemaRegistry: Record<string, MessageSchema> = {
+export const browser_v1SchemaRegistry: Record<string, MessageSchema> = {
   "browser.v1.FetchRequest": FetchRequestSchema,
   "browser.v1.FetchResponse": FetchResponseSchema,
   "browser.v1.StorageKeyRequest": StorageKeyRequestSchema,
@@ -302,7 +170,7 @@ export const BrowserV1SchemaRegistry: Record<string, MessageSchema> = {
  * Get schema for a message type from browser.v1 package
  */
 export function getSchema(messageType: string): MessageSchema | undefined {
-  return BrowserV1SchemaRegistry[messageType];
+  return browser_v1SchemaRegistry[messageType];
 }
 
 /**
