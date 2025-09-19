@@ -12,10 +12,12 @@ default-ts:
 
 # Old monolithic generator (for backward compatibility)
 old:
-	go build -o ./bin/protoc-gen-go-wasmjs-old ./cmd/protoc-gen-go-wasmjs
+	go build -o ./bin/protoc-gen-go-wasmjs-old ./cmd/protoc-gen-go-wasmjs-old
 
 wasm:
-	GOOS=wasip1 GOARCH=wasm go build -o ./bin/protoc-gen-go-wasmjs.wasm ./cmd/protoc-gen-go-wasmjs
+	GOOS=wasip1 GOARCH=wasm go build -o ./bin/protoc-gen-go-wasmjs-go.wasm ./cmd/protoc-gen-go-wasmjs-go
+	GOOS=wasip1 GOARCH=wasm go build -o ./bin/protoc-gen-go-wasmjs-ts.wasm ./cmd/protoc-gen-go-wasmjs-ts
+	GOOS=wasip1 GOARCH=wasm go build -o ./bin/protoc-gen-go-wasmjs-old.wasm ./cmd/protoc-gen-go-wasmjs-old
 
 install:
 	go build -o ${GOBIN}/protoc-gen-go-wasmjs-go ./cmd/protoc-gen-go-wasmjs-go
@@ -23,7 +25,7 @@ install:
 
 # Install old monolithic generator for backward compatibility
 install-old:
-	go build -o ${GOBIN}/protoc-gen-go-wasmjs-old ./cmd/protoc-gen-go-wasmjs
+	go build -o ${GOBIN}/protoc-gen-go-wasmjs-old ./cmd/protoc-gen-go-wasmjs-old
 
 clean:
 	rm -rf ./bin/*
