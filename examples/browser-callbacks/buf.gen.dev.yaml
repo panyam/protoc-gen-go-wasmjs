@@ -20,23 +20,23 @@ plugins:
   # Development mode: uses local plugin
   # =================================================================
 
-  # Generate Go WASM bindings with old generator
-  - local: ../../bin/protoc-gen-go-wasmjs-old
-    out: ./gen/wasm-old/go
-    opt:
-      - generate_typescript=false
-      - js_structure=namespaced
-      - js_namespace=browserCallbacks
-      - module_name=browser_callbacks
+  # # Generate Go WASM bindings with old generator
+  # - local: ../../bin/protoc-gen-go-wasmjs-old
+  #   out: ./gen/wasm-old/go
+  #   opt:
+  #     - generate_typescript=false
+  #     - js_structure=namespaced
+  #     - js_namespace=browserCallbacks
+  #     - module_name=browser_callbacks
 
-  # Generate TypeScript clients with old generator
-  - local: ../../bin/protoc-gen-go-wasmjs-old
-    out: ./gen/wasm-old/ts
-    opt:
-      - generate_wasm=false
-      - generate_typescript=true
-      - js_structure=namespaced
-      - js_namespace=browserCallbacks
+  # # Generate TypeScript clients with old generator
+  # - local: ../../bin/protoc-gen-go-wasmjs-old
+  #   out: ./gen/wasm-old/ts
+  #   opt:
+  #     - generate_wasm=false
+  #     - generate_typescript=true
+  #     - js_structure=namespaced
+  #     - js_namespace=browserCallbacks
 
   # =================================================================
   # Approach 2: New Split Generators (default - recommended)

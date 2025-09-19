@@ -46,6 +46,30 @@ type ImportInfo struct {
 	Alias string // Package alias (e.g., "libraryv1")
 }
 
+// MessageInfo represents a protobuf message type for template generation.
+type MessageInfo struct {
+	Name        string // Message name (e.g., "FindBooksRequest")
+	GoType      string // Fully qualified Go type (e.g., "libraryv1.FindBooksRequest")
+	PackagePath string // Go import path for this message
+	Fields      []FieldInfo // Field information (optional, for detailed generation)
+}
+
+// EnumInfo represents a protobuf enum type for template generation.
+type EnumInfo struct {
+	Name        string // Enum name (e.g., "BookStatus")
+	GoType      string // Fully qualified Go type (e.g., "libraryv1.BookStatus")
+	PackagePath string // Go import path for this enum
+	Values      []string // Enum value names (optional)
+}
+
+// FieldInfo represents a message field for detailed generation.
+type FieldInfo struct {
+	Name       string // Field name
+	Type       string // Field type
+	IsRepeated bool   // Whether field is repeated
+	IsMap      bool   // Whether field is a map
+}
+
 // ServiceData represents a gRPC service prepared for template generation.
 // This is the processed form that templates consume.
 type ServiceData struct {

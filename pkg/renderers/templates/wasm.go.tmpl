@@ -7,15 +7,20 @@
 package {{ .ModuleName }}
 
 import (
+{{- if or .HasServices .HasBrowserClients }}
 	"context"
+{{- end }}
+{{- if .HasServices }}
 	"encoding/json"
+{{- end }}
 	"fmt"
-	"io"
 	"syscall/js"
+{{- if .HasServices }}
 	"time"
 
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
+{{- end }}
 {{- range .Imports }}
 	{{ .Alias }} {{ .Path | printf "%q" }}
 {{- end }}
@@ -26,10 +31,10 @@ type {{ .PackageName | replaceAll "." "_" | title }}ServicesExports struct {
 {{- range .Services }}
 	{{ .Name }} {{ .GoType }}
 {{- end }}
-{{- if .HasBrowserServices }}
+{{- if .HasBrowserClients }}
 
 	// Browser-provided services (clients)
-{{- range .BrowserServices }}
+{{- range .BrowserClients }}
 	{{ .Name }} *{{ .Name }}Client
 {{- end }}
 {{- end }}
@@ -38,7 +43,7 @@ type {{ .PackageName | replaceAll "." "_" | title }}ServicesExports struct {
 // RegisterAPI registers the services with the JavaScript global namespace
 func (exports *{{ .PackageName | replaceAll "." "_" | title }}ServicesExports) RegisterAPI() {
 	fmt.Println("{{ .ModuleName }} WASM module loading...")
-{{- if .HasBrowserServices }}
+{{- if .HasBrowserClients }}
 
 	// Initialize browser channel for browser-provided services
 	_ = wasm.GetBrowserChannel()
@@ -331,10 +336,10 @@ func (s *serverStreamWrapper{{ .Name }}) RecvMsg(m interface{}) error { return n
 
 // createJSResponse is a wrapper for the library function
 func createJSResponse(success bool, message string, data any) any {
-{{- if .HasBrowserServices }}
+{{- if or .HasServices .HasBrowserClients }}
 	return wasm.CreateJSResponse(success, message, data)
 {{- else }}
-	// Inline implementation when no browser services (no wasm import)
+	// Inline implementation when no wasm import needed
 	response := map[string]any{
 		"success": success,
 		"message": message,
@@ -357,13 +362,13 @@ func createJSResponse(success bool, message string, data any) any {
 {{- end }}
 }
 
-{{- if .HasBrowserServices }}
+{{- if .HasBrowserClients }}
 
 // =============================================================================
 // Browser Service Client Implementations
 // =============================================================================
 
-{{- range $service := .BrowserServices }}
+{{- range $service := .BrowserClients }}
 
 // {{ $service.Name }}Client is a client for the browser-provided {{ $service.Name }} service
 type {{ $service.Name }}Client struct {

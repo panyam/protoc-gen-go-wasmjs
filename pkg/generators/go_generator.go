@@ -67,7 +67,7 @@ func NewGoGenerator(plugin *protogen.Plugin) *GoGenerator {
 	methodFilter := filters.NewMethodFilter(analyzer)
 
 	// Create builder and renderer
-	dataBuilder := builders.NewGoDataBuilder(analyzer, pathCalc, nameConv, serviceFilter, methodFilter)
+	dataBuilder := builders.NewGoDataBuilder(analyzer, pathCalc, nameConv, serviceFilter, methodFilter, msgCollector, enumCollector)
 	renderer := renderers.NewGoRenderer()
 
 	return &GoGenerator{

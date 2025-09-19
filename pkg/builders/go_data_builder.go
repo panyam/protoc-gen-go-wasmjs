@@ -32,8 +32,17 @@ type GoTemplateData struct {
 	GoPackage   string // Go import path
 	ModuleName  string // WASM module name (e.g., "library_v1_services")
 
-	// Service data
-	Services        []ServiceData // Regular services (Go implementations)
+	// Message data (always generated)
+	Messages []MessageInfo // All message types in this package
+	Enums    []EnumInfo    // All enum types in this package
+
+	// Service implementations (for non-browser-provided services)
+	Services []ServiceData // Services that Go implements
+
+	// Client interfaces (for browser-provided services)
+	BrowserClients []ServiceData // Clients for browser-provided services
+
+	// Legacy field for compatibility (deprecated)
 	BrowserServices []ServiceData // Browser-provided services (JS implementations)
 
 	// JavaScript API configuration
@@ -45,7 +54,11 @@ type GoTemplateData struct {
 	PackageMap map[string]string // Import path to alias mapping
 
 	// Flags
-	HasBrowserServices bool // Whether any browser services exist
+	HasMessages        bool // Whether any messages exist
+	HasEnums           bool // Whether any enums exist
+	HasServices        bool // Whether any services to implement exist
+	HasBrowserClients  bool // Whether any browser clients exist
+	HasBrowserServices bool // Whether any browser services exist (deprecated)
 }
 
 // GoDataBuilder builds template data structures specifically for Go WASM generation.
@@ -56,6 +69,8 @@ type GoDataBuilder struct {
 	nameConv      *core.NameConverter
 	serviceFilter *filters.ServiceFilter
 	methodFilter  *filters.MethodFilter
+	msgCollector  *filters.MessageCollector
+	enumCollector *filters.EnumCollector
 }
 
 // NewGoDataBuilder creates a new Go data builder with all necessary dependencies.
@@ -65,6 +80,8 @@ func NewGoDataBuilder(
 	nameConv *core.NameConverter,
 	serviceFilter *filters.ServiceFilter,
 	methodFilter *filters.MethodFilter,
+	msgCollector *filters.MessageCollector,
+	enumCollector *filters.EnumCollector,
 ) *GoDataBuilder {
 	return &GoDataBuilder{
 		analyzer:      analyzer,
@@ -72,6 +89,8 @@ func NewGoDataBuilder(
 		nameConv:      nameConv,
 		serviceFilter: serviceFilter,
 		methodFilter:  methodFilter,
+		msgCollector:  msgCollector,
+		enumCollector: enumCollector,
 	}
 }
 
@@ -87,26 +106,34 @@ func (gb *GoDataBuilder) BuildTemplateData(
 	// Build context for this generation
 	context := NewBuildContext(nil, config, packageInfo)
 
-	// Filter and build regular services from this package
-	regularServices, err := gb.buildRegularServices(packageInfo.Files, criteria, context)
+	// STEP 1: Always collect messages and enums from this package
+	messages := gb.collectMessages(packageInfo.Files, criteria, context)
+	enums := gb.collectEnums(packageInfo.Files, criteria, context)
+
+	// STEP 2: Build service implementations (for non-browser-provided services)
+	serviceImplementations, err := gb.buildServiceImplementations(packageInfo.Files, criteria, context)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build browser services from all packages
-	browserServices, err := gb.buildBrowserServices(allBrowserServices, criteria, context)
+	// STEP 3: Build browser clients (for browser-provided services in THIS package)
+	browserClients, err := gb.buildBrowserClients(packageInfo.Files, criteria, context)
 	if err != nil {
 		return nil, err
 	}
 
-	// Skip if no services to generate
-	if len(regularServices) == 0 && len(browserServices) == 0 {
-		return nil, nil
+	// Check if we have anything to generate
+	hasContent := len(messages) > 0 || len(enums) > 0 ||
+		len(serviceImplementations) > 0 || len(browserClients) > 0
+
+	if !hasContent {
+		return nil, nil // Nothing to generate for this package
 	}
 
-	// Always add wasm package import for WASM generation
-	// The template uses wasm.CreateJSResponse even without browser services
-	context.AddImport("github.com/panyam/protoc-gen-go-wasmjs/pkg/wasm", "wasm")
+	// Always add wasm package import if we have services or clients
+	if len(serviceImplementations) > 0 || len(browserClients) > 0 {
+		context.AddImport("github.com/panyam/protoc-gen-go-wasmjs/pkg/wasm", "wasm")
+	}
 
 	// Determine names and structure
 	moduleName := gb.getModuleName(packageInfo.Name, config)
@@ -117,19 +144,94 @@ func (gb *GoDataBuilder) BuildTemplateData(
 		SourcePath:         gb.getPrimarySourcePath(packageInfo.Files),
 		GoPackage:          packageInfo.GoPackage,
 		ModuleName:         moduleName,
-		Services:           regularServices,
-		BrowserServices:    browserServices,
+		Messages:           messages,
+		Enums:              enums,
+		Services:           serviceImplementations,
+		BrowserClients:     browserClients,
+		BrowserServices:    browserClients, // Legacy field for backward compatibility
 		JSNamespace:        jsNamespace,
 		APIStructure:       config.JSStructure,
 		Imports:            context.GetImports(),
 		PackageMap:         context.ImportMap,
-		HasBrowserServices: len(browserServices) > 0,
+		HasMessages:        len(messages) > 0,
+		HasEnums:           len(enums) > 0,
+		HasServices:        len(serviceImplementations) > 0,
+		HasBrowserClients:  len(browserClients) > 0,
+		HasBrowserServices: len(browserClients) > 0, // Legacy flag
 	}, nil
 }
 
-// buildRegularServices builds service data for regular (non-browser) services.
+// collectMessages collects all messages from the package files.
+// Messages are always generated regardless of service presence.
+func (gb *GoDataBuilder) collectMessages(
+	files []*protogen.File,
+	criteria *filters.FilterCriteria,
+	context *BuildContext,
+) []MessageInfo {
+	var messages []MessageInfo
+
+	// Iterate through files to collect actual protogen.Message objects
+	for _, file := range files {
+		packagePath := string(file.GoImportPath)
+		packageAlias := gb.pathCalc.GetGoPackageAlias(packagePath)
+
+		// Register import for this package
+		if packagePath != "" {
+			context.AddImport(packagePath, packageAlias)
+		}
+
+		// Collect all messages from this file
+		for _, message := range file.Messages {
+			// Build message info
+			msgInfo := MessageInfo{
+				Name:        string(message.Desc.Name()),
+				GoType:      packageAlias + "." + string(message.GoIdent.GoName),
+				PackagePath: packagePath,
+			}
+			messages = append(messages, msgInfo)
+		}
+	}
+
+	return messages
+}
+
+// collectEnums collects all enums from the package files.
+// Enums are always generated regardless of service presence.
+func (gb *GoDataBuilder) collectEnums(
+	files []*protogen.File,
+	criteria *filters.FilterCriteria,
+	context *BuildContext,
+) []EnumInfo {
+	var enums []EnumInfo
+
+	// Iterate through files to collect actual protogen.Enum objects
+	for _, file := range files {
+		packagePath := string(file.GoImportPath)
+		packageAlias := gb.pathCalc.GetGoPackageAlias(packagePath)
+
+		// Register import for this package
+		if packagePath != "" {
+			context.AddImport(packagePath, packageAlias)
+		}
+
+		// Collect all enums from this file
+		for _, enum := range file.Enums {
+			// Build enum info
+			enumInfo := EnumInfo{
+				Name:        string(enum.Desc.Name()),
+				GoType:      packageAlias + "." + string(enum.GoIdent.GoName),
+				PackagePath: packagePath,
+			}
+			enums = append(enums, enumInfo)
+		}
+	}
+
+	return enums
+}
+
+// buildServiceImplementations builds service data for non-browser-provided services.
 // These services are implemented in Go and exposed to JavaScript via WASM.
-func (gb *GoDataBuilder) buildRegularServices(
+func (gb *GoDataBuilder) buildServiceImplementations(
 	files []*protogen.File,
 	criteria *filters.FilterCriteria,
 	context *BuildContext,
@@ -160,8 +262,42 @@ func (gb *GoDataBuilder) buildRegularServices(
 	return services, nil
 }
 
+// buildBrowserClients builds client interfaces for browser-provided services in this package.
+// These services are implemented in JavaScript and called from WASM via clients.
+func (gb *GoDataBuilder) buildBrowserClients(
+	files []*protogen.File,
+	criteria *filters.FilterCriteria,
+	context *BuildContext,
+) ([]ServiceData, error) {
+
+	var clients []ServiceData
+
+	for _, file := range files {
+		for _, service := range file.Services {
+			// Filter the service
+			serviceResult := gb.serviceFilter.ShouldIncludeService(service, criteria)
+			if !serviceResult.Include || !serviceResult.IsBrowserProvided {
+				continue // Skip excluded or non-browser services
+			}
+
+			// Build client data for browser service
+			serviceData, err := gb.buildServiceData(service, file, serviceResult, criteria, context)
+			if err != nil {
+				return nil, err
+			}
+
+			if serviceData != nil {
+				clients = append(clients, *serviceData)
+			}
+		}
+	}
+
+	return clients, nil
+}
+
 // buildBrowserServices builds service data for browser-provided services.
 // These services are implemented in JavaScript and consumed by Go WASM.
+// DEPRECATED: Use buildBrowserClients instead
 func (gb *GoDataBuilder) buildBrowserServices(
 	allBrowserServices []*protogen.Service,
 	criteria *filters.FilterCriteria,

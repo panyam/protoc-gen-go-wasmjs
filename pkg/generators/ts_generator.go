@@ -171,6 +171,21 @@ func (tg *TSGenerator) planTSFiles(
 		})
 	}
 
+	// Plan BrowserServiceManager if we have any services
+	// TODO: This should be moved to an npm package in the future
+	// For now, generate it alongside the first client file to avoid duplicates
+	if hasServices {
+		specs = append(specs, builders.FileSpec{
+			Name:     "browserServiceManager",
+			Filename: "browserServiceManager.ts",
+			Type:     "browserServiceManager",
+			Required: false, // Not required if no browser services
+			ContentHints: builders.ContentHints{
+				HasServices: true,
+			},
+		})
+	}
+
 	// Plan type files if package has messages/enums
 	if hasTypes {
 		// Plan interfaces file
@@ -263,6 +278,15 @@ func (tg *TSGenerator) renderFilesFromPlan(
 			if err := tg.renderer.RenderClient(clientFile, clientData); err != nil {
 				return fmt.Errorf("failed to render client: %w", err)
 			}
+		}
+	}
+
+	// Render BrowserServiceManager if planned
+	// TODO: Move this to an npm package in the future
+	if bsmFile := fileSet.GetFile("browserServiceManager"); bsmFile != nil {
+		// BrowserServiceManager doesn't need specific data, it's a generic utility
+		if err := tg.renderer.RenderBrowserServiceManager(bsmFile); err != nil {
+			return fmt.Errorf("failed to render BrowserServiceManager: %w", err)
 		}
 	}
 

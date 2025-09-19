@@ -1,4 +1,6 @@
 # Default: production mode using new split generators
+
+
 buf:
 	rm -Rf gen
 	buf generate
@@ -43,8 +45,8 @@ build-wasm:
 	@cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" web/
 	@echo "Transpiling TypeScript files to JavaScript..."
 	@esbuild gen/wasm/ts/browserServiceManager.ts --outfile=gen/wasm/js/browserServiceManager.js --format=esm --target=es2020
-	@esbuild gen/wasm/ts/browser_v1_servicesClient.client.ts --outfile=gen/wasm/js/browser_v1_servicesClient.client.js --format=esm --target=es2020
-	@esbuild gen/wasm/ts/presenter_v1_servicesClient.client.ts --outfile=gen/wasm/js/presenter_v1_servicesClient.client.js --format=esm --target=es2020
+	@esbuild gen/wasm/ts/browser_v1_servicesClient.ts --outfile=gen/wasm/js/browser_v1_servicesClient.client.js --format=esm --target=es2020
+	@esbuild gen/wasm/ts/presenter_v1_servicesClient.ts --outfile=gen/wasm/js/presenter_v1_servicesClient.client.js --format=esm --target=es2020
 
 # Serve the example with Python HTTP server
 serve: build-wasm
