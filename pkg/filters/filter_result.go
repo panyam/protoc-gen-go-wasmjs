@@ -16,7 +16,7 @@ package filters
 
 import (
 	"fmt"
-	
+
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -42,7 +42,7 @@ func Excluded(reason string) FilterResult {
 // This is used when filtering services and provides context about the service type.
 type ServiceFilterResult struct {
 	FilterResult
-	IsBrowserProvided bool // Whether this service is browser-provided
+	IsBrowserProvided bool   // Whether this service is browser-provided
 	CustomName        string // Custom JavaScript name (if any)
 }
 
@@ -60,7 +60,7 @@ type MethodFilterResult struct {
 type PackageFilterResult struct {
 	FilterResult
 	HasServices bool // Whether package contains services
-	HasMessages bool // Whether package contains messages  
+	HasMessages bool // Whether package contains messages
 	HasEnums    bool // Whether package contains enums
 }
 
@@ -89,12 +89,12 @@ type FilterStats struct {
 	ServicesTotal    int // Total services found
 	ServicesIncluded int // Services included after filtering
 	ServicesExcluded int // Services excluded by filters
-	
-	// Method filtering stats  
+
+	// Method filtering stats
 	MethodsTotal    int // Total methods found
 	MethodsIncluded int // Methods included after filtering
 	MethodsExcluded int // Methods excluded by filters
-	
+
 	// Content collection stats
 	MessagesTotal int // Total messages found
 	EnumsTotal    int // Total enums found
@@ -147,10 +147,10 @@ func (fs *FilterStats) Summary() string {
 // FilterContext provides context for filtering operations.
 // This carries information about the current state of generation that filters may need.
 type FilterContext struct {
-	CurrentPackage string              // Package currently being processed
-	AllFiles       []*protogen.File    // All files in the generation request
-	PackageFiles   []*protogen.File    // Files in the current package
-	Stats          *FilterStats        // Statistics collector
+	CurrentPackage string           // Package currently being processed
+	AllFiles       []*protogen.File // All files in the generation request
+	PackageFiles   []*protogen.File // Files in the current package
+	Stats          *FilterStats     // Statistics collector
 }
 
 // NewFilterContext creates a new filter context for the given package and files.

@@ -16,9 +16,9 @@ package filters
 
 import (
 	"strings"
-	
+
 	"google.golang.org/protobuf/compiler/protogen"
-	
+
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 )
 
@@ -60,7 +60,7 @@ func NewEnumCollector(analyzer *core.ProtoAnalyzer) *EnumCollector {
 func (ec *EnumCollector) CollectEnums(files []*protogen.File, criteria *FilterCriteria) CollectionResult[EnumInfo] {
 	var enums []EnumInfo
 	totalFound := 0
-	
+
 	for _, file := range files {
 		// Collect top-level enums
 		for _, enum := range file.Enums {
@@ -68,7 +68,7 @@ func (ec *EnumCollector) CollectEnums(files []*protogen.File, criteria *FilterCr
 			enumInfo := ec.buildEnumInfo(enum, file, false)
 			enums = append(enums, enumInfo)
 		}
-		
+
 		// Collect nested enums from messages if not excluded
 		if !criteria.ExcludeNestedEnums {
 			for _, message := range file.Messages {
@@ -78,7 +78,7 @@ func (ec *EnumCollector) CollectEnums(files []*protogen.File, criteria *FilterCr
 			}
 		}
 	}
-	
+
 	return NewCollectionResult(enums, totalFound, len(files))
 }
 
@@ -87,14 +87,14 @@ func (ec *EnumCollector) CollectEnums(files []*protogen.File, criteria *FilterCr
 func (ec *EnumCollector) collectNestedEnums(message *protogen.Message, file *protogen.File, criteria *FilterCriteria) ([]EnumInfo, int) {
 	var nestedEnums []EnumInfo
 	totalCount := 0
-	
+
 	// Collect enums directly nested in this message
 	for _, enum := range message.Enums {
 		totalCount++
 		enumInfo := ec.buildEnumInfo(enum, file, true)
 		nestedEnums = append(nestedEnums, enumInfo)
 	}
-	
+
 	// Recursively collect enums from nested messages
 	if !criteria.ExcludeNestedEnums {
 		for _, nested := range message.Messages {
@@ -102,13 +102,13 @@ func (ec *EnumCollector) collectNestedEnums(message *protogen.Message, file *pro
 			if criteria.ExcludeMapEntries && nested.Desc.IsMapEntry() {
 				continue
 			}
-			
+
 			deeplyNestedEnums, deepCount := ec.collectNestedEnums(nested, file, criteria)
 			nestedEnums = append(nestedEnums, deeplyNestedEnums...)
 			totalCount += deepCount
 		}
 	}
-	
+
 	return nestedEnums, totalCount
 }
 
@@ -117,10 +117,10 @@ func (ec *EnumCollector) collectNestedEnums(message *protogen.Message, file *pro
 func (ec *EnumCollector) buildEnumInfo(enum *protogen.Enum, file *protogen.File, isNested bool) EnumInfo {
 	enumName := string(enum.Desc.Name())
 	packageName := string(file.Desc.Package())
-	
+
 	// Build fully qualified name (e.g., "connect4.GameStatus")
 	fullyQualifiedName := packageName + "." + enumName
-	
+
 	// Build enum values
 	var values []EnumValueInfo
 	for _, value := range enum.Values {
@@ -131,7 +131,7 @@ func (ec *EnumCollector) buildEnumInfo(enum *protogen.Enum, file *protogen.File,
 		}
 		values = append(values, valueInfo)
 	}
-	
+
 	return EnumInfo{
 		Name:               enumName,
 		FullyQualifiedName: fullyQualifiedName,
@@ -151,7 +151,7 @@ func (ec *EnumCollector) HasAnyEnums(files []*protogen.File, criteria *FilterCri
 		if len(file.Enums) > 0 {
 			return true
 		}
-		
+
 		// Check nested enums if not excluded
 		if !criteria.ExcludeNestedEnums {
 			for _, message := range file.Messages {
@@ -170,14 +170,14 @@ func (ec *EnumCollector) hasNestedEnums(message *protogen.Message) bool {
 	if len(message.Enums) > 0 {
 		return true
 	}
-	
+
 	// Check nested messages recursively
 	for _, nested := range message.Messages {
 		if ec.hasNestedEnums(nested) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -186,7 +186,7 @@ func (ec *EnumCollector) hasNestedEnums(message *protogen.Message) bool {
 func (ec *EnumCollector) CollectTopLevelEnums(files []*protogen.File, criteria *FilterCriteria) CollectionResult[EnumInfo] {
 	var enums []EnumInfo
 	totalFound := 0
-	
+
 	for _, file := range files {
 		for _, enum := range file.Enums {
 			totalFound++
@@ -194,7 +194,7 @@ func (ec *EnumCollector) CollectTopLevelEnums(files []*protogen.File, criteria *
 			enums = append(enums, enumInfo)
 		}
 	}
-	
+
 	return NewCollectionResult(enums, totalFound, len(files))
 }
 
@@ -202,20 +202,20 @@ func (ec *EnumCollector) CollectTopLevelEnums(files []*protogen.File, criteria *
 // This is useful for generating package-specific TypeScript files.
 func (ec *EnumCollector) CollectEnumsByPackage(files []*protogen.File, criteria *FilterCriteria) map[string]CollectionResult[EnumInfo] {
 	packageEnums := make(map[string]CollectionResult[EnumInfo])
-	
+
 	// Group files by package
 	packageFiles := make(map[string][]*protogen.File)
 	for _, file := range files {
 		packageName := string(file.Desc.Package())
 		packageFiles[packageName] = append(packageFiles[packageName], file)
 	}
-	
+
 	// Collect enums for each package
 	for packageName, pkgFiles := range packageFiles {
 		result := ec.CollectEnums(pkgFiles, criteria)
 		packageEnums[packageName] = result
 	}
-	
+
 	return packageEnums
 }
 
@@ -233,11 +233,11 @@ func (ec *EnumCollector) GetEnumNames(result CollectionResult[EnumInfo]) []strin
 // This is useful for generating file-specific imports and references.
 func (ec *EnumCollector) GetEnumsByFile(result CollectionResult[EnumInfo]) map[string][]EnumInfo {
 	enumsByFile := make(map[string][]EnumInfo)
-	
+
 	for _, enum := range result.Items {
 		enumsByFile[enum.ProtoFile] = append(enumsByFile[enum.ProtoFile], enum)
 	}
-	
+
 	return enumsByFile
 }
 
@@ -245,10 +245,10 @@ func (ec *EnumCollector) GetEnumsByFile(result CollectionResult[EnumInfo]) map[s
 // This is useful for validation and code generation that needs all possible values.
 func (ec *EnumCollector) GetEnumValues(result CollectionResult[EnumInfo]) map[string][]EnumValueInfo {
 	enumValues := make(map[string][]EnumValueInfo)
-	
+
 	for _, enum := range result.Items {
 		enumValues[enum.Name] = enum.Values
 	}
-	
+
 	return enumValues
 }

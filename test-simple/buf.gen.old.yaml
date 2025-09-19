@@ -1,0 +1,22 @@
+version: v2
+plugins:
+  # Generate standard Go protobuf types first
+  - remote: buf.build/protocolbuffers/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Generate gRPC service interfaces
+  - remote: buf.build/grpc/go
+    out: ./gen/go
+    opt: paths=source_relative
+
+  # Test the old working generator
+  - local: ../bin/protoc-gen-go-wasmjs
+    out: ./gen/old
+    opt:
+      - generate_wasm=true
+      - generate_typescript=false
+      - wasm_export_path=.
+      - js_structure=namespaced
+      - js_namespace=testModule
+      - module_name=test_services

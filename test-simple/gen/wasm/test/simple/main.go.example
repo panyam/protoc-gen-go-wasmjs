@@ -1,0 +1,37 @@
+// Example main.go for test_services WASM module
+// Copy this file to your project and customize the service implementations
+//
+// To use:
+// 1. Run `buf generate` to generate the WASM package (test_services.wasm.go)
+// 2. Copy this file to your project and update the import path below
+// 3. Implement your services and build with: GOOS=js GOARCH=wasm go build -o test_services.wasm
+
+package main
+
+import (
+	// Import the generated WASM package - UPDATE THIS PATH
+	"your-module/path-to-generated/test_services"
+	
+	// Import the same protobuf types as the generated WASM file
+	testsimple "github.com/test/simple"
+	wasm "github.com/panyam/protoc-gen-go-wasmjs/pkg/wasm"
+)
+
+func main() {
+	// Initialize service implementations with your business logic
+	exports := &test_services.Test_servicesServicesExports{
+		// TODO: Replace with your actual TestService implementation
+		// TestService: &yourTestServiceImplementation{
+		//     // Initialize with database, config, etc.
+		//     db: database,
+		//     auth: authService,
+		//     config: appConfig,
+		// },
+	}
+	
+	// Register the JavaScript API
+	exports.RegisterAPI()
+	
+	// Keep the WASM module running
+	select {}
+}

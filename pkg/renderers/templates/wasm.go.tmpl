@@ -21,8 +21,8 @@ import (
 {{- end }}
 )
 
-// {{ .ModuleName | title }}ServicesExports provides WASM exports for dependency injection
-type {{ .ModuleName | title }}ServicesExports struct {
+// {{ .PackageName | replaceAll "." "_" | title }}ServicesExports provides WASM exports for dependency injection
+type {{ .PackageName | replaceAll "." "_" | title }}ServicesExports struct {
 {{- range .Services }}
 	{{ .Name }} {{ .GoType }}
 {{- end }}
@@ -36,7 +36,7 @@ type {{ .ModuleName | title }}ServicesExports struct {
 }
 
 // RegisterAPI registers the services with the JavaScript global namespace
-func (exports *{{ .ModuleName | title }}ServicesExports) RegisterAPI() {
+func (exports *{{ .PackageName | replaceAll "." "_" | title }}ServicesExports) RegisterAPI() {
 	fmt.Println("{{ .ModuleName }} WASM module loading...")
 {{- if .HasBrowserServices }}
 
@@ -102,7 +102,7 @@ func (exports *{{ .ModuleName | title }}ServicesExports) RegisterAPI() {
 		{{- if .ShouldGenerate }}
 
 // {{ .GoFuncName }} handles the {{ .Name }} method for {{ $serviceName }}
-func (exports *{{ $.ModuleName | title }}ServicesExports) {{ .GoFuncName }}(this js.Value, args []js.Value) any {
+func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) {{ .GoFuncName }}(this js.Value, args []js.Value) any {
 	if exports.{{ $serviceName }} == nil {
 		return createJSResponse(false, "{{ $serviceName }} not initialized", nil)
 	}
@@ -381,34 +381,17 @@ func New{{ $service.Name }}Client() *{{ $service.Name }}Client {
 
 // {{ .Name }} calls the browser-provided {{ .Name }} method
 func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) (*{{ .ResponseType }}, error) {
-	// Marshal the request
-	opts := protojson.MarshalOptions{
-		UseProtoNames:   false,
-		EmitUnpopulated: true,  // Emit zero values to avoid undefined in JavaScript
-		UseEnumNumbers:  false,
-	}
-	requestData, err := opts.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	// Call browser service through the channel
-	responseData, err := c.channel.QueueCall(ctx, "{{ $service.Name }}", "{{ .Name }}", requestData, 30*time.Second)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unmarshal the response
-	resp := &{{ .ResponseType }}{}
-	unmarshalOpts := protojson.UnmarshalOptions{
-		DiscardUnknown: true,
-		AllowPartial:   true,
-	}
-	if err := unmarshalOpts.Unmarshal(responseData, resp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	return resp, nil
+{{- if .IsAsync }}
+	// This is an async browser method (returns a Promise in JavaScript)
+	return wasm.CallBrowserServiceAsync[*{{ .RequestType }}, *{{ .ResponseType }}](
+		c.channel, ctx, "{{ $service.Name }}", "{{ .JSName }}", req,
+	)
+{{- else }}
+	// This is a synchronous browser method
+	return wasm.CallBrowserService[*{{ .RequestType }}, *{{ .ResponseType }}](
+		c.channel, ctx, "{{ $service.Name }}", "{{ .JSName }}", req,
+	)
+{{- end }}
 }
 {{- end }}
 {{- end }}

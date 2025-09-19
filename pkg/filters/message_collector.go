@@ -16,9 +16,9 @@ package filters
 
 import (
 	"strings"
-	
+
 	"google.golang.org/protobuf/compiler/protogen"
-	
+
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 )
 
@@ -54,20 +54,20 @@ func NewMessageCollector(analyzer *core.ProtoAnalyzer) *MessageCollector {
 func (mc *MessageCollector) CollectMessages(files []*protogen.File, criteria *FilterCriteria) CollectionResult[MessageInfo] {
 	var messages []MessageInfo
 	totalFound := 0
-	
+
 	for _, file := range files {
 		// Collect top-level messages
 		for _, message := range file.Messages {
 			totalFound++
-			
+
 			// Apply map entry filtering
 			if criteria.ExcludeMapEntries && message.Desc.IsMapEntry() {
 				continue // Skip synthetic map entry messages
 			}
-			
+
 			messageInfo := mc.buildMessageInfo(message, file, false)
 			messages = append(messages, messageInfo)
-			
+
 			// Collect nested messages if not excluded
 			if !criteria.ExcludeNestedMessages {
 				nestedMessages, nestedCount := mc.collectNestedMessages(message, file, criteria)
@@ -76,7 +76,7 @@ func (mc *MessageCollector) CollectMessages(files []*protogen.File, criteria *Fi
 			}
 		}
 	}
-	
+
 	return NewCollectionResult(messages, totalFound, len(files))
 }
 
@@ -85,18 +85,18 @@ func (mc *MessageCollector) CollectMessages(files []*protogen.File, criteria *Fi
 func (mc *MessageCollector) collectNestedMessages(message *protogen.Message, file *protogen.File, criteria *FilterCriteria) ([]MessageInfo, int) {
 	var nestedMessages []MessageInfo
 	totalCount := 0
-	
+
 	for _, nested := range message.Messages {
 		totalCount++
-		
+
 		// Apply map entry filtering
 		if criteria.ExcludeMapEntries && nested.Desc.IsMapEntry() {
 			continue // Skip synthetic map entry messages
 		}
-		
+
 		nestedInfo := mc.buildMessageInfo(nested, file, true)
 		nestedMessages = append(nestedMessages, nestedInfo)
-		
+
 		// Recursively collect deeply nested messages
 		if !criteria.ExcludeNestedMessages {
 			deeplyNested, deepCount := mc.collectNestedMessages(nested, file, criteria)
@@ -104,7 +104,7 @@ func (mc *MessageCollector) collectNestedMessages(message *protogen.Message, fil
 			totalCount += deepCount
 		}
 	}
-	
+
 	return nestedMessages, totalCount
 }
 
@@ -113,10 +113,10 @@ func (mc *MessageCollector) collectNestedMessages(message *protogen.Message, fil
 func (mc *MessageCollector) buildMessageInfo(message *protogen.Message, file *protogen.File, isNested bool) MessageInfo {
 	messageName := string(message.Desc.Name())
 	packageName := string(file.Desc.Package())
-	
+
 	// Build fully qualified name (e.g., "library.v1.Book")
 	fullyQualifiedName := packageName + "." + messageName
-	
+
 	return MessageInfo{
 		Name:               messageName,
 		FullyQualifiedName: fullyQualifiedName,
@@ -137,7 +137,7 @@ func (mc *MessageCollector) HasAnyMessages(files []*protogen.File, criteria *Fil
 			if criteria.ExcludeMapEntries && message.Desc.IsMapEntry() {
 				continue
 			}
-			
+
 			// Found at least one message that would be included
 			return true
 		}
@@ -150,21 +150,21 @@ func (mc *MessageCollector) HasAnyMessages(files []*protogen.File, criteria *Fil
 func (mc *MessageCollector) CollectTopLevelMessages(files []*protogen.File, criteria *FilterCriteria) CollectionResult[MessageInfo] {
 	var messages []MessageInfo
 	totalFound := 0
-	
+
 	for _, file := range files {
 		for _, message := range file.Messages {
 			totalFound++
-			
+
 			// Apply map entry filtering
 			if criteria.ExcludeMapEntries && message.Desc.IsMapEntry() {
 				continue
 			}
-			
+
 			messageInfo := mc.buildMessageInfo(message, file, false)
 			messages = append(messages, messageInfo)
 		}
 	}
-	
+
 	return NewCollectionResult(messages, totalFound, len(files))
 }
 
@@ -172,20 +172,20 @@ func (mc *MessageCollector) CollectTopLevelMessages(files []*protogen.File, crit
 // This is useful for generating package-specific TypeScript files.
 func (mc *MessageCollector) CollectMessagesByPackage(files []*protogen.File, criteria *FilterCriteria) map[string]CollectionResult[MessageInfo] {
 	packageMessages := make(map[string]CollectionResult[MessageInfo])
-	
+
 	// Group files by package
 	packageFiles := make(map[string][]*protogen.File)
 	for _, file := range files {
 		packageName := string(file.Desc.Package())
 		packageFiles[packageName] = append(packageFiles[packageName], file)
 	}
-	
+
 	// Collect messages for each package
 	for packageName, pkgFiles := range packageFiles {
 		result := mc.CollectMessages(pkgFiles, criteria)
 		packageMessages[packageName] = result
 	}
-	
+
 	return packageMessages
 }
 
@@ -203,10 +203,10 @@ func (mc *MessageCollector) GetMessageNames(result CollectionResult[MessageInfo]
 // This is useful for generating file-specific imports and references.
 func (mc *MessageCollector) GetMessagesByFile(result CollectionResult[MessageInfo]) map[string][]MessageInfo {
 	messagesByFile := make(map[string][]MessageInfo)
-	
+
 	for _, msg := range result.Items {
 		messagesByFile[msg.ProtoFile] = append(messagesByFile[msg.ProtoFile], msg)
 	}
-	
+
 	return messagesByFile
 }

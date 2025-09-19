@@ -19,28 +19,28 @@ import (
 	"strings"
 )
 
-// FilterCriteria defines the configuration and criteria used for filtering 
+// FilterCriteria defines the configuration and criteria used for filtering
 // services, methods, messages, and enums during code generation.
 // This centralizes all filtering logic in a single, testable structure.
 type FilterCriteria struct {
 	// Service filtering
 	ServicesSet map[string]bool // Specific services to include (empty = all)
-	
+
 	// Method filtering with glob patterns
 	MethodIncludes []string // Glob patterns for methods to include
 	MethodExcludes []string // Glob patterns for methods to exclude
-	
+
 	// Method name transformations
 	MethodRenames map[string]string // Original name -> Custom name mappings
-	
+
 	// Package filtering
-	ExcludeAnnotationPackages bool     // Skip wasmjs.v1 and similar annotation packages
-	ExcludeEmptyPackages     bool     // Skip packages with no services/messages/enums
-	
-	// Message filtering  
-	ExcludeMapEntries    bool // Skip synthetic map entry messages
+	ExcludeAnnotationPackages bool // Skip wasmjs.v1 and similar annotation packages
+	ExcludeEmptyPackages      bool // Skip packages with no services/messages/enums
+
+	// Message filtering
+	ExcludeMapEntries     bool // Skip synthetic map entry messages
 	ExcludeNestedMessages bool // Skip nested messages (collect only top-level)
-	
+
 	// Enum filtering
 	ExcludeNestedEnums bool // Skip nested enums (collect only top-level)
 }
@@ -50,14 +50,14 @@ type FilterCriteria struct {
 func NewFilterCriteria() *FilterCriteria {
 	return &FilterCriteria{
 		ServicesSet:               make(map[string]bool),
-		MethodIncludes:           []string{},
-		MethodExcludes:           []string{},
-		MethodRenames:            make(map[string]string),
+		MethodIncludes:            []string{},
+		MethodExcludes:            []string{},
+		MethodRenames:             make(map[string]string),
 		ExcludeAnnotationPackages: true,  // Always skip wasmjs.v1 packages
-		ExcludeEmptyPackages:     true,  // Skip packages with no content
-		ExcludeMapEntries:        true,  // Skip synthetic map entry messages
-		ExcludeNestedMessages:    false, // Include nested messages by default
-		ExcludeNestedEnums:       false, // Include nested enums by default
+		ExcludeEmptyPackages:      true,  // Skip packages with no content
+		ExcludeMapEntries:         true,  // Skip synthetic map entry messages
+		ExcludeNestedMessages:     false, // Include nested messages by default
+		ExcludeNestedEnums:        false, // Include nested enums by default
 	}
 }
 
@@ -116,20 +116,20 @@ func (fc *FilterCriteria) GetMethodRename(originalName string) string {
 // This bridges the gap between the existing config system and the new filter layer.
 func ParseFromConfig(servicesStr, methodIncludeStr, methodExcludeStr, methodRenameStr string) (*FilterCriteria, error) {
 	criteria := NewFilterCriteria()
-	
+
 	// Parse services list
 	if servicesStr != "" {
 		for _, service := range parseCommaSeparated(servicesStr) {
 			criteria.ServicesSet[service] = true
 		}
 	}
-	
+
 	// Parse method includes
 	criteria.MethodIncludes = parseCommaSeparated(methodIncludeStr)
-	
-	// Parse method excludes  
+
+	// Parse method excludes
 	criteria.MethodExcludes = parseCommaSeparated(methodExcludeStr)
-	
+
 	// Parse method renames
 	if methodRenameStr != "" {
 		renames, err := parseMethodRenames(methodRenameStr)
@@ -138,7 +138,7 @@ func ParseFromConfig(servicesStr, methodIncludeStr, methodExcludeStr, methodRena
 		}
 		criteria.MethodRenames = renames
 	}
-	
+
 	return criteria, nil
 }
 
@@ -148,7 +148,7 @@ func parseCommaSeparated(str string) []string {
 	if str == "" {
 		return []string{}
 	}
-	
+
 	var result []string
 	for _, item := range strings.Split(str, ",") {
 		item = strings.TrimSpace(item)
@@ -164,22 +164,27 @@ func parseCommaSeparated(str string) []string {
 // Returns error for invalid format.
 func parseMethodRenames(renameStr string) (map[string]string, error) {
 	renames := make(map[string]string)
-	
+
 	for _, rename := range parseCommaSeparated(renameStr) {
 		parts := strings.SplitN(rename, ":", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid method rename format: %s (expected OldName:NewName)", rename)
 		}
-		
+
 		oldName := strings.TrimSpace(parts[0])
 		newName := strings.TrimSpace(parts[1])
-		
+
 		if oldName == "" || newName == "" {
 			return nil, fmt.Errorf("invalid method rename: empty old or new name in %s", rename)
 		}
-		
+
+		// Check for additional colons in the new name (invalid format)
+		if strings.Contains(newName, ":") {
+			return nil, fmt.Errorf("invalid method rename format: %s (too many colons)", rename)
+		}
+
 		renames[oldName] = newName
 	}
-	
+
 	return renames, nil
 }

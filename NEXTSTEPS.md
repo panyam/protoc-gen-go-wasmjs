@@ -1,205 +1,132 @@
-# Next Steps
+# Next Steps for protoc-gen-go-wasmjs
 
-## Recently Completed (September 2025)
+## ✅ Completed Work (Phase 4)
 
-- ✅ **Browser Callbacks Implementation**: Complete browser service callback architecture
-  - **browser_provided Annotation**: Added protobuf annotation to mark browser-implemented services
-  - **Browser Channel Manager**: Created singleton FIFO queue manager as reusable library (`pkg/wasm/browser_channel.go`)
-  - **BrowserServiceManager TypeScript**: Generated shared component for managing browser service implementations
-  - **Cross-Package Support**: Browser services can be defined in separate packages from main services
-  - **Streaming JSON Parsing**: Fixed streaming responses to properly parse JSON before passing to callbacks
-  - **Zero Value Handling**: Set EmitUnpopulated=true to include zero values in responses
-  - **Working Example**: `examples/browser-callbacks/` demonstrates MVP pattern with WASM as presenter
-  - **Memory Management**: Implemented reference counting and timeout cleanup for pending calls
+### Split Architecture Successfully Implemented
+- **Go Generator (`protoc-gen-go-wasmjs-go`)**: Fully functional, generates WASM wrappers
+- **TypeScript Generator (`protoc-gen-go-wasmjs-ts`)**: Fully functional, generates TypeScript clients
+- **Both generators tested** with simple and complex examples
 
-## Recently Completed (August 2025)
+### Critical Bug Fixes Applied
 
-- ✅ **Server Streaming Implementation (Phase 1)**: Complete server-side streaming support for WASM
-  - **Streaming API Generation**: Added `IsServerStreaming` field to MethodData and template logic
-  - **WASM Goroutine Implementation**: Server streaming methods run in goroutines with proper `stream.Recv()` loops
-  - **Callback-Based JavaScript API**: Generated TypeScript with `(response, error, done) => boolean` callback signature
-  - **User Stream Control**: JavaScript can stop streams by returning `false` from callback
-  - **Error Handling**: Proper `io.EOF` detection and error propagation to JavaScript
-  - **Interface Type Safety**: TypeScript interfaces correctly reflect streaming vs unary method signatures
-  - **Working Example**: `examples/streaming/` demonstrates complete server streaming functionality
+#### Go Generator Issues Fixed:
+1. **Missing wasm package import** - Now always included for WASM generation
+2. **Empty request/response types** - Properly qualified with package aliases
+3. **Protobuf wire protocol corruption** - Removed all stdout writes
+4. **Template execution verification** - Added proper error handling
 
-## Recently Completed (January 2025)
+#### TypeScript Generator Issues Fixed:
+1. **Template data structure mismatches** - Created TypeScript-specific data structures
+2. **Missing fields** - Added all required fields (APIStructure, JSNamespace, etc.)
+3. **Boolean logic errors** - Fixed template conditionals with HasMessages/HasEnums flags
+4. **Stdout corruption** - Removed fmt.Printf calls
 
-- ✅ **Connect4 Example Restoration & Documentation Overhaul**: Fixed corrupted demo and aligned docs with reality
-  - **Independent Module Setup**: Added go.mod for standalone Connect4 example with proper parent module replacement
-  - **WASM Integration Fixes**: Corrected protobuf enum constants, import paths, and struct references for working WASM compilation
-  - **Documentation Accuracy**: Major rewrite of all .md files to reflect actual working implementation vs outdated claims
-  - **Transport Architecture Reality**: Updated docs to show working IndexedDB+polling and BroadcastChannel vs non-existent WebSocket server
-  - **Build Process Alignment**: Fixed all Makefiles, build instructions, and file path references to match webpack+TypeScript reality
-  - **Working Demo**: Cross-tab multiplayer Connect4 with state persistence and pluggable transports now fully functional
+## 🚀 Immediate Next Steps
 
-- ✅ **Enhanced Factory & Deserialization System**: Completed comprehensive factory composition and schema-aware deserialization
-  - **Context-Aware Factory Methods**: Implemented parent object tracking, attribute names, and container keys for granular control
-  - **Cross-Package Factory Composition**: Automatic dependency detection, import generation, and factory delegation across package boundaries
-  - **Schema-Aware Deserialization**: Generated schema files with field metadata, proto field IDs, and oneof support for type-safe runtime processing
-  - **Package-Scoped Registries**: Conflict-free multi-version support with fully qualified messageType names
-  - **Factory-Deserializer Integration**: Seamless delegation between factory creation and deserializer population
-  - **Production Testing**: 100% validation success with complex nested objects and real-world scenarios
-  - **Enhanced Client Integration**: Demonstration client using the new deserializer system
+### 1. Field Analysis for TypeScript Types (Priority: HIGH)
+Currently, TypeScript message fields are empty (`Fields: []TSFieldInfo{}`). Need to:
+- Analyze protogen.Message fields
+- Map proto field types to TypeScript types
+- Handle repeated fields, oneofs, and nested messages
+- Generate proper default values
 
-- ✅ **Major Architecture Simplification**: Successfully completed TypeScript architecture transformation
-  - **Self-Contained TypeScript Generation**: Eliminated dependencies on external TypeScript generators (protoc-gen-es, protoc-gen-ts)
-  - **Simplified Client Architecture**: Replaced complex conversion system with direct JSON serialization
-  - **Template-Based Generation**: Implemented interfaces, models, and factory generation using Go templates
-  - **Configuration Cleanup**: Removed obsolete fields and streamlined configuration options
-  - **Default Value Handling**: Fixed array and message type defaults with proper optional field support
-  - **End-to-End Testing**: Validated complete architecture with working examples
-  - **Performance Improvement**: Eliminated ~200 lines of complex conversion logic
+### 2. Cross-Package Import Resolution (Priority: HIGH)
+- Implement external import detection for TypeScript
+- Handle type dependencies across packages
+- Generate proper import paths for cross-references
 
-- ✅ **Quality & TypeScript Refinements**: Latest round of critical bug fixes and improvements
-  - **Native Map Type Support**: Fixed proto `map<K,V>` fields to generate native TypeScript `Map<K,V>` types instead of synthetic interfaces
-  - **Framework Schema Architecture**: Separated framework types (`FieldType`, `FieldSchema`, `MessageSchema`) into dedicated `deserializer_schemas.ts` files
-  - **Package-Based Generation**: Completed transition from file-based to package-based TypeScript generation eliminating import conflicts
-  - **Type Safety Improvements**: Fixed factory method subscripting (`this[methodName]`) and `FactoryInterface` compatibility issues
-  - **Build System Stability**: Resolved all TypeScript compilation errors and maintained 100% build success rate
+### 3. Browser Service Detection (Priority: MEDIUM)
+- Implement logic to detect browser-provided services
+- Set HasBrowserServices flag correctly
+- Handle browser service registration in templates
 
-## Recently Completed (August 2025)
-- ✅ **Symlink Elimination & BSR Integration**: Successfully resolved protobuf dependency management for both examples
-  - **Published wasmjs Protos**: Published `wasmjs/v1/annotations.proto` to buf.build registry at `buf.build/panyam/protoc-gen-go-wasmjs`
-  - **Production Mode**: Both examples now use published wasmjs proto dependencies + local plugin installation
-  - **Development Mode**: Clean development workflow with local symlinks and buf.lock management
-  - **Dual Configuration**: Separate buf.yaml/buf.gen.yaml files for production vs development workflows
-  - **User Experience**: End users no longer need symlink management - just add one dependency line and install plugin
-  - **Library Example**: Complete elimination of symlink requirement with comprehensive Makefile targets
-  - **Connect4 Example**: Applied same symlink elimination pattern with real-time multiplayer focus
-  - **Documentation**: Created SETUP.md guides for both examples explaining production vs development workflows
+### 4. Testing & Validation (Priority: HIGH)
+- Create comprehensive test suite for split generators
+- Validate generated code compiles and runs
+- Test with browser-callbacks example
+- Performance benchmarking vs old generator
 
-## Immediate Tasks (Current Priority)
+## 📋 Medium-Term Goals
 
-- [ ] **Complete Browser Service Implementation**: Implement actual browser service methods in the example
-  - Wire up localStorage get/set functionality
-  - Implement fetch wrapper for HTTP requests
-  - Add cookie management methods
-  - Connect alert/confirm dialogs
-  - Test full round-trip browser service calls from WASM
-- ✅ **External Package Import Support**: Implemented comprehensive external type mapping system
-  - **Google Protobuf Types**: Full support for `google.protobuf.Timestamp` → `Date`, `google.protobuf.FieldMask` → `string[]`
-  - **Import Generation**: Automatic detection and exclusion of external types from factory dependencies
-  - **Type Mapping**: Configurable mapping system with default mappings for well-known types
-  - **Factory Integration**: Table-driven `externalTypeFactories` with `newXYZ`/`serializeXYZ` methods
-  - **Package Resolution**: Proper handling of well-known types without generating non-existent imports
+### 1. Feature Parity
+- Ensure all features from monolithic generator work in split version
+- Streaming support verification
+- Custom template support
+- All filtering options working
 
-- ✅ **Enhanced Developer Experience**: Implemented ergonomic API improvements for type-safe deserialization
-  - **MESSAGE_TYPE Constants**: Each message class has `static readonly MESSAGE_TYPE` with fully qualified name
-  - **Static Deserializer Method**: `MyDeserializer.from<T>(messageType, data)` for convenient deserialization
-  - **Optional Constructor Parameters**: Deserializer constructor with default factory and schema registry
-  - **Shared Factory Instance**: Performance-optimized singleton factory to avoid unnecessary instantiation
+### 2. Migration Guide
+- Document migration from old to new generators
+- Create compatibility wrapper if needed
+- Update all examples to use new generators
 
-- ✅ **Bug Fixes & Enum Support**: Latest critical fixes for production stability
-  - **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages using package name detection in main.go (lines 94-97)
-  - **Comprehensive Enum Support**: Implemented complete enum collection and generation system
-    - Added EnumInfo and EnumValueInfo types to represent proto enums
-    - Added collectAllEnums() function to gather enums from all proto files
-    - Updated generation logic to handle packages with enums but no messages
-    - Enhanced TypeScript templates to generate and import enums correctly
-  - **Cross-Package Import Filtering**: Enhanced import detection to exclude wasmjs.v1 from factory dependencies
-  - **Template Import Resolution**: Fixed enum imports in models.ts, factory.ts, and all generated TypeScript files
-  
-- [ ] **Enhanced Browser Demo**: Create a complete browser demo showcasing the enhanced factory and deserialization system
-  - Demonstrate cross-package factory composition with real dependencies
-  - Show schema-aware deserialization with complex nested objects
-  - Include examples of context-aware factory methods with external types
-  - Performance comparisons with previous systems
-  - Real-world scenario simulation (library management system)
-  
-- [ ] **Performance Analysis**: Benchmark the enhanced factory and deserialization system
-  - Measure factory composition overhead vs direct creation
-  - Analyze schema-aware deserialization performance
-  - Compare cross-package delegation efficiency
-  - Document complex object creation performance characteristics
+### 3. Documentation
+- Complete API documentation for all layers
+- Usage guide for split generators
+- Template customization guide
+- Architecture decision records (ADRs)
 
-- [x] **Documentation Refresh**: Updated documentation to reflect current architecture and capabilities
-  - ✅ Connect4 example docs completely rewritten to show actual working implementation
-  - ✅ Fixed all architecture diagrams to match IndexedDB+polling transport reality  
-  - ✅ Corrected all build instructions and file path references
-  - ✅ Updated README examples to show actual TypeScript client usage patterns
-  - [ ] Create comprehensive examples showing enhanced factory patterns and cross-package composition
-  - [ ] Document the complete interface/model/factory/schema/deserializer ecosystem with real examples
+### 4. CI/CD Integration
+- Add GitHub Actions for testing
+- Automated release process
+- Version compatibility matrix
 
-## Short Term (Next Month)
-- [ ] **Streaming Support**: Research and implement streaming RPC support for WASM
-  - Server-streaming RPCs
-  - Client-streaming RPCs
-  - Bidirectional streaming
-  
-- [ ] **Advanced Templates**: Template inheritance and partial overrides
-  - Allow extending base templates
-  - Support for custom template functions
-  - Template composition for complex scenarios
+## 🔮 Long-Term Vision
 
-- [ ] **Error Recovery**: Implement graceful error recovery
-  - Retry mechanisms for transient failures
-  - Circuit breaker pattern
-  - Fallback to HTTP when WASM fails
+### 1. Additional Language Support
+- Consider Python WASM generator
+- Rust WASM generator
+- Other target languages as needed
 
-## Medium Term (Next Quarter)
-- [ ] **Monitoring Integration**: Performance monitoring and analytics
-  - OpenTelemetry integration
-  - Custom metrics for WASM performance
-  - Distributed tracing support
-  
-- [ ] **IDE Support**: Language server and IDE plugin support
-  - VS Code extension for proto to WASM development
-  - IntelliJ IDEA plugin
-  - Syntax highlighting for WASM annotations
+### 2. Advanced Features
+- Hot reload support for development
+- Source map generation
+- Advanced debugging capabilities
+- Performance profiling tools
 
-- [ ] **Advanced Generation Features**:
-  - Custom template functions and helpers
-  - Template inheritance and composition
-  - Proto extension support for custom annotations
+### 3. Ecosystem Integration
+- Buf Schema Registry integration
+- VS Code extension
+- Build tool plugins (webpack, vite, etc.)
+- Framework integrations (React, Vue, Angular)
 
-## Long Term (6+ Months)
-- [ ] **Multi-Language Support**: 
-  - Rust service implementations with same TypeScript clients
-  - C++ WASM generation
-  - Shared TypeScript client generation
+## 📊 Technical Debt to Address
 
-- [ ] **Edge Computing Optimization**:
-  - CDN-friendly WASM deployment
-  - Edge worker compatibility
-  - Lazy loading strategies
+1. **TODO Comments**: Several TODO items in code need addressing:
+   - Field analysis in TSDataBuilder
+   - External imports in TSDataBuilder
+   - Oneof group analysis
+   - Browser service detection
 
-- [ ] **Enterprise Features**:
-  - Advanced authentication patterns
-  - Authorization middleware
-  - Audit logging
-  - Compliance features (GDPR, HIPAA)
+2. **Template Consolidation**:
+   - Review if templates can be simplified
+   - Consider template inheritance/composition
 
-## Community & Ecosystem
-- [ ] **Documentation Improvements**:
-  - Video tutorials
-  - Example repository with common patterns
-  - Migration guides from other solutions
-  
-- [ ] **Framework Integration**:
-  - React hooks for WASM services
-  - Vue composables
-  - Angular services
-  - Svelte stores
+3. **Error Messages**:
+   - Improve error messages with more context
+   - Add suggestions for common issues
 
-- [ ] **Testing Tools**:
-  - Mock generation for WASM services
-  - Integration testing framework
-  - Performance testing suite
+4. **Performance**:
+   - Consider parallel generation for large projects
+   - Template caching for repeated use
+   - Memory usage optimization
 
-## Technical Debt
-- [ ] **Code Cleanup**:
-  - Add more unit tests for new TypeScript generation logic
-  - Improve error messages throughout the generation pipeline
-  - Refactor template data structures for better extensibility
+## ✅ Success Criteria for Production Release
 
-- [ ] **Performance Optimizations**:
-  - Lazy WASM loading strategies
-  - Optimize generated TypeScript bundle size
-  - Implement caching for repeated generation tasks
+- [ ] All examples generate and run successfully
+- [ ] Performance within 10% of old generator
+- [ ] Comprehensive test coverage (>80%)
+- [ ] Documentation complete
+- [ ] Migration guide available
+- [ ] No known critical bugs
+- [ ] Community feedback incorporated
 
-## Research Topics
-- [ ] **WebAssembly Component Model**: Investigate integration with WASM Component Model
-- [ ] **SharedArrayBuffer**: Explore using SharedArrayBuffer for better performance
-- [ ] **WASM SIMD**: Leverage WASM SIMD for data processing
-- [ ] **Module Federation**: Integration with Webpack Module Federation
+## 📝 Notes
+
+The refactoring to a split architecture has been successful. The new design provides:
+- Better testability through layer separation
+- Cleaner code organization
+- Easier maintenance and extension
+- Language-specific optimizations
+- Improved error handling
+
+The generators are now ready for broader testing and community feedback before the production release.

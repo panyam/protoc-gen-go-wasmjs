@@ -29,7 +29,7 @@ export const {{.TSName}}Schema: MessageSchema = {
 /**
  * Package-scoped schema registry for {{.PackageName}}
  */
-export const {{.RegistryName}}: Record<string, MessageSchema> = {
+export const {{.SchemaRegistryName}}: Record<string, MessageSchema> = {
 {{range .Messages}}  "{{.PackageName}}.{{.TSName}}": {{.TSName}}Schema,
 {{end}}};
 
@@ -37,7 +37,7 @@ export const {{.RegistryName}}: Record<string, MessageSchema> = {
  * Get schema for a message type from {{.PackageName}} package
  */
 export function getSchema(messageType: string): MessageSchema | undefined {
-  return {{.RegistryName}}[messageType];
+  return {{.SchemaRegistryName}}[messageType];
 }
 
 /**

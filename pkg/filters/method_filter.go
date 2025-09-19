@@ -17,9 +17,9 @@ package filters
 import (
 	"fmt"
 	"path/filepath"
-	
+
 	"google.golang.org/protobuf/compiler/protogen"
-	
+
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 )
 
@@ -39,7 +39,7 @@ func NewMethodFilter(analyzer *core.ProtoAnalyzer) *MethodFilter {
 
 // ShouldIncludeMethod determines if a method should be included in generation.
 // This applies filtering criteria in order of precedence:
-// 1. Annotation-based exclusion (highest priority)  
+// 1. Annotation-based exclusion (highest priority)
 // 2. Streaming method limitations (client streaming not supported)
 // 3. Explicit exclude patterns
 // 4. Explicit include patterns (if configured)
@@ -48,26 +48,26 @@ func NewMethodFilter(analyzer *core.ProtoAnalyzer) *MethodFilter {
 // Returns MethodFilterResult with detailed reasoning and method metadata.
 func (mf *MethodFilter) ShouldIncludeMethod(method *protogen.Method, criteria *FilterCriteria) MethodFilterResult {
 	methodName := string(method.Desc.Name())
-	
+
 	// Check annotation-based exclusion first (highest priority)
 	if mf.analyzer.IsMethodExcluded(method) {
 		return MethodFilterResult{
 			FilterResult: Excluded("method marked with wasm_method_exclude annotation"),
 		}
 	}
-	
+
 	// Check streaming limitations - client streaming not supported
 	if method.Desc.IsStreamingClient() {
 		return MethodFilterResult{
 			FilterResult: Excluded("client streaming methods not supported"),
 		}
 	}
-	
+
 	// Get method metadata from annotations
 	customJSName := mf.analyzer.GetCustomMethodName(method)
 	isAsync := mf.analyzer.IsAsyncMethod(method)
 	isServerStreaming := method.Desc.IsStreamingServer()
-	
+
 	// Apply exclude patterns
 	if criteria.HasMethodExcludes() {
 		for _, pattern := range criteria.MethodExcludes {
@@ -78,7 +78,7 @@ func (mf *MethodFilter) ShouldIncludeMethod(method *protogen.Method, criteria *F
 			}
 		}
 	}
-	
+
 	// Apply include patterns (if configured)
 	if criteria.HasMethodIncludes() {
 		for _, pattern := range criteria.MethodIncludes {
@@ -96,7 +96,7 @@ func (mf *MethodFilter) ShouldIncludeMethod(method *protogen.Method, criteria *F
 			FilterResult: Excluded("method doesn't match any include patterns"),
 		}
 	}
-	
+
 	// Default: include methods that aren't explicitly excluded
 	return MethodFilterResult{
 		FilterResult:      Included("method included by default (no exclusion rules matched)"),
@@ -112,16 +112,16 @@ func (mf *MethodFilter) ShouldIncludeMethod(method *protogen.Method, criteria *F
 func (mf *MethodFilter) FilterMethods(service *protogen.Service, criteria *FilterCriteria) ([]MethodFilterResult, *FilterStats) {
 	var results []MethodFilterResult
 	stats := NewFilterStats()
-	
+
 	for _, method := range service.Methods {
 		result := mf.ShouldIncludeMethod(method, criteria)
 		stats.AddMethodResult(result)
-		
+
 		if result.Include {
 			results = append(results, result)
 		}
 	}
-	
+
 	return results, stats
 }
 
@@ -129,14 +129,14 @@ func (mf *MethodFilter) FilterMethods(service *protogen.Service, criteria *Filte
 // This extracts the actual protogen.Method objects from filter results.
 func (mf *MethodFilter) GetIncludedMethods(service *protogen.Service, criteria *FilterCriteria) []*protogen.Method {
 	var methods []*protogen.Method
-	
+
 	for _, method := range service.Methods {
 		result := mf.ShouldIncludeMethod(method, criteria)
 		if result.Include {
 			methods = append(methods, method)
 		}
 	}
-	
+
 	return methods
 }
 
@@ -157,19 +157,19 @@ func (mf *MethodFilter) HasAnyMethods(service *protogen.Service, criteria *Filte
 // Annotation names take precedence over configuration renames.
 func (mf *MethodFilter) GetMethodJSName(method *protogen.Method, criteria *FilterCriteria, nameConverter *core.NameConverter) string {
 	methodName := string(method.Desc.Name())
-	
+
 	// Check for annotation-based custom name first (highest priority)
 	if customName := mf.analyzer.GetCustomMethodName(method); customName != "" {
 		return customName
 	}
-	
+
 	// Check for configuration-based rename
 	if criteria.HasMethodRenames() {
 		if renamed := criteria.GetMethodRename(methodName); renamed != methodName {
 			return renamed
 		}
 	}
-	
+
 	// Default: convert to camelCase for JavaScript
 	return nameConverter.ToCamelCase(methodName)
 }
@@ -183,13 +183,13 @@ func (mf *MethodFilter) ValidateMethodPatterns(criteria *FilterCriteria) error {
 			return fmt.Errorf("invalid method include pattern '%s': %w", pattern, err)
 		}
 	}
-	
+
 	// Validate exclude patterns
 	for _, pattern := range criteria.MethodExcludes {
 		if _, err := filepath.Match(pattern, "test"); err != nil {
 			return fmt.Errorf("invalid method exclude pattern '%s': %w", pattern, err)
 		}
 	}
-	
+
 	return nil
 }

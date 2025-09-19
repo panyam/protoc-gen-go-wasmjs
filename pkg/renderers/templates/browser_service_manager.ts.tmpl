@@ -46,32 +46,40 @@ export class BrowserServiceManager {
                 continue;
             }
 
-            try {
-                // Get the service implementation
-                const service = this.serviceImplementations.get(call.service);
-                if (!service) {
-                    throw new Error(`No implementation registered for service: ${call.service}`);
-                }
+            // Process each call asynchronously without blocking the loop
+            this.processCall(call);
+        }
+    }
 
-                // Get the method
-                const methodName = call.method.charAt(0).toLowerCase() + call.method.slice(1);
-                const method = service[methodName];
-                if (!method) {
-                    throw new Error(`Method ${methodName} not found on service ${call.service}`);
-                }
-
-                // Parse request
-                const request = JSON.parse(call.request);
-
-                // Call the method (auto-await if async)
-                const response = await Promise.resolve(method.call(service, request));
-
-                // Deliver response
-                this.deliverBrowserResponse(call.id, JSON.stringify(response), null);
-            } catch (error: any) {
-                // Deliver error
-                this.deliverBrowserResponse(call.id, null, error.message || String(error));
+    /**
+     * Process a single browser service call asynchronously
+     */
+    private async processCall(call: any): Promise<void> {
+        try {
+            // Get the service implementation
+            const service = this.serviceImplementations.get(call.service);
+            if (!service) {
+                throw new Error(`No implementation registered for service: ${call.service}`);
             }
+
+            // Get the method
+            const methodName = call.method.charAt(0).toLowerCase() + call.method.slice(1);
+            const method = service[methodName];
+            if (!method) {
+                throw new Error(`Method ${methodName} not found on service ${call.service}`);
+            }
+
+            // Parse request
+            const request = JSON.parse(call.request);
+
+            // Call the method (auto-await if async)
+            const response = await Promise.resolve(method.call(service, request));
+
+            // Deliver response
+            this.deliverBrowserResponse(call.id, JSON.stringify(response), null);
+        } catch (error: any) {
+            // Deliver error
+            this.deliverBrowserResponse(call.id, null, error.message || String(error));
         }
     }
 

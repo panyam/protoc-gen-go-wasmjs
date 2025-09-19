@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package test.simple;
+
+option go_package = "github.com/test/simple";
+
+// Simple test service
+service TestService {
+  rpc Hello(HelloRequest) returns (HelloResponse);
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloResponse {
+  string message = 1;
+}

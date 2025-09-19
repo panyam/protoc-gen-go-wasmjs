@@ -16,7 +16,7 @@ package filters
 
 import (
 	"google.golang.org/protobuf/compiler/protogen"
-	
+
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 )
 
@@ -37,26 +37,26 @@ func NewServiceFilter(analyzer *core.ProtoAnalyzer) *ServiceFilter {
 // ShouldIncludeService determines if a service should be included in generation.
 // This applies multiple filtering criteria in order of precedence:
 // 1. Annotation-based exclusion (highest priority)
-// 2. Explicit service list filtering 
+// 2. Explicit service list filtering
 // 3. Default inclusion
 //
 // Returns ServiceFilterResult with detailed reasoning for the decision.
 func (sf *ServiceFilter) ShouldIncludeService(service *protogen.Service, criteria *FilterCriteria) ServiceFilterResult {
 	serviceName := string(service.Desc.Name())
-	
+
 	// Check annotation-based exclusion first (highest priority)
 	if sf.analyzer.IsServiceExcluded(service) {
 		return ServiceFilterResult{
 			FilterResult: Excluded("service marked with wasm_service_exclude annotation"),
 		}
 	}
-	
+
 	// Check if service is browser-provided (affects generation but doesn't exclude)
 	isBrowserProvided := sf.analyzer.IsBrowserProvidedService(service)
-	
+
 	// Get custom service name if specified
 	customName := sf.analyzer.GetCustomServiceName(service)
-	
+
 	// Apply service list filtering if configured
 	if criteria.HasServiceFilter() {
 		if criteria.ServicesSet[serviceName] {
@@ -71,7 +71,7 @@ func (sf *ServiceFilter) ShouldIncludeService(service *protogen.Service, criteri
 			}
 		}
 	}
-	
+
 	// Default: include all services that aren't explicitly excluded
 	return ServiceFilterResult{
 		FilterResult:      Included("service included by default (no exclusion rules matched)"),
@@ -86,18 +86,18 @@ func (sf *ServiceFilter) ShouldIncludeService(service *protogen.Service, criteri
 func (sf *ServiceFilter) FilterServices(files []*protogen.File, criteria *FilterCriteria) ([]ServiceFilterResult, *FilterStats) {
 	var results []ServiceFilterResult
 	stats := NewFilterStats()
-	
+
 	for _, file := range files {
 		for _, service := range file.Services {
 			result := sf.ShouldIncludeService(service, criteria)
 			stats.AddServiceResult(result)
-			
+
 			if result.Include {
 				results = append(results, result)
 			}
 		}
 	}
-	
+
 	return results, stats
 }
 
@@ -105,7 +105,7 @@ func (sf *ServiceFilter) FilterServices(files []*protogen.File, criteria *Filter
 // This extracts the actual protogen.Service objects from filter results.
 func (sf *ServiceFilter) GetIncludedServices(files []*protogen.File, criteria *FilterCriteria) []*protogen.Service {
 	var services []*protogen.Service
-	
+
 	for _, file := range files {
 		for _, service := range file.Services {
 			result := sf.ShouldIncludeService(service, criteria)
@@ -114,7 +114,7 @@ func (sf *ServiceFilter) GetIncludedServices(files []*protogen.File, criteria *F
 			}
 		}
 	}
-	
+
 	return services
 }
 
@@ -136,7 +136,7 @@ func (sf *ServiceFilter) HasAnyServices(files []*protogen.File, criteria *Filter
 // Browser-provided services require special handling in the generation process.
 func (sf *ServiceFilter) GetBrowserProvidedServices(files []*protogen.File, criteria *FilterCriteria) []*protogen.Service {
 	var browserServices []*protogen.Service
-	
+
 	for _, file := range files {
 		for _, service := range file.Services {
 			result := sf.ShouldIncludeService(service, criteria)
@@ -145,7 +145,7 @@ func (sf *ServiceFilter) GetBrowserProvidedServices(files []*protogen.File, crit
 			}
 		}
 	}
-	
+
 	return browserServices
 }
 
@@ -153,7 +153,7 @@ func (sf *ServiceFilter) GetBrowserProvidedServices(files []*protogen.File, crit
 // Regular services are implemented in Go WASM and exposed to JavaScript.
 func (sf *ServiceFilter) GetRegularServices(files []*protogen.File, criteria *FilterCriteria) []*protogen.Service {
 	var regularServices []*protogen.Service
-	
+
 	for _, file := range files {
 		for _, service := range file.Services {
 			result := sf.ShouldIncludeService(service, criteria)
@@ -162,6 +162,6 @@ func (sf *ServiceFilter) GetRegularServices(files []*protogen.File, criteria *Fi
 			}
 		}
 	}
-	
+
 	return regularServices
 }
