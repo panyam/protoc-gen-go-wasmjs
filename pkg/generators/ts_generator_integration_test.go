@@ -185,10 +185,10 @@ func TestTSGenerator_BrowserCallbacksExample_RealGeneration(t *testing.T) {
 			t.Errorf("Generated client missing presenterService property")
 		}
 		
-		if strings.Contains(contentStr, "extends WASMServiceClient") {
-			t.Logf("✅ Generated client properly extends base class")
+		if strings.Contains(contentStr, "extends ServiceClient") {
+			t.Logf("✅ Generated client properly extends ServiceClient base class")
 		} else {
-			t.Errorf("Generated client doesn't extend WASMServiceClient")
+			t.Errorf("Generated client doesn't extend ServiceClient")
 		}
 		
 	} else {

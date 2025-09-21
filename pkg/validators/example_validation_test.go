@@ -97,14 +97,14 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 
 		contentStr := string(content)
 
-		// Should import per-service client
+		// Should import per-service client bundle
 		if !strings.Contains(contentStr, "from './generated/presenter/v1/presenterServiceClient'") {
-			t.Error("main.ts should import per-service client")
+			t.Error("main.ts should import per-service client bundle")
 		}
 
-		// Should use correct client class
-		if !strings.Contains(contentStr, "new Presenter_v1Client()") {
-			t.Error("main.ts should use Presenter_v1Client")
+		// Should use correct bundle class (new architecture)
+		if !strings.Contains(contentStr, "new Presenter_v1Bundle()") {
+			t.Error("main.ts should use Presenter_v1Bundle")
 		}
 
 		// Should access service property
