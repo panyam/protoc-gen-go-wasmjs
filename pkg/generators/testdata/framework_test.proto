@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package framework.test.v1;
+
+import "wasmjs/v1/annotations.proto";
+
+option go_package = "github.com/test/framework/v1;frameworkv1";
+
+// Regular WASM service for testing standard generation
+service StandardService {
+    // Sync method
+    rpc GetData(GetDataRequest) returns (GetDataResponse);
+    
+    // Async method for testing callback generation
+    rpc ProcessAsync(ProcessRequest) returns (ProcessResponse) {
+        option (wasmjs.v1.async_method) = { is_async: true };
+    };
+    
+    // Server streaming method
+    rpc StreamData(StreamRequest) returns (stream StreamResponse);
+}
+
+// Browser-provided service for testing browser service separation
+service TestBrowserService {
+    option (wasmjs.v1.browser_provided) = true;
+    
+    rpc MockBrowserCall(BrowserRequest) returns (BrowserResponse);
+    rpc AnotherBrowserCall(BrowserRequest) returns (BrowserResponse);
+}
+
+// Standard messages
+message GetDataRequest {
+    string id = 1;
+}
+
+message GetDataResponse {
+    string content = 1;
+    bool found = 2;
+}
+
+message ProcessRequest {
+    string input = 1;
+    repeated string tags = 2;
+}
+
+message ProcessResponse {
+    repeated string results = 1;
+    bool completed = 2;
+}
+
+message StreamRequest {
+    string query = 1;
+}
+
+message StreamResponse {
+    string data = 1;
+    int32 sequence = 2;
+}
+
+message BrowserRequest {
+    string action = 1;
+}
+
+message BrowserResponse {
+    bool success = 1;
+    string message = 2;
+}

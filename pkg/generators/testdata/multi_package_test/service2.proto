@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package test.package2.v1;
+
+option go_package = "github.com/test/package2/v1;package2v1";
+
+// Service in second package  
+service Package2Service {
+    rpc MethodA(Request2) returns (Response2);
+    rpc MethodB(Request2) returns (Response2);
+}
+
+message Request2 {
+    int32 number = 1;
+}
+
+message Response2 {
+    bool success = 1;
+}
