@@ -1,5 +1,5 @@
 
-all: default old wasm install
+all: old test wasm install
 
 # Default generators (split by language) - using layered architecture
 default: default-go default-ts
@@ -32,6 +32,5 @@ clean:
 	rm -rf ./examples/*/web/gen/*
 
 # Test default split generators
-test-default: default
-	cd examples/library && ../../bin/protoc-gen-go-wasmjs-go --help || echo "Go generator ready"
-	cd examples/library && ../../bin/protoc-gen-go-wasmjs-ts --help || echo "TS generator ready"
+test: default
+	go test -v ./...

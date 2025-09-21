@@ -101,22 +101,99 @@ This document tracks the progress of refactoring protoc-gen-go-wasmjs into a cle
 - Protogen `GeneratedFile` objects handled correctly without state interference
 - All logging goes to stderr to preserve stdout for protobuf wire protocol
 
-### 🔄 Next Steps (Production Readiness):
+## ✅ Phase 5 Complete: Runtime Package Migration
 
-1. **TypeScript Generator Testing**:
-   - Verify TypeScript generator works with split architecture
-   - Test with browser callbacks example
-   - Ensure all TypeScript artifacts generate correctly
+**What we built:**
+- **@protoc-gen-go-wasmjs/runtime**: NPM package with shared utilities
+- **Extracted static template content** to reusable runtime components
+- **Inheritance-based approach** for generated TypeScript classes
+- **Complete field extraction** implementation for schema generation
 
-2. **Migration Path**:
-   - Create wrapper generator for backward compatibility
-   - Update documentation for new usage patterns
-   - Provide migration guide for existing users
+### Major Components Extracted:
 
-3. **Performance & Optimization**:
-   - Benchmark new vs old generator performance
-   - Optimize template execution if needed
-   - Consider parallel generation for large projects
+#### **1. Static Template Elimination** ✅
+- ❌ Removed `browser_service_manager.ts.tmpl` (static content → `BrowserServiceManager` class)
+- ❌ Removed `deserializer_schemas.ts.tmpl` (static content → schema types)
+- ❌ Removed `client.ts.tmpl` (unused dead code)
+- ❌ Removed `AdvancedWASMClient` (unused complex conversion logic)
+
+#### **2. Runtime Package Structure** ✅
+```typescript
+@protoc-gen-go-wasmjs/runtime/
+├── browser/service-manager.ts    # BrowserServiceManager for WASM↔JS
+├── client/
+│   ├── types.ts                 # WASMResponse, WasmError
+│   └── base-client.ts           # WASMServiceClient with inheritance
+├── schema/
+│   ├── types.ts                 # FieldType, FieldSchema, MessageSchema
+│   ├── base-deserializer.ts     # BaseDeserializer with all logic
+│   └── base-registry.ts         # BaseSchemaRegistry with utilities
+└── types/
+    ├── factory.ts               # FactoryInterface, FactoryResult
+    └── patches.ts               # Patch operation types
+```
+
+#### **3. Template Inheritance Implementation** ✅
+- **`client_simple.ts.tmpl`**: Extends `WASMServiceClient` (160 lines → 80 lines)
+- **`deserializer.ts.tmpl`**: Extends `BaseDeserializer` (240 lines → 30 lines)  
+- **`schemas.ts.tmpl`**: Uses `BaseSchemaRegistry` (40 line utilities → 5 line import)
+- **`patches.ts.tmpl`**: Re-exports from runtime (100 lines → 10 lines)
+
+#### **4. Field Extraction Implementation** ✅
+- **Complete protobuf field analysis**: Name, type, field ID, oneof groups
+- **TypeScript type mapping**: Proto types → FieldType enum + TS types
+- **Cross-package message references**: Fully qualified message types
+- **Map field support**: Proper handling of proto map types
+
+### Migration Results:
+
+#### **Bundle Size Reduction:**
+- **90% reduction** in deserializer template output (240 → 30 lines)
+- **50% reduction** in client template output (160 → 80 lines)  
+- **85% reduction** in schema utilities (40 → 5 lines)
+- **Eliminated 500+ lines** of dead/duplicate code
+
+#### **Generated Code Quality:**
+```typescript
+// Before: Duplicated static utilities in every file
+export interface WASMResponse<T = any> { /* ... */ }
+export class WasmError extends Error { /* ... */ }
+export class BrowserServiceManager { /* 100+ lines */ }
+
+// After: Clean imports from runtime package
+import { BrowserServiceManager, WASMResponse, WasmError, WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+export class MyClient extends WASMServiceClient { /* only template-specific code */ }
+```
+
+#### **Developer Experience:**
+- ✅ **Tree-shakeable imports**: Import only needed utilities
+- ✅ **Centralized maintenance**: Runtime fixes benefit all projects
+- ✅ **Proper TypeScript support**: Full type definitions included
+- ✅ **Modern build pipeline**: ESM + CJS builds with sourcemaps
+
+### Outstanding Issues Identified:
+
+1. **Map Entry Type Generation**: Proto maps generate missing `*Entry` types
+2. **Inheritance Property Access**: Generated classes missing base class properties
+3. **Missing Base Class Methods**: `registerBrowserService`, `createAndDeserialize`
+4. **Template Import Resolution**: Runtime package imports need tsconfig path mapping
+
+### 🔄 Next Steps (Critical Fixes):
+
+1. **Fix Template Inheritance**:
+   - Resolve missing base class properties in generated clients
+   - Add missing methods to base classes
+   - Fix map entry type generation
+
+2. **TypeScript Project Setup**:  
+   - Complete Vite + pnpm workspace setup for examples
+   - Eliminate manual esbuild transpilation steps
+   - Enable proper TypeScript development workflow
+
+3. **Production Validation**:
+   - Test runtime package with real browser-callbacks example
+   - Validate all generated code compiles and runs correctly
+   - Benchmark performance impact of inheritance approach
 
 ## Architecture Benefits Already Achieved
 

@@ -300,38 +300,62 @@ export class LibraryV2Deserializer {
 }
 ```
 
-### 5. Simplified Client Architecture
+### 5. Runtime Package Architecture (@protoc-gen-go-wasmjs/runtime)
 
-#### Direct JSON Communication
-The TypeScript client uses direct JSON serialization without conversion layers:
+#### NPM Package Structure
+```typescript
+@protoc-gen-go-wasmjs/runtime/
+├── browser/
+│   └── service-manager.ts      # BrowserServiceManager for WASM service calls
+├── client/
+│   ├── types.ts               # WASMResponse, WasmError interfaces
+│   └── base-client.ts         # WASMServiceClient base class
+├── schema/
+│   ├── types.ts               # FieldType, FieldSchema, MessageSchema
+│   ├── base-deserializer.ts   # BaseDeserializer with all logic methods
+│   └── base-registry.ts       # BaseSchemaRegistry with utility methods
+└── types/
+    ├── factory.ts             # FactoryInterface, FactoryResult
+    └── patches.ts             # Patch operation types for stateful proxies
+```
+
+#### Template Inheritance Pattern
+Generated TypeScript classes extend runtime base classes:
 
 ```typescript
-class Client {
-    callMethod<TRequest, TResponse>(
-        methodPath: string,
-        request: TRequest
-    ): Promise<TResponse> {
-        // Direct JSON serialization - no conversions needed
-        const jsonReq = JSON.parse(JSON.stringify(request));
-        const wasmMethod = this.getWasmMethod(methodPath);
-        const wasmResponse = wasmMethod(JSON.stringify(jsonReq));
+// Generated client (simplified)
+import { WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 
-        if (!wasmResponse.success) {
-            throw new WasmError(wasmResponse.message, methodPath);
-        }
+export class MyServicesClient extends WASMServiceClient {
+  constructor() {
+    super();
+    this.myService = new MyServiceClientImpl(this);
+  }
+  
+  // Only template-specific methods (API structure, WASM loading)
+  protected getWasmMethod(methodPath: string): Function { /* generated */ }
+  private async loadWASMModule(wasmPath: string): Promise<void> { /* generated */ }
+}
 
-        // Direct response return - TypeScript classes match Go protojson format
-        return wasmResponse.data;
-    }
+// Generated deserializer (simplified)  
+import { BaseDeserializer } from '@protoc-gen-go-wasmjs/runtime';
+
+export class MyDeserializer extends BaseDeserializer {
+  constructor() {
+    super(mySchemaRegistry, myFactory); // Package-specific config
+  }
+  
+  // Only static factory method (uses package-specific deserializer)
+  static from<T>(messageType: string, data: any): T { /* generated */ }
 }
 ```
 
-#### Benefits of New Architecture
-1. **No conversion complexity**: Eliminates oneof conversion, schema providers, direction-based logic
-2. **Perfect Go compatibility**: TypeScript classes use Go's protojson format natively
-3. **Self-contained**: No dependencies on external TS generators
-4. **Type safety**: Full TypeScript support with proper optional field handling
-5. **Performance**: Minimal overhead with direct JSON serialization
+#### Benefits of Runtime Package Approach
+1. **90% bundle size reduction**: Static utilities no longer duplicated
+2. **Centralized maintenance**: Runtime fixes benefit all projects immediately
+3. **Tree-shakeable imports**: Consumers bundle only needed utilities
+4. **Modern TypeScript support**: Full ESM/CJS builds with type definitions
+5. **Inheritance-based**: Generated classes focus only on template-specific logic
 
 ### 6. Multi-Target Generation
 Supports generating different combinations of services for different use cases:

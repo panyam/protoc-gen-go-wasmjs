@@ -23,28 +23,30 @@
 
 ## 🚀 Immediate Next Steps
 
-### 1. Field Analysis for TypeScript Types (Priority: HIGH)
-Currently, TypeScript message fields are empty (`Fields: []TSFieldInfo{}`). Need to:
-- Analyze protogen.Message fields
-- Map proto field types to TypeScript types
-- Handle repeated fields, oneofs, and nested messages
-- Generate proper default values
+### 1. Fix Template Inheritance Issues (Priority: CRITICAL) 
+Currently generated TypeScript has compilation errors:
+- **Missing base class properties**: `wasmLoadPromise`, `browserServiceManager` not accessible
+- **Missing methods**: `registerBrowserService`, `createAndDeserialize` not found
+- **Map entry type generation**: Proto maps create missing `*Entry` type references
+- **Constructor ordering**: `super()` call placement in generated classes
 
-### 2. Cross-Package Import Resolution (Priority: HIGH)
-- Implement external import detection for TypeScript
-- Handle type dependencies across packages
-- Generate proper import paths for cross-references
+### 2. Complete Runtime Package Integration (Priority: HIGH)
+- **Fix import resolution**: Ensure `@protoc-gen-go-wasmjs/runtime` resolves correctly
+- **Add missing base methods**: `registerBrowserService` to `WASMServiceClient`
+- **Test inheritance chain**: Verify all base class functionality is accessible
+- **Validate runtime package build**: Ensure all exports work correctly
 
-### 3. Browser Service Detection (Priority: MEDIUM)
-- Implement logic to detect browser-provided services
-- Set HasBrowserServices flag correctly
-- Handle browser service registration in templates
+### 3. TypeScript Development Environment (Priority: HIGH)
+- **Complete Vite setup**: Finish modern TypeScript project structure
+- **pnpm workspace**: Properly link runtime package as workspace dependency
+- **Eliminate build scripts**: Replace manual esbuild with Vite bundling
+- **Dev server integration**: Hot reload with TypeScript compilation
 
-### 4. Testing & Validation (Priority: HIGH)
-- Create comprehensive test suite for split generators
-- Validate generated code compiles and runs
-- Test with browser-callbacks example
-- Performance benchmarking vs old generator
+### 4. Browser-Callbacks Example Validation (Priority: HIGH)
+- **Fix generated code issues**: Resolve all TypeScript compilation errors
+- **Test full workflow**: WASM ↔ Browser service communication
+- **Validate UI functionality**: Ensure demo works end-to-end
+- **Performance validation**: Confirm no regressions from runtime package approach
 
 ## 📋 Medium-Term Goals
 

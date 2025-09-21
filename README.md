@@ -31,6 +31,28 @@ go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@lates
 **Option 2: Use from buf.build (Recommended)**
 No installation required - use the remote plugin directly in your `buf.gen.yaml`.
 
+**Option 3: Split Generators (Latest)**
+Install language-specific generators for focused generation:
+```bash
+# Install Go generator only
+go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-go@latest
+
+# Install TypeScript generator only  
+go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-ts@latest
+```
+
+### Runtime Package Installation
+
+Generated TypeScript code requires the runtime utilities package:
+
+```bash
+npm install @protoc-gen-go-wasmjs/runtime
+# or
+pnpm add @protoc-gen-go-wasmjs/runtime
+# or  
+yarn add @protoc-gen-go-wasmjs/runtime
+```
+
 ## Architecture Patterns
 
 ### Dual-Target Architecture (Most Flexible)
@@ -363,6 +385,9 @@ func (s *LibraryService) FindBooks(ctx context.Context, req *FindBooksRequest) (
 
 **Frontend Code** (Same Interface):
 ```typescript
+// Import from runtime package for shared utilities
+import { WASMResponse, WasmError } from '@protoc-gen-go-wasmjs/runtime';
+
 // Can switch between local WASM or remote HTTP seamlessly
 const client = new LibraryServicesClient();
 await client.loadWasm('./library.wasm');
@@ -372,6 +397,38 @@ const books = await client.libraryService.searchBooks({
   query: "golang", 
   limit: 10 
 });
+```
+
+## Runtime Package (@protoc-gen-go-wasmjs/runtime)
+
+Generated TypeScript code imports shared utilities from the runtime package, reducing bundle size and improving maintainability:
+
+### **Key Components**
+
+- **`WASMServiceClient`**: Base class for all generated WASM clients with streaming support
+- **`BrowserServiceManager`**: Handles browser-provided service calls from WASM  
+- **`BaseDeserializer`**: Schema-aware deserialization with cross-package support
+- **`BaseSchemaRegistry`**: Utility methods for protobuf schema operations
+
+### **Benefits**
+
+- **🚀 Smaller bundles**: Shared utilities eliminate code duplication
+- **🔧 Better maintenance**: Runtime fixes benefit all projects immediately
+- **📦 Tree-shakeable**: Import only the utilities you need
+- **🎯 Type safety**: Full TypeScript support with complete definitions
+
+### **Usage**
+
+```typescript
+// Generated clients automatically import runtime utilities
+import { MyServiceClient } from './generated/my_service_client';
+
+// Manual usage (advanced scenarios)
+import { 
+  WASMServiceClient, 
+  BaseDeserializer,
+  FieldType 
+} from '@protoc-gen-go-wasmjs/runtime';
 ```
 
 ## Build Process

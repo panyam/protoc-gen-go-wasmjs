@@ -57,10 +57,10 @@ export class {{ .ModuleName | title }}Client extends WASMServiceClient {
 {{- end }}
 
     constructor() {
+        super();
 {{- range .Services }}
         this.{{ .JSName }} = new {{ .Name }}ClientImpl(this);
 {{- end }}
-        super()
     }
 
     /**

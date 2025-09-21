@@ -475,4 +475,42 @@ go test ./pkg/core/... -cpuprofile=cpu.prof
 - [ ] New functions have comprehensive tests
 - [ ] Documentation is updated
 - [ ] Examples still work
+- [ ] Runtime package builds (`cd runtime && pnpm run build`)
+- [ ] TypeScript types are valid (`cd runtime && pnpm run typecheck`)
+- [ ] Generated code compiles (test with examples)
 - [ ] Backward compatibility is maintained
+
+## Runtime Package Development
+
+The TypeScript runtime package provides shared utilities for generated code:
+
+### **Development Workflow**
+```bash
+# Install dependencies
+cd runtime && pnpm install
+
+# Build the package
+pnpm run build
+
+# Run type checking
+pnpm run typecheck
+
+# Watch mode for development
+pnpm run dev
+```
+
+### **Testing Runtime Package**
+```bash
+# Test with examples
+cd examples/browser-callbacks && make dev
+
+# Verify imports resolve
+cd examples/browser-callbacks/web && pnpm run typecheck
+```
+
+### **Publishing Runtime Package** (Future)
+```bash
+cd runtime
+pnpm run build
+pnpm publish --access public
+```
