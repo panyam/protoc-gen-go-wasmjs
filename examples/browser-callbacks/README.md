@@ -119,6 +119,31 @@ browser-callbacks/
    - Responses delivered back to waiting goroutines
 4. **No Deadlocks**: Single channel ensures sequential processing
 
+## Usage
+
+The example uses the new bundle-based architecture:
+
+```typescript
+import { Presenter_v1Bundle } from './generated/presenter/v1/presenterServiceClient';
+
+// Create bundle - manages WASM loading for all services
+const bundle = new Presenter_v1Bundle();
+
+// Register browser API implementation
+bundle.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
+
+// Load WASM once for all services in the bundle
+await bundle.loadWasm('/browser_example.wasm');
+
+// Use individual service clients (all share the same WASM)
+await bundle.presenterService.loadUserData({ userId: 'user123' });
+```
+
+**Key Benefits:**
+- Single WASM load per module (not per service)
+- Multiple services share the same WASM instance
+- Clean separation: bundle manages WASM, service clients handle business logic
+
 ## Testing
 
 Click the buttons in the web UI to:

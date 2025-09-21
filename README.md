@@ -6,7 +6,7 @@ It generates flexible WASM exports and TypeScript clients from your protobuf ser
 
 ## Features
 
-- **Per-Service Client Generation**: Each service generates to its own TypeScript client following proto directory structure
+- **Bundle-Based Client Generation**: Services grouped into WASM bundles with shared loading and individual service clients
 - **Dual-Target Architecture**: Generate WASM and TypeScript artifacts separately for flexible deployment
 - **Full TypeScript Type Safety**: Automatically generates typed method signatures with IntelliSense support
 - **Runtime Package Integration**: Clean inheritance-based architecture with shared utilities
@@ -55,9 +55,9 @@ yarn add @protoc-gen-go-wasmjs/runtime
 
 ## Architecture Patterns
 
-### Per-Service Client Generation (Production Ready)
+### Bundle-Based Client Generation (Production Ready)
 
-Generate separate TypeScript client files per service following proto directory structure:
+Generate TypeScript bundle clients that group services sharing the same WASM module:
 
 ```yaml
 plugins:
@@ -88,11 +88,12 @@ plugins:
 ```
 
 **Benefits:**
-- **Per-service files**: Each service generates to its own client file following proto directory structure
+- **Bundle-based loading**: Single WASM load per module, shared across all services in that module
+- **Individual service clients**: Each service gets its own typed client interface within the bundle
 - **Full type safety**: Generated clients use proper TypeScript types with IntelliSense support
-- **Clean organization**: Services separated by proto package hierarchy
-- **No conflicts**: Multiple services no longer overwrite each other
-- **Runtime integration**: Clients extend base classes from @protoc-gen-go-wasmjs/runtime package
+- **Efficient resource usage**: No duplicate WASM loading for services in the same module
+- **Clean organization**: Bundle manages WASM lifecycle, service clients handle business logic
+- **Runtime integration**: Uses WASMBundle and ServiceClient base classes from @protoc-gen-go-wasmjs/runtime package
 
 ### Browser Service Integration
 
@@ -110,9 +111,14 @@ service BrowserAPI {
 ```
 
 ```typescript
-// Register browser service implementation
-const client = new Presenter_v1Client();
-client.registerBrowserService('BrowserAPI', {
+// New bundle-based architecture
+import { Presenter_v1Bundle } from './generated/presenter/v1/presenterServiceClient';
+
+// Create bundle (manages WASM loading for all services in the module)
+const bundle = new Presenter_v1Bundle();
+
+// Register browser service implementations
+bundle.registerBrowserService('BrowserAPI', {
   async getLocalStorage(request) {
     return { value: localStorage.getItem(request.key) || '', exists: true };
   },
@@ -125,6 +131,12 @@ client.registerBrowserService('BrowserAPI', {
     return { shown: true };
   }
 });
+
+// Load WASM once for all services in this bundle
+await bundle.loadWasm('./my_module.wasm');
+
+// Use individual service clients (all share the same WASM)
+await bundle.presenterService.loadUserData({ userId: '123' });
 ```
 
 ### Using Generated Exports (Dependency Injection)
@@ -132,7 +144,7 @@ client.registerBrowserService('BrowserAPI', {
 After running `buf generate`, each target generates:
 - `{module_name}.wasm.go` - Importable WASM package with export struct
 - `main.go.example` - Template showing how to use the exports
-- `{module_name}Client.client.ts` - TypeScript client
+- `{serviceName}Client.ts` - TypeScript bundle and service clients
 
 **Step 1**: Copy and customize the `main.go.example`:
 
@@ -170,16 +182,18 @@ cd cmd/user-page-wasm
 GOOS=js GOARCH=wasm go build -o user_page.wasm
 ```
 
-**Step 3**: Use in browser with TypeScript client:
+**Step 3**: Use in browser with TypeScript bundle client:
 
 ```typescript
-import { User_page_servicesClient } from './gen/wasm/user-page/user_page_servicesClient';
+import { User_page_servicesBundle } from './gen/wasm/user-page/user_page_servicesClient';
 
-const client = new User_page_servicesClient();
-await client.loadWasm('./user_page.wasm');
+// Create bundle - manages WASM loading for all services in this module
+const bundle = new User_page_servicesBundle();
+await bundle.loadWasm('./user_page.wasm');
 
-// Clean API - only UsersService methods available
-const user = await client.usersService.getUser({ id: "123" });
+// Access individual service clients - all share the same WASM instance
+const user = await bundle.usersService.getUser({ id: "123" });
+const profile = await bundle.profileService.getProfile({ userId: "123" });
 ```
 
 ### Example Service with Full Type Safety (from browser-callbacks example)
