@@ -357,7 +357,149 @@ export class MyDeserializer extends BaseDeserializer {
 4. **Modern TypeScript support**: Full ESM/CJS builds with type definitions
 5. **Inheritance-based**: Generated classes focus only on template-specific logic
 
-### 6. Multi-Target Generation
+### 6. JavaScript API Structure Options
+
+The generator supports three different API structures for how WASM methods are exposed to JavaScript:
+
+#### **Namespaced Structure** (`js_structure=namespaced`) - **Default & Recommended**
+
+Creates a clean hierarchical API structure:
+
+```javascript
+// Generated WASM API
+window.myNamespace = {
+  userService: {
+    getUser: function(request) { /* ... */ },
+    createUser: function(request) { /* ... */ }
+  },
+  orderService: {
+    createOrder: function(request) { /* ... */ },
+    updateOrder: function(request) { /* ... */ }
+  }
+};
+
+// TypeScript client usage
+const response = await client.userService.getUser({id: "123"});
+```
+
+**Benefits:**
+- **🎯 Clean organization**: Services grouped logically
+- **🔍 Easy discovery**: IDE autocomplete shows service structure
+- **📦 Namespace isolation**: No method name conflicts between services
+- **🧹 Readable code**: `client.userService.getUser()` is self-documenting
+
+#### **Flat Structure** (`js_structure=flat`)
+
+Creates flat function names with prefixes:
+
+```javascript
+// Generated WASM API
+window.myNamespaceUserServiceGetUser = function(request) { /* ... */ };
+window.myNamespaceUserServiceCreateUser = function(request) { /* ... */ };
+window.myNamespaceOrderServiceCreateOrder = function(request) { /* ... */ };
+
+// Internal client usage (less readable)
+const response = await client.callMethod('myNamespaceUserServiceGetUser', request);
+```
+
+**When to use:**
+- **Legacy compatibility** with existing flat API expectations
+- **Minimal bundle size** for single-service projects
+- **Simple debugging** with predictable global function names
+
+#### **Service-Based Structure** (`js_structure=service_based`)
+
+Creates service-oriented grouping:
+
+```javascript
+// Generated WASM API
+window.services = {
+  user: {
+    getUser: function(request) { /* ... */ },
+    createUser: function(request) { /* ... */ }
+  },
+  order: {
+    createOrder: function(request) { /* ... */ },
+    updateOrder: function(request) { /* ... */ }
+  }
+};
+
+// TypeScript client usage
+const response = await client.services.user.getUser({id: "123"});
+```
+
+**When to use:**
+- **Micro-frontend architecture** where services are primary concept
+- **Multiple independent service modules** loaded dynamically
+- **Framework integration** where `services` is a standard pattern
+
+#### **API Structure Impact on Generation**
+
+The chosen structure affects multiple aspects:
+
+**1. WASM Method Resolution:**
+```typescript
+// Namespaced: namespace.service.method
+protected getWasmMethod(methodPath: string): Function {
+  const parts = methodPath.split('.');
+  let current = this.wasm; // = window.myNamespace
+  for (const part of parts) {
+    current = current[part]; // Navigate: service → method
+  }
+  return current;
+}
+
+// Flat: direct function name
+protected getWasmMethod(methodPath: string): Function {
+  return this.wasm[methodPath]; // Direct: window.myNamespaceServiceMethod
+}
+```
+
+**2. Client Interface Generation:**
+```typescript
+// Namespaced generates clean service clients
+export class MyClient extends WASMServiceClient {
+  public readonly userService: UserServiceClientImpl;
+  public readonly orderService: OrderServiceClientImpl;
+}
+
+// Flat generates method-based calls
+export class MyClient extends WASMServiceClient {
+  async getUserData() { return this.callMethod('myNamespaceUserServiceGetUser', ...); }
+}
+```
+
+**3. Method Call Paths:**
+- **Namespaced**: `userService.getUser` → calls `namespace.userService.getUser`
+- **Flat**: `getUser` → calls `namespaceUserServiceGetUser`  
+- **Service-based**: `userService.getUser` → calls `services.user.getUser`
+
+#### **Configuration Examples**
+
+```yaml
+# Namespaced (recommended for most projects)
+- local: protoc-gen-go-wasmjs
+  opt:
+    - js_structure=namespaced
+    - js_namespace=myApp
+    - module_name=my_services
+
+# Flat (for legacy compatibility)  
+- local: protoc-gen-go-wasmjs
+  opt:
+    - js_structure=flat
+    - js_namespace=MyApp
+    - module_name=my_services
+
+# Service-based (for micro-frontends)
+- local: protoc-gen-go-wasmjs
+  opt:
+    - js_structure=service_based
+    - js_namespace=unused  # Not used in service_based mode
+    - module_name=my_services
+```
+
+### 7. Multi-Target Generation
 Supports generating different combinations of services for different use cases:
 ```yaml
 # User page - only UserService
