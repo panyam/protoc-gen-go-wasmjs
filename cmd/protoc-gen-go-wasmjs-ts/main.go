@@ -41,6 +41,10 @@ func main() {
 	methodExclude := flagSet.String("method_exclude", "", "Comma-separated glob patterns for methods to exclude")
 	methodRename := flagSet.String("method_rename", "", "Comma-separated method renames (e.g., OldName:NewName)")
 
+	// JavaScript API structure
+	jsStructure := flagSet.String("js_structure", "namespaced", "JavaScript API structure (namespaced|flat|service_based)")
+	jsNamespace := flagSet.String("js_namespace", "", "Global JavaScript namespace (default: lowercase package name)")
+	
 	// TypeScript-specific options
 	moduleName := flagSet.String("module_name", "", "TypeScript module name (default: package_services)")
 
@@ -55,6 +59,8 @@ func main() {
 		// Create generation configuration
 		config := &builders.GenerationConfig{
 			TSExportPath:      *tsExportPath,
+			JSStructure:       *jsStructure,
+			JSNamespace:       *jsNamespace,
 			ModuleName:        *moduleName,
 			GenerateClients:   *generateClients,
 			GenerateTypes:     *generateTypes,
