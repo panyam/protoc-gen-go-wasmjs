@@ -1,5 +1,5 @@
 // Import the generated bundle and runtime  
-import { Presenter_v1Bundle } from './generated/presenter/v1/presenterServiceClient';
+import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
 
 // Import TypeScript types for better type safety
 import type { 
@@ -176,7 +176,7 @@ async function init() {
     setStatus('Loading WASM module...', 'loading');
 
     // Create presenter bundle
-    const presenterBundle = new Presenter_v1Bundle();
+    const presenterBundle = new Browser_callbacksBundle();
 
     // Register browser API implementation
     presenterBundle.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
@@ -203,7 +203,7 @@ async function init() {
   }
 }
 
-function setupEventHandlers(presenterBundle: Presenter_v1Bundle) {
+function setupEventHandlers(presenterBundle: Browser_callbacksBundle) {
   // Load User Data button
   const loadUserBtn = document.getElementById('loadUserBtn');
   loadUserBtn?.addEventListener('click', async () => {

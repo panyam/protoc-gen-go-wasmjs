@@ -22,7 +22,7 @@ import (
 )
 
 // TestBundleNamingIntegration reads the actual generated file and checks if the bundle name is correct
-// This test confirms that the current behavior is broken before we fix it
+// This test verifies that bundles use the configured module_name instead of package names
 func TestBundleNamingIntegration(t *testing.T) {
 	// Path to the generated file in browser-callbacks example
 	generatedFilePath := filepath.Join("..", "..", "examples", "browser-callbacks", 
@@ -41,23 +41,23 @@ func TestBundleNamingIntegration(t *testing.T) {
 
 	fileContent := string(content)
 
-	// Check current (broken) behavior - should show wrong bundle name
-	if !strings.Contains(fileContent, "export class Presenter_v1Bundle") {
-		t.Error("Expected to find 'Presenter_v1Bundle' (current broken behavior), but didn't")
+	// Check for CORRECT behavior - should use configured module_name
+	if !strings.Contains(fileContent, "export class Browser_callbacksBundle") {
+		t.Error("Expected to find 'Browser_callbacksBundle' (using configured module_name), but didn't")
 	}
 
-	if !strings.Contains(fileContent, "moduleName: 'presenter_v1'") {
-		t.Error("Expected to find moduleName: 'presenter_v1' (current broken behavior), but didn't")
+	if !strings.Contains(fileContent, "moduleName: 'browser_callbacks'") {
+		t.Error("Expected to find moduleName: 'browser_callbacks' (using configured module_name), but didn't")
 	}
 
-	// These should NOT be present (they're what we want after the fix)
-	if strings.Contains(fileContent, "Browser_callbacksBundle") {
-		t.Error("Found 'Browser_callbacksBundle' which suggests the fix is already applied")
+	// These should NOT be present (they're the old broken behavior)
+	if strings.Contains(fileContent, "Presenter_v1Bundle") {
+		t.Error("Found 'Presenter_v1Bundle' which indicates the old broken behavior is still present")
 	}
 
-	if strings.Contains(fileContent, "moduleName: 'browser_callbacks'") {
-		t.Error("Found moduleName: 'browser_callbacks' which suggests the fix is already applied")
+	if strings.Contains(fileContent, "moduleName: 'presenter_v1'") {
+		t.Error("Found moduleName: 'presenter_v1' which indicates the old broken behavior is still present")
 	}
 
-	t.Log("✅ Test confirms current broken behavior: bundle named after package instead of module_name")
+	t.Log("✅ Bundle naming fixed: bundles now use configured module_name instead of package names")
 }

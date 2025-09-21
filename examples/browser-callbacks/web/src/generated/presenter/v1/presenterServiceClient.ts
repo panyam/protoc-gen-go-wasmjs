@@ -26,10 +26,10 @@ export interface PresenterServiceMethods {
 }
 
 /**
- * presenter_v1 WASM bundle - manages shared WASM module
+ * browser_callbacks WASM bundle - manages shared WASM module
  * One bundle per WASM file, shared by multiple service clients
  */
-export class Presenter_v1Bundle {
+export class Browser_callbacksBundle {
     private wasmBundle: WASMBundle;
 
     // Service clients that share this bundle
@@ -37,7 +37,7 @@ export class Presenter_v1Bundle {
 
     constructor() {
         const config: WASMBundleConfig = {
-            moduleName: 'presenter_v1',
+            moduleName: 'browser_callbacks',
             apiStructure: 'namespaced',
             jsNamespace: 'browserCallbacks'
         };
@@ -99,4 +99,4 @@ export class PresenterServiceServiceClient extends ServiceClient implements Pres
 }
 
 // Export the main bundle class as default
-export default Presenter_v1Bundle;
+export default Browser_callbacksBundle;

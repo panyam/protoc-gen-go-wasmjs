@@ -213,14 +213,11 @@ func (tb *TSDataBuilder) BuildServiceClientData(
 	// Collect TypeScript imports needed for typed method signatures
 	requiredImports := tb.collectServiceTypeImports(services)
 	
-	// Generate names for TypeScript artifacts
-	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
-	
 	return &TSTemplateData{
 		PackageName:     packageInfo.Name,
 		PackagePath:     packageInfo.Path,
 		SourcePath:      serviceFile.Desc.Path(),
-		ModuleName:      baseName,
+		ModuleName:      tb.getModuleName(packageInfo.Name, config),
 		Services:        services,
 		TypeImports:     requiredImports,
 		APIStructure:    config.JSStructure,

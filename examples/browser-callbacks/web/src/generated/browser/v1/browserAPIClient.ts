@@ -5,20 +5,20 @@ import { WASMBundle, WASMBundleConfig, ServiceClient } from '@protoc-gen-go-wasm
 
 // Import TypeScript types for method signatures
 import {
-    PromptResponse,
+    LogResponse,
+    StorageKeyRequest,
     StorageValueResponse,
     StorageSetRequest,
     CookieRequest,
-    AlertResponse,
-    LogRequest,
-    LogResponse,
-    FetchRequest,
-    FetchResponse,
-    StorageKeyRequest,
-    StorageSetResponse,
     CookieResponse,
     AlertRequest,
+    AlertResponse,
+    PromptResponse,
+    FetchRequest,
+    FetchResponse,
+    StorageSetResponse,
     PromptRequest,
+    LogRequest,
 } from './interfaces';
 /**
  * BrowserAPI service client interface
@@ -35,10 +35,10 @@ export interface BrowserAPIMethods {
 }
 
 /**
- * browser_v1 WASM bundle - manages shared WASM module
+ * browser_callbacks WASM bundle - manages shared WASM module
  * One bundle per WASM file, shared by multiple service clients
  */
-export class Browser_v1Bundle {
+export class Browser_callbacksBundle {
     private wasmBundle: WASMBundle;
 
     // Service clients that share this bundle
@@ -46,7 +46,7 @@ export class Browser_v1Bundle {
 
     constructor() {
         const config: WASMBundleConfig = {
-            moduleName: 'browser_v1',
+            moduleName: 'browser_callbacks',
             apiStructure: 'namespaced',
             jsNamespace: 'browserCallbacks'
         };
@@ -114,4 +114,4 @@ export class BrowserAPIServiceClient extends ServiceClient implements BrowserAPI
 }
 
 // Export the main bundle class as default
-export default Browser_v1Bundle;
+export default Browser_callbacksBundle;

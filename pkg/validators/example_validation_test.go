@@ -103,8 +103,8 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 		}
 
 		// Should use correct bundle class (new architecture)
-		if !strings.Contains(contentStr, "new Presenter_v1Bundle()") {
-			t.Error("main.ts should use Presenter_v1Bundle")
+		if !strings.Contains(contentStr, "new Browser_callbacksBundle()") {
+			t.Error("main.ts should use Browser_callbacksBundle")
 		}
 
 		// Should access service property
