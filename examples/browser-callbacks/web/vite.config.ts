@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Configure WASM file handling
+  define: {
+    global: 'globalThis',
+  },
   // Root directory for the project
   root: '.',
   
@@ -28,11 +32,19 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Embedder-Policy': 'require-corp',
       'Cross-Origin-Opener-Policy': 'same-origin'
+    },
+    // Configure MIME types for WASM files
+    middlewareMode: false,
+    fs: {
+      strict: false
     }
   },
   
   // Asset handling
   assetsInclude: ['**/*.wasm'],
+  
+  // Plugin configuration for WASM
+  plugins: [],
   
   // Path resolution
   resolve: {

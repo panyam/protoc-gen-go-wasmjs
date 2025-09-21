@@ -63,22 +63,12 @@ export class {{ .ModuleName | title }}Client extends WASMServiceClient {
 {{- end }}
     }
 
-    /**
-     * Load the WASM module asynchronously
-     */
-    public async loadWasm(wasmPath: string = './{{ .ModuleName }}.wasm'): Promise<void> {
-        if (this.wasmLoadPromise) {
-            return this.wasmLoadPromise;
-        }
-
-        this.wasmLoadPromise = this.loadWASMModule(wasmPath);
-        return this.wasmLoadPromise;
-    }
+    // loadWasm method inherited from WASMServiceClient base class
 
     /**
-     * Load the WASM module implementation
+     * Load the WASM module implementation (implements abstract method)
      */
-    private async loadWASMModule(wasmPath: string): Promise<void> {
+    protected async loadWASMModule(wasmPath: string): Promise<void> {
         console.log('Loading {{ .ModuleName }} WASM module...');
 
         // Check if WASM is already loaded (for testing environments) 
@@ -108,7 +98,7 @@ export class {{ .ModuleName | title }}Client extends WASMServiceClient {
         // Load Go's WASM support
         if (!(window as any).Go) {
             const script = document.createElement('script');
-            script.src = '/static/wasm/wasm_exec.js';
+            script.src = '/wasm_exec.js';
             document.head.appendChild(script);
 
             await new Promise<void>((resolve, reject) => {

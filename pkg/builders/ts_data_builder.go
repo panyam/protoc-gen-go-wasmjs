@@ -15,10 +15,12 @@
 package builders
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/filters"
@@ -182,7 +184,7 @@ func (tb *TSDataBuilder) BuildClientData(
 			log.Printf("  - Method %s (JSName=%s, ShouldGenerate=%v)", m.Name, m.JSName, m.ShouldGenerate)
 		}
 	}
-	log.Printf("TS BuildClientData: APIStructure=%s, JSNamespace=%s", config.JSStructure, tb.getJSNamespace(packageInfo.Name, config))
+	log.Printf("TS BuildClientData: APIStructure=%s, JSNamespace=%s (config.JSNamespace=%s)", config.JSStructure, tb.getJSNamespace(packageInfo.Name, config), config.JSNamespace)
 
 	// Skip if no services
 	if len(services) == 0 {
@@ -508,12 +510,37 @@ func (tb *TSDataBuilder) extractFieldInfo(protoMessage *protogen.Message) []TSFi
 			fieldInfo.DefaultValue = "new Uint8Array()"
 		case "message":
 			if field.Message != nil {
-				// Get fully qualified message type
-				msgPackage := string(field.Message.Desc.ParentFile().Package())
-				msgName := string(field.Message.Desc.Name())
-				fieldInfo.MessageType = msgPackage + "." + msgName
-				fieldInfo.TSType = msgName // Simple name for TypeScript
-				fieldInfo.DefaultValue = "undefined"
+				// Check if this is a map field
+				if field.Message.Desc.IsMapEntry() {
+					// Handle map types: map<K,V> → Record<K,V>
+					mapFields := field.Message.Fields
+					if len(mapFields) >= 2 {
+						keyField := mapFields[0]   // Key field
+						valueField := mapFields[1] // Value field
+						
+						keyType := tb.protoKindToTSType(keyField.Desc.Kind())
+						valueType := tb.protoKindToTSType(valueField.Desc.Kind())
+						
+						// Handle message value types
+						if valueField.Desc.Kind().String() == "message" && valueField.Message != nil {
+							valueType = string(valueField.Message.Desc.Name())
+						}
+						
+						fieldInfo.TSType = fmt.Sprintf("Record<%s, %s>", keyType, valueType)
+						fieldInfo.DefaultValue = "{}"
+					} else {
+						// Fallback for malformed map
+						fieldInfo.TSType = "Record<string, any>"
+						fieldInfo.DefaultValue = "{}"
+					}
+				} else {
+					// Regular message type
+					msgPackage := string(field.Message.Desc.ParentFile().Package())
+					msgName := string(field.Message.Desc.Name())
+					fieldInfo.MessageType = msgPackage + "." + msgName
+					fieldInfo.TSType = msgName // Simple name for TypeScript
+					fieldInfo.DefaultValue = "undefined"
+				}
 			}
 		case "enum":
 			if field.Enum != nil {
@@ -567,6 +594,22 @@ func (tb *TSDataBuilder) extractOneofGroups(protoMessage *protogen.Message) []st
 	}
 	
 	return groups
+}
+
+// protoKindToTSType converts protobuf field kind to TypeScript type
+func (tb *TSDataBuilder) protoKindToTSType(kind protoreflect.Kind) string {
+	switch kind.String() {
+	case "string":
+		return "string"
+	case "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "sfixed32", "sfixed64", "double", "float":
+		return "number"
+	case "bool":
+		return "boolean"
+	case "bytes":
+		return "Uint8Array"
+	default:
+		return "any"
+	}
 }
 
 // transformEnums converts basic EnumInfo to TypeScript-enriched structures.

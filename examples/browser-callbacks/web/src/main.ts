@@ -1,5 +1,5 @@
 // Import the generated clients and runtime
-import { Presenter_v1_servicesClient } from '@/gen/presenter_v1_servicesClient';
+import { Browser_callbacksClient } from './generated/browser_callbacksClient';
 import { BrowserServiceManager } from '@protoc-gen-go-wasmjs/runtime';
 
 // Types for better code organization
@@ -36,11 +36,18 @@ function addUIUpdate(update: any) {
     <strong>${update.component}.${update.action}</strong>
     <pre>${JSON.stringify(update.data, null, 2)}</pre>
   `;
-  list.insertBefore(item, list.firstChild);
+  if (list.firstChild) {
+    list.insertBefore(item, list.firstChild);
+  } else {
+    list.appendChild(item);
+  }
 
   // Keep only last 5 updates
   while (list.children.length > 5) {
-    list.removeChild(list.lastChild);
+    const lastChild = list.lastChild;
+    if (lastChild) {
+      list.removeChild(lastChild);
+    }
   }
 }
 
@@ -158,7 +165,7 @@ async function init() {
     setStatus('Loading WASM module...', 'loading');
 
     // Create presenter client
-    const presenterClient = new Presenter_v1_servicesClient();
+    const presenterClient = new Browser_callbacksClient();
 
     // Register browser API implementation
     presenterClient.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
@@ -186,7 +193,7 @@ async function init() {
   }
 }
 
-function setupEventHandlers(presenterClient: Presenter_v1_servicesClient) {
+function setupEventHandlers(presenterClient: Browser_callbacksClient) {
   // Load User Data button
   const loadUserBtn = document.getElementById('loadUserBtn');
   loadUserBtn?.addEventListener('click', async () => {

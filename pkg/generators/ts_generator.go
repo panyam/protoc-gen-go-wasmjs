@@ -373,5 +373,21 @@ func (tg *TSGenerator) ValidateConfig(config *builders.GenerationConfig) error {
 		return fmt.Errorf("TSExportPath cannot be empty")
 	}
 
+	// Set default JSStructure if not specified
+	if config.JSStructure == "" {
+		config.JSStructure = "namespaced" // Default
+	}
+
+	// Validate JSStructure
+	validStructures := map[string]bool{
+		"namespaced":    true,
+		"flat":          true,
+		"service_based": true,
+	}
+
+	if !validStructures[config.JSStructure] {
+		return fmt.Errorf("invalid JSStructure: %s (supported: namespaced, flat, service_based)", config.JSStructure)
+	}
+
 	return nil
 }

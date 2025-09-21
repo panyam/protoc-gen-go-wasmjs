@@ -55,9 +55,12 @@ plugins:
 
   # Generate TypeScript clients with new TS generator
   - local: ../../bin/protoc-gen-go-wasmjs-ts
-    out: ./gen/wasm/ts
+    out: ./web/src/generated
     opt:
       - ts_export_path=.
+      - js_structure=namespaced
+      - js_namespace=browserCallbacks
+      - module_name=browser_callbacks
       - generate_clients=true
       - generate_types=true
       - generate_factories=true

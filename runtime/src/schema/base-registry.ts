@@ -17,7 +17,7 @@ import { FieldSchema, MessageSchema } from './types.js';
 /**
  * Base schema registry with utility methods for schema operations
  */
-export abstract class BaseSchemaRegistry {
+export class BaseSchemaRegistry {
   constructor(protected schemaRegistry: Record<string, MessageSchema>) {}
 
   /**
