@@ -1,21 +1,27 @@
 # Default: production mode using new split generators
 
-
-buf:
-	rm -Rf gen
+buf: ensureenv clean parent 
 	buf generate
 	goimports -w `find gen | grep "\.go"`
 
-# Development mode: uses new split generators with dev config
-bufdev: parent symlink-wasmjs
-	rm -Rf gen
-	# Update dependencies for dev config to avoid conflicts
-	rm -f buf.lock
-	buf generate --template buf.gen.dev.yaml --config buf.dev.yaml
-	goimports -w `find gen | grep "\.go"`
+ensureenv:
+	@test -f buf.yaml && test -f buf.gen.yaml && echo "buf.yaml does not exist.  Run `make setupdev` or `make setupprod` to setup your environment..."
+
+setupdev: cleanall symlink-wasmjs
+	ln -s buf.gen.yaml.dev buf.gen.yaml
+	ln -s buf.yaml.dev buf.yaml
+
+setupprod: cleanall remove-symlink
+	ln -s buf.gen.yaml.prod buf.gen.yaml
+	ln -s buf.yaml.prod buf.yaml
+
+cleanall: clean
+	rm -f buf.yaml
+	rm -f buf.gen.yaml
 
 clean:
 	rm -Rf gen
+	rm -f buf.lock
 
 parent:
 	cd ../../ && make default old
@@ -60,10 +66,7 @@ serve-go: build-wasm
 	@echo "Open http://localhost:8080/web/ in your browser"
 	@go run -e 'package main; import "net/http"; import "log"; func main() { log.Println("Server starting on :8080..."); log.Fatal(http.ListenAndServe(":8080", http.FileServer(http.Dir(".")))) }'
 
-# Run the complete example
-run: buf-dev build-wasm serve
+# Run the complete example - choose dev or prod setup with `make setupdev` or `make setupprod`
+run: buf build-wasm serve
 
-# Run with production config
-run-prod: buf build-wasm serve
-
-.PHONY: build-wasm serve serve-go run run-prod
+.PHONY: build-wasm serve serve-go run run setupdev setupprod cleanall
