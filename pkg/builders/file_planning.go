@@ -38,6 +38,9 @@ type FileSpec struct {
 
 	// Content hints for conditional rendering
 	ContentHints ContentHints // Metadata about what content this file will have
+	
+	// Additional metadata for template data building
+	Metadata map[string]interface{} // Optional metadata for complex generation scenarios
 }
 
 // ContentHints provides metadata about what a file will contain.
@@ -109,6 +112,17 @@ func (gfs *GeneratedFileSet) GetFilesByType(fileType string) map[string]*protoge
 	}
 
 	return result
+}
+
+// GetFileSpec returns the FileSpec for a given file name.
+// This is useful for accessing metadata and other file specification details.
+func (gfs *GeneratedFileSet) GetFileSpec(name string) *FileSpec {
+	for _, spec := range gfs.Plan.Specs {
+		if spec.Name == name {
+			return &spec
+		}
+	}
+	return nil
 }
 
 // GetRequiredFiles returns only the files marked as required.

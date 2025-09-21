@@ -94,6 +94,7 @@ func (s *PresenterServiceImpl) RunCallbackDemo(ctx context.Context, req *present
 	})
 	if err != nil {
 		fmt.Printf("Error logging to window: %v\n", err)
+		panic(err)
 	}
 
 	// Collect 3 inputs from the user

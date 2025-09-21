@@ -54,6 +54,12 @@ func (tr *TSRenderer) RenderToFile(file *protogen.GeneratedFile, templateContent
 // is now imported from @protoc-gen-go-wasmjs/runtime package
 // Removed: RenderBrowserServiceManager() - now imported from runtime package
 
+// RenderServiceClient generates a TypeScript client for a single service using the provided GeneratedFile.
+// Uses the same template as RenderClient but for individual services.
+func (tr *TSRenderer) RenderServiceClient(file *protogen.GeneratedFile, data *builders.TSTemplateData) error {
+	return tr.RenderClient(file, data)
+}
+
 // RenderClient generates the TypeScript client using the provided GeneratedFile.
 // This is a convenience method that uses the embedded client template.
 func (tr *TSRenderer) RenderClient(file *protogen.GeneratedFile, data *builders.TSTemplateData) error {

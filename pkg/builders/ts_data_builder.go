@@ -160,12 +160,73 @@ func NewTSDataBuilder(
 	}
 }
 
+// BuildServiceClientData creates TypeScript client template data for a single service.
+// This builds the data needed for generating a TypeScript client class for one specific service.
+func (tb *TSDataBuilder) BuildServiceClientData(
+	packageInfo *PackageInfo,
+	service *protogen.Service,
+	criteria *filters.FilterCriteria,
+	config *GenerationConfig,
+) (*TSTemplateData, error) {
+	
+	// Build context
+	context := NewBuildContext(nil, config, packageInfo)
+	
+	// Find the file containing this service
+	var serviceFile *protogen.File
+	for _, file := range packageInfo.Files {
+		for _, fileService := range file.Services {
+			if fileService == service {
+				serviceFile = file
+				break
+			}
+		}
+		if serviceFile != nil {
+			break
+		}
+	}
+	
+	if serviceFile == nil {
+		return nil, fmt.Errorf("could not find file containing service %s", service.GoName)
+	}
+	
+	// Build service result for this service
+	serviceResult := tb.serviceFilter.ShouldIncludeService(service, criteria)
+	
+	// Build service data for this single service
+	serviceData, err := tb.buildServiceDataForTS(service, serviceFile, serviceResult, criteria, context)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build service data: %w", err)
+	}
+	
+	services := []ServiceData{*serviceData}
+	
+	log.Printf("TS BuildServiceClientData: Service %s has %d methods", service.GoName, len(serviceData.Methods))
+	for _, m := range serviceData.Methods {
+		log.Printf("  - Method %s (JSName=%s, ShouldGenerate=%v)", m.Name, m.JSName, m.ShouldGenerate)
+	}
+	log.Printf("TS BuildServiceClientData: APIStructure=%s, JSNamespace=%s", config.JSStructure, tb.getJSNamespace(packageInfo.Name, config))
+	
+	// Generate names for TypeScript artifacts
+	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
+	
+	return &TSTemplateData{
+		PackageName: packageInfo.Name,
+		PackagePath: packageInfo.Path,
+		SourcePath:  serviceFile.Desc.Path(),
+		ModuleName:  baseName,
+		Services:    services,
+		APIStructure: config.JSStructure,
+		JSNamespace: tb.getJSNamespace(packageInfo.Name, config),
+	}, nil
+}
+
 // BuildClientData creates TypeScript client template data for services.
 // This builds the data needed for generating TypeScript client classes that call WASM.
 func (tb *TSDataBuilder) BuildClientData(
-	packageInfo *PackageInfo,
-	criteria *filters.FilterCriteria,
-	config *GenerationConfig,
+    packageInfo *PackageInfo,
+    criteria *filters.FilterCriteria,
+    config *GenerationConfig,
 ) (*TSTemplateData, error) {
 
 	// Build context

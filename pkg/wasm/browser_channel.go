@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"syscall/js"
@@ -32,13 +33,13 @@ import (
 // BrowserCall represents a call from WASM to a browser-provided service
 type BrowserCall struct {
 	ID         string
-	Service    string        // Service name (e.g., "BrowserAPI")
-	Method     string        // Method name (e.g., "Fetch")
-	Request    []byte        // Serialized proto request
+	Service    string // Service name (e.g., "BrowserAPI")
+	Method     string // Method name (e.g., "Fetch")
+	Request    []byte // Serialized proto request
 	ResponseCh chan *CallResponse
 	Timeout    time.Duration
 	StartTime  time.Time
-	IsAsync    bool          // Whether this is an async browser method
+	IsAsync    bool // Whether this is an async browser method
 }
 
 // CallResponse represents the response from a browser service call
@@ -58,9 +59,9 @@ type BrowserServiceChannel struct {
 
 // PendingCall tracks an in-flight browser service call
 type PendingCall struct {
-	Call      *BrowserCall
-	Timer     *time.Timer
-	RefCount  int32
+	Call     *BrowserCall
+	Timer    *time.Timer
+	RefCount int32
 }
 
 // Global singleton browser channel instance
@@ -301,7 +302,18 @@ func (bc *BrowserServiceChannel) GetPendingCallCount() int {
 // CallBrowserService is a generic helper for calling synchronous browser services
 // The browser method should return a value directly (not a Promise)
 func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx context.Context, serviceName, methodName string, req TReq) (TResp, error) {
-	var resp TResp
+var resp TResp
+
+// If TResp is a pointer type, we need to create a new instance
+// This is necessary for protobuf message types which are pointers
+respType := reflect.TypeOf(resp)
+fmt.Printf("DEBUG: CallBrowserService - Initial resp type=%T, kind=%v\n", resp, respType.Kind())
+if respType.Kind() == reflect.Ptr {
+// Create a new instance of the underlying type
+respValue := reflect.New(respType.Elem())
+ resp = respValue.Interface().(TResp)
+		fmt.Printf("DEBUG: CallBrowserService - Created new instance, resp type=%T\n", resp)
+	}
 
 	// Marshal the request using protojson
 	opts := protojson.MarshalOptions{
@@ -322,15 +334,30 @@ func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx
 	}
 
 	// Call browser service through the channel
+	fmt.Printf("DEBUG: About to queue browser call: %s.%s\n", serviceName, methodName)
 	responseData, err := channel.QueueCall(ctx, serviceName, methodName, requestData, 30*time.Second)
 	if err != nil {
+		fmt.Printf("DEBUG: QueueCall failed: %v\n", err)
 		return resp, err
 	}
+	fmt.Printf("DEBUG: QueueCall succeeded, got response data (len=%d): %s\n", len(responseData), string(responseData))
 
 	// Unmarshal the response
-	respMsg, ok := any(&resp).(proto.Message)
-	if !ok {
-		return resp, fmt.Errorf("response is not a proto message")
+	// Check if resp is already a proto.Message (if it's a pointer type)
+	// or if we need to take its address (if it's a value type)
+	var respMsg proto.Message
+	var isProtoMsg bool
+	
+	// Try resp directly first (for pointer types like *PromptResponse)
+	if respMsg, isProtoMsg = any(resp).(proto.Message); !isProtoMsg {
+		// Try &resp (for value types)
+		respMsg, isProtoMsg = any(&resp).(proto.Message)
+	}
+	
+	if !isProtoMsg {
+		fmt.Printf("DEBUG: respType=%T, resp=%+v\n", resp, resp)
+		fmt.Printf("DEBUG: responseData=%s\n", string(responseData))
+		return resp, fmt.Errorf("response is not a proto message (type: %T)", resp)
 	}
 
 	unmarshalOpts := protojson.UnmarshalOptions{
@@ -349,6 +376,15 @@ func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx
 // This is necessary for browser APIs that are inherently async (fetch, IndexedDB, etc.)
 func CallBrowserServiceAsync[TReq any, TResp any](channel *BrowserServiceChannel, ctx context.Context, serviceName, methodName string, req TReq) (TResp, error) {
 	var resp TResp
+
+	// If TResp is a pointer type, we need to create a new instance
+	// This is necessary for protobuf message types which are pointers
+	respType := reflect.TypeOf(resp)
+	if respType.Kind() == reflect.Ptr {
+		// Create a new instance of the underlying type
+		respValue := reflect.New(respType.Elem())
+		resp = respValue.Interface().(TResp)
+	}
 
 	// For async methods, we need to tell the browser side to handle it as a Promise
 	// We'll add a special flag in the call to indicate async handling

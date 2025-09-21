@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package test.multi.v1;
+
+import "wasmjs/v1/annotations.proto";
+
+option go_package = "github.com/test/multi/v1;multiv1";
+
+// Regular WASM service
+service PresenterService {
+    rpc LoadData(LoadDataRequest) returns (LoadDataResponse);
+    
+    // Async method for testing
+    rpc ProcessAsync(ProcessRequest) returns (ProcessResponse) {
+        option (wasmjs.v1.async_method) = { is_async: true };
+    };
+}
+
+// Browser-provided service
+service BrowserAPI {
+    option (wasmjs.v1.browser_provided) = true;
+    
+    rpc Alert(AlertRequest) returns (AlertResponse);
+    rpc PromptUser(PromptRequest) returns (PromptResponse);
+}
+
+message LoadDataRequest {
+    string data_id = 1;
+}
+
+message LoadDataResponse {
+    string content = 1;
+    bool cached = 2;
+}
+
+message ProcessRequest {
+    string input = 1;
+}
+
+message ProcessResponse {
+    string output = 1;
+}
+
+message AlertRequest {
+    string message = 1;
+}
+
+message AlertResponse {
+    bool shown = 1;
+}
+
+message PromptRequest {
+    string message = 1;
+}
+
+message PromptResponse {
+    string value = 1;
+    bool cancelled = 2;
+}

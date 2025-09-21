@@ -215,8 +215,13 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 			return
 		}
 
-		// Call callback with success
-		callback.Invoke(string(responseJSON), js.Null())
+		// Convert JSON to JavaScript object and call callback
+		var jsObject interface{}
+            if err := json.Unmarshal(responseJSON, &jsObject); err != nil {
+                callback.Invoke(js.Null(), fmt.Sprintf("Failed to convert response to JS object: %v", err))
+                return
+            }
+            callback.Invoke(js.ValueOf(jsObject), js.Null())
 	}()
 
 	// Return immediately for async methods

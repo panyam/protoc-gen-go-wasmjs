@@ -85,9 +85,13 @@ export class BrowserServiceManager {
 
             // Call the method (auto-await if async)
             const response = await Promise.resolve(method.call(service, request));
+            
+            console.log(`DEBUG: Browser service response for ${call.service}.${call.method}:`, response);
+            const jsonResponse = JSON.stringify(response);
+            console.log(`DEBUG: JSON stringified response:`, jsonResponse);
 
             // Deliver response
-            this.deliverBrowserResponse(call.id, JSON.stringify(response), null);
+            this.deliverBrowserResponse(call.id, jsonResponse, null);
         } catch (error: any) {
             // Deliver error
             this.deliverBrowserResponse(call.id, null, error.message || String(error));

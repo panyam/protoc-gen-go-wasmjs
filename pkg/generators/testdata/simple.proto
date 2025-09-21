@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package test.simple.v1;
+
+option go_package = "github.com/test/simple/v1;simplev1";
+
+// Simple service for testing per-service client generation
+service UserService {
+    rpc GetUser(GetUserRequest) returns (GetUserResponse);
+    rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+}
+
+message GetUserRequest {
+    string user_id = 1;
+}
+
+message GetUserResponse {
+    string name = 1;
+    string email = 2;
+}
+
+message UpdateUserRequest {
+    string user_id = 1;
+    string name = 2;
+}
+
+message UpdateUserResponse {
+    bool success = 1;
+}

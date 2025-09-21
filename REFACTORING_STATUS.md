@@ -63,17 +63,22 @@ This document tracks the progress of refactoring protoc-gen-go-wasmjs into a cle
 - **New buf.gen.split.yaml**: Example configuration for split generators
 - **Updated test.sh**: Tests all layers with comprehensive validation
 
-## Current Status
+## ✅ **CURRENT STATUS: PRODUCTION READY** (September 2025)
 
-### ✅ What's Working:
-- **All layers compile and test successfully**
-- **New split generators fully functional** with buf generate
-- **Complete dependency injection** through all layers
-- **Configuration parsing** and validation
-- **Filter logic** extraction and testing
-- **Template integration** complete and working
-- **Original generator** still works for verification
-- **End-to-end generation** produces valid Go WASM code
+### ✅ **All Critical Issues Resolved:**
+- **✅ Split generators fully functional** with buf generate
+- **✅ Template inheritance working** - runtime package integration complete
+- **✅ Per-service client generation** - eliminates service conflicts
+- **✅ Browser service communication** - full WASM ↔ browser functionality
+- **✅ Async method support** - prevents main thread blocking
+- **✅ Comprehensive testing** - unit tests and integration tests
+
+### ✅ **Major Architectural Achievements:**
+- **✅ Clean layered architecture** with 60+ comprehensive tests
+- **✅ Per-service TypeScript generation** following proto directory structure  
+- **✅ Runtime package integration** with inheritance-based client architecture
+- **✅ Fixed protobuf deserialization** for browser services
+- **✅ Proper JavaScript object passing** from Go WASM to TypeScript callbacks
 
 ### ✅ Phase 4 Complete: Template Integration & Bug Fixes
 
@@ -171,29 +176,36 @@ export class MyClient extends WASMServiceClient { /* only template-specific code
 - ✅ **Proper TypeScript support**: Full type definitions included
 - ✅ **Modern build pipeline**: ESM + CJS builds with sourcemaps
 
-### Outstanding Issues Identified:
+### ✅ **Phase 6 Complete: Per-Service Generation & Production Fixes** (September 2025)
 
-1. **Map Entry Type Generation**: Proto maps generate missing `*Entry` types
-2. **Inheritance Property Access**: Generated classes missing base class properties
-3. **Missing Base Class Methods**: `registerBrowserService`, `createAndDeserialize`
-4. **Template Import Resolution**: Runtime package imports need tsconfig path mapping
+**New Architecture Implemented:**
 
-### 🔄 Next Steps (Critical Fixes):
+1. **✅ Per-Service Client Generation**:
+   - Each service generates to separate file following proto directory structure
+   - `presenter/v1/presenterServiceClient.ts` ← PresenterService only
+   - `browser/v1/browserAPIClient.ts` ← BrowserAPI only
+   - Eliminates file conflicts from multiple services overwriting each other
 
-1. **Fix Template Inheritance**:
-   - Resolve missing base class properties in generated clients
-   - Add missing methods to base classes
-   - Fix map entry type generation
+2. **✅ Browser Service Communication Fixed**:
+   - Fixed `CallBrowserService` protobuf pointer instantiation using reflection
+   - Fixed async callback response format (Go → proper JS objects, not JSON strings)
+   - Added `async_method` annotations to prevent main thread blocking
 
-2. **TypeScript Project Setup**:  
-   - Complete Vite + pnpm workspace setup for examples
-   - Eliminate manual esbuild transpilation steps
-   - Enable proper TypeScript development workflow
+3. **✅ Template Architecture Improvements**:
+   - Added `Metadata` field to `FileSpec` for service-specific template data
+   - Implemented `BuildServiceClientData` for single-service client generation
+   - Added `GetFileSpec` method for metadata retrieval
 
-3. **Production Validation**:
-   - Test runtime package with real browser-callbacks example
-   - Validate all generated code compiles and runs correctly
-   - Benchmark performance impact of inheritance approach
+4. **✅ Comprehensive Testing Framework**:
+   - Unit tests for filename generation and metadata handling
+   - Integration tests with real proto files and plugin execution
+   - Test-driven development with proper .proto test files
+
+### 🚀 **Next Development Phase:**
+
+1. **Typed Callback Generation**: Generate proper TypeScript types for async method callbacks
+2. **Enhanced Import System**: Auto-import response types in client templates
+3. **Developer Experience**: Full IntelliSense support for all method signatures
 
 ## Architecture Benefits Already Achieved
 

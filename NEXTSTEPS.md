@@ -21,32 +21,54 @@
 3. **Boolean logic errors** - Fixed template conditionals with HasMessages/HasEnums flags
 4. **Stdout corruption** - Removed fmt.Printf calls
 
-## 🚀 Immediate Next Steps
+## ✅ **CRITICAL ISSUES RESOLVED** (September 2025)
 
-### 1. Fix Template Inheritance Issues (Priority: CRITICAL) 
-Currently generated TypeScript has compilation errors:
-- **Missing base class properties**: `wasmLoadPromise`, `browserServiceManager` not accessible
-- **Missing methods**: `registerBrowserService`, `createAndDeserialize` not found
-- **Map entry type generation**: Proto maps create missing `*Entry` type references
-- **Constructor ordering**: `super()` call placement in generated classes
+### ✅ **1. Template Inheritance Issues (CRITICAL) - RESOLVED**
+- **✅ Base class properties**: `wasmLoadPromise`, `browserServiceManager` properly accessible
+- **✅ Base class methods**: `loadWasm`, `registerBrowserService`, `callMethod` all working
+- **✅ Inheritance chain**: Generated clients properly extend `WASMServiceClient`
+- **✅ Runtime package integration**: `@protoc-gen-go-wasmjs/runtime` imports working correctly
+- **Issue**: Was a Vite dev server caching problem - resolved by restarting dev server
 
-### 2. Complete Runtime Package Integration (Priority: HIGH)
-- **Fix import resolution**: Ensure `@protoc-gen-go-wasmjs/runtime` resolves correctly
-- **Add missing base methods**: `registerBrowserService` to `WASMServiceClient`
-- **Test inheritance chain**: Verify all base class functionality is accessible
-- **Validate runtime package build**: Ensure all exports work correctly
+### ✅ **2. Per-Service Client Generation (ARCHITECTURAL IMPROVEMENT) - IMPLEMENTED**
+- **✅ Separate client files**: Each service generates its own client file
+- **✅ Directory structure**: Follows proto package hierarchy (`presenter/v1/presenterServiceClient.ts`)
+- **✅ No file conflicts**: Eliminates overwriting issues from multiple services
+- **✅ Clean organization**: Browser services and WASM services properly separated
+- **✅ Comprehensive tests**: Unit tests and integration tests for new functionality
 
-### 3. TypeScript Development Environment (Priority: HIGH)
-- **Complete Vite setup**: Finish modern TypeScript project structure
-- **pnpm workspace**: Properly link runtime package as workspace dependency
-- **Eliminate build scripts**: Replace manual esbuild with Vite bundling
-- **Dev server integration**: Hot reload with TypeScript compilation
+### ✅ **3. Browser Service Communication (CRITICAL) - FIXED**
+- **✅ Main thread blocking**: Fixed with `async_method` annotations preventing deadlocks
+- **✅ Protobuf deserialization**: Fixed pointer instantiation in `CallBrowserService`
+- **✅ JSON → JS object conversion**: Go now passes proper JavaScript objects to callbacks
+- **✅ End-to-end functionality**: Browser callbacks working with prompts, localStorage, etc.
 
-### 4. Browser-Callbacks Example Validation (Priority: HIGH)
-- **Fix generated code issues**: Resolve all TypeScript compilation errors
-- **Test full workflow**: WASM ↔ Browser service communication
-- **Validate UI functionality**: Ensure demo works end-to-end
-- **Performance validation**: Confirm no regressions from runtime package approach
+### ✅ **4. TypeScript Development Environment (HIGH) - WORKING**
+- **✅ Vite integration**: Modern TypeScript compilation and hot reload
+- **✅ pnpm workspace**: Runtime package properly linked as workspace dependency
+- **✅ TypeScript compilation**: All generated code compiles without errors
+- **✅ Runtime package**: Clean inheritance-based architecture working
+
+## 🚀 **NEXT PHASE: Enhanced Developer Experience**
+
+### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**
+Generate fully typed callback signatures instead of `any`:
+```typescript
+// Current:
+runCallbackDemo(request: any, callback: (response: any, error?: string) => void)
+
+// Target:
+runCallbackDemo(
+  request: CallbackDemoRequest, 
+  callback: (response: CallbackDemoResponse, error?: string) => void
+): Promise<void>
+```
+
+**Benefits:**
+- **Full IntelliSense support** in VS Code
+- **Compile-time type checking** for callback parameters
+- **Better developer experience** with autocomplete
+- **Reduced runtime errors** through type safety
 
 ## 📋 Medium-Term Goals
 

@@ -10,16 +10,16 @@ export interface PresenterServiceMethods {
 	loadUserData(request: any): Promise<any>;
 	updateUIState(request: any, callback: (response: any | null, error: string | null, done: boolean) => boolean): void;
 	savePreferences(request: any): Promise<any>;
-	runCallbackDemo(request: any): Promise<any>;
+	runCallbackDemo(request: any, callback: (response: any, error?: string) => void): Promise<void>;
 }
 
 // Base WASMServiceClient functionality is now imported from @protoc-gen-go-wasmjs/runtime
 
 /**
- * browser_callbacks WASM client
+ * presenter_v1 WASM client
  * Provides a clean interface between UI components and the Go WASM service implementations
  */
-export class Browser_callbacksClient extends WASMServiceClient {
+export class Presenter_v1Client extends WASMServiceClient {
     // Service-specific clients
     public readonly presenterService: PresenterServiceClientImpl;
 
@@ -34,7 +34,7 @@ export class Browser_callbacksClient extends WASMServiceClient {
      * Load the WASM module implementation (implements abstract method)
      */
     protected async loadWASMModule(wasmPath: string): Promise<void> {
-        console.log('Loading browser_callbacks WASM module...');
+        console.log('Loading presenter_v1 WASM module...');
 
         // Check if WASM is already loaded (for testing environments)
         if ((window as any).browserCallbacks) {
@@ -77,7 +77,7 @@ export class Browser_callbacksClient extends WASMServiceClient {
         }
         this.wasm = (window as any).browserCallbacks;
 
-        console.log('browser_callbacks WASM module loaded successfully');
+        console.log('presenter_v1 WASM module loaded successfully');
     }
 
     /**
@@ -100,7 +100,7 @@ export class Browser_callbacksClient extends WASMServiceClient {
  * PresenterService service client implementation
  */
 class PresenterServiceClientImpl implements PresenterServiceMethods {
-    constructor(private parent: Browser_callbacksClient) {}
+    constructor(private parent: Presenter_v1Client) {}
     async loadUserData(request: any): Promise<any> {
         return this.parent.callMethod('presenterService.loadUserData', request);
     }
@@ -113,8 +113,8 @@ class PresenterServiceClientImpl implements PresenterServiceMethods {
     async savePreferences(request: any): Promise<any> {
         return this.parent.callMethod('presenterService.savePreferences', request);
     }
-    async runCallbackDemo(request: any): Promise<any> {
-        return this.parent.callMethod('presenterService.runCallbackDemo', request);
+    async runCallbackDemo(request: any, callback: (response: any, error?: string) => void): Promise<void> {
+        return this.parent.callMethodWithCallback('presenterService.runCallbackDemo', request, callback);
     }
 }
 
@@ -122,4 +122,4 @@ class PresenterServiceClientImpl implements PresenterServiceMethods {
 export { BrowserServiceManager };
 
 // Export the main client class as default
-export default Browser_callbacksClient;
+export default Presenter_v1Client;

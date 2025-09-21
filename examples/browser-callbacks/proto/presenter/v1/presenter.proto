@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package presenter.v1;
 
+import "wasmjs/v1/annotations.proto";
+
 option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1;presenterv1";
 
 // PresenterService runs in WASM and drives UI logic
@@ -16,7 +18,9 @@ service PresenterService {
     rpc SavePreferences(PreferencesRequest) returns (PreferencesResponse);
 
     // RunCallbackDemo demonstrates browser callbacks by prompting user 3 times
-    rpc RunCallbackDemo(CallbackDemoRequest) returns (CallbackDemoResponse);
+    rpc RunCallbackDemo(CallbackDemoRequest) returns (CallbackDemoResponse) {
+        option (wasmjs.v1.async_method) = { is_async: true };
+    };
 }
 
 // Request to load user data

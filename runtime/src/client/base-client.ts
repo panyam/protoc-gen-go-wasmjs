@@ -103,6 +103,7 @@ export abstract class WASMServiceClient {
             const wasmMethod = this.getWasmMethod(methodPath);
             
             // Call WASM method with callback function
+            // WASM now passes proper JS objects, not JSON strings
             const wasmResponse = wasmMethod(JSON.stringify(jsonReq), callback);
 
             if (!wasmResponse.success) {

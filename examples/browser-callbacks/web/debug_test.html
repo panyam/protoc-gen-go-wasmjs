@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test</title>
+</head>
+<body>
+    <div id="output"></div>
+    <script type="module">
+        // Test direct import
+        try {
+            const runtime = await import('@protoc-gen-go-wasmjs/runtime');
+            console.log('Runtime import success:', Object.keys(runtime));
+            
+            const { Browser_callbacksClient } = await import('./src/generated/browser_callbacksClient.js');
+            console.log('Client import success:', Browser_callbacksClient.name);
+            
+            const client = new Browser_callbacksClient();
+            console.log('Client created:', typeof client);
+            console.log('Client has loadWasm:', 'loadWasm' in client);
+            console.log('Client prototype:', Object.getPrototypeOf(client).constructor.name);
+            
+            document.getElementById('output').innerHTML = `
+                <h3>Debug Results:</h3>
+                <p>Client type: ${typeof client}</p>
+                <p>Has loadWasm: ${'loadWasm' in client}</p>
+                <p>LoadWasm type: ${typeof client.loadWasm}</p>
+                <p>Prototype: ${Object.getPrototypeOf(client).constructor.name}</p>
+            `;
+        } catch (error) {
+            console.error('Import/creation error:', error);
+            document.getElementById('output').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        }
+    </script>
+</body>
+</html>

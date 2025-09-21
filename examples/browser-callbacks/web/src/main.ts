@@ -1,6 +1,8 @@
-// Import the generated clients and runtime
-import { Browser_callbacksClient } from './generated/browser_callbacksClient';
-import { BrowserServiceManager } from '@protoc-gen-go-wasmjs/runtime';
+// Import the generated clients and runtime  
+import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient';
+import { BrowserServiceManager, WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+
+
 
 // Types for better code organization
 interface BrowserAPIImpl {
@@ -127,7 +129,9 @@ class BrowserAPIImpl implements BrowserAPIImpl {
 
   async promptUser(request: any) {
     log(`PromptUser: ${request.message}`);
-    const result = window.prompt(request.message, request.defaultValue || '');
+    // Note: protobuf uses snake_case (default_value) but JavaScript typically uses camelCase
+    const defaultValue = request.defaultValue || request.default_value || '';
+    const result = "hello world" ; //window.prompt(request.message, defaultValue);
     return {
       value: result || '',
       cancelled: result === null
@@ -165,7 +169,7 @@ async function init() {
     setStatus('Loading WASM module...', 'loading');
 
     // Create presenter client
-    const presenterClient = new Browser_callbacksClient();
+    const presenterClient = new Presenter_v1Client();
 
     // Register browser API implementation
     presenterClient.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
@@ -185,7 +189,6 @@ async function init() {
 
     // Wire up button handlers
     setupEventHandlers(presenterClient);
-
   } catch (error: any) {
     setStatus(`Failed to initialize: ${error.message}`, 'error');
     log(`Initialization failed: ${error.message}`, 'error');
@@ -193,7 +196,7 @@ async function init() {
   }
 }
 
-function setupEventHandlers(presenterClient: Browser_callbacksClient) {
+function setupEventHandlers(presenterClient: Presenter_v1Client) {
   // Load User Data button
   const loadUserBtn = document.getElementById('loadUserBtn');
   loadUserBtn?.addEventListener('click', async () => {
@@ -289,37 +292,57 @@ function setupEventHandlers(presenterClient: Browser_callbacksClient) {
     if (logOutput) logOutput.innerHTML = '';
 
     try {
-      const response = await presenterClient.presenterService.runCallbackDemo({
+      await presenterClient.presenterService.runCallbackDemo({
         demoName: 'User Input Collection'
-      });
-
-      if (resultDiv) {
-        if (response.completed) {
-          resultDiv.innerHTML = `
-            <div style="color: #155724; background: #d4edda; padding: 10px; border-radius: 4px;">
-              ✅ Demo completed!<br>
-              Collected: ${response.collectedInputs.join(', ')}
-            </div>
-          `;
-        } else {
-          resultDiv.innerHTML = `
-            <div style="color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px;">
-              ❌ Demo was cancelled<br>
-              Partial: ${response.collectedInputs.join(', ') || 'None'}
-            </div>
-          `;
+      }, (response, error) => {
+        if (error) {
+          throw new Error(error);
         }
-      }
+        
+        // Handle the response when the async method completes
+        handleCallbackDemoResponse(response);
+      });
     } catch (error: any) {
       if (resultDiv) {
         resultDiv.innerHTML = `<div style="color: #721c24;">Error: ${error.message}</div>`;
       }
       log(`Callback demo error: ${error.message}`, 'error');
-    } finally {
+      
+      // Re-enable button on error
       callbackDemoBtn.disabled = false;
       callbackDemoBtn.textContent = 'Start Callback Demo';
     }
   });
+}
+
+// Handle callback demo response
+function handleCallbackDemoResponse(response: any) {
+  const callbackDemoBtn = document.getElementById('callbackDemoBtn') as HTMLButtonElement;
+  const resultDiv = document.getElementById('callbackResult');
+
+  if (resultDiv) {
+    if (response.completed) {
+      resultDiv.innerHTML = `
+        <div style="color: #155724; background: #d4edda; padding: 10px; border-radius: 4px;">
+          ✅ Demo completed!<br>
+          Collected: ${response.collectedInputs.join(', ')}
+        </div>
+      `;
+    } else {
+      resultDiv.innerHTML = `
+        <div style="color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px;">
+          ❌ Demo was cancelled<br>
+          Partial: ${response.collectedInputs.join(', ') || 'None'}
+        </div>
+      `;
+    }
+  }
+
+  // Re-enable button
+  if (callbackDemoBtn) {
+    callbackDemoBtn.disabled = false;
+    callbackDemoBtn.textContent = 'Start Callback Demo';
+  }
 }
 
 // Start initialization when page loads

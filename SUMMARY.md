@@ -168,8 +168,8 @@ Same business logic runs in both environments:
 - Run logic closer to users
 - Maintain consistent API across deployments
 
-## Current Status (August 2025)
-The project has completed a comprehensive enhanced factory and deserialization system with:
+## Current Status (September 2025)
+The project has completed a comprehensive refactoring and achieved **production-ready status** with:
 - ✅ **Enhanced Factory Method Design** with context-aware construction and parent object tracking
 - ✅ **Schema-Aware Deserialization** with type-safe field resolution and proto field ID support
 - ✅ **Cross-Package Factory Composition** with automatic dependency detection and delegation
@@ -179,6 +179,9 @@ The project has completed a comprehensive enhanced factory and deserialization s
 - ✅ **Multi-target generation support** for flexible deployment patterns
 - ✅ **Template-based generation system** with full customization support
 - ✅ **Production-ready code generation** with comprehensive testing
+- ✅ **Per-service client generation** following proto directory structure
+- ✅ **Runtime package architecture** with inheritance-based TypeScript clients
+- ✅ **Browser service communication** with full WASM ↔ JavaScript integration
 
 ### Recent Quality & TypeScript Improvements (Latest)
 - ✅ **Native Map Type Support**: Fixed proto `map<K,V>` fields to generate TypeScript `Map<K,V>` instead of synthetic interfaces
@@ -196,6 +199,14 @@ The project has completed a comprehensive enhanced factory and deserialization s
   - Cross-package enum references work seamlessly with the import resolution system
   - Fixed template data structures to include enums in all generation contexts
 - ✅ **Enhanced Cross-Package Import Detection**: Improved import resolution to filter out wasmjs.v1 dependencies in factory composition
+
+### Split Generator Architecture & Per-Service Generation (September 2025)
+- ✅ **Phase 1: Split Architecture**: Separate Go and TypeScript generators with layered architecture
+- ✅ **Phase 2: Runtime Package Migration**: Extracted common utilities to `@protoc-gen-go-wasmjs/runtime`
+- ✅ **Phase 3: Template Inheritance**: Generated clients extend base classes from runtime package
+- ✅ **Phase 4: Per-Service Generation**: Each service generates to separate file following proto structure
+- ✅ **Phase 5: Browser Service Integration**: Full WASM ↔ browser communication with proper serialization
+- ✅ **Phase 6: Production Validation**: End-to-end testing with working browser-callbacks example
 
 ### Server Streaming Support (August 2025)
 - ✅ **Phase 1: Server Streaming Implementation**: Complete server-side streaming from WASM to JavaScript
@@ -215,4 +226,4 @@ The project has completed a comprehensive enhanced factory and deserialization s
 5. **External Type Integration**: Complete external type mapping system with configurable mappings, table-driven factory methods, and seamless conversion between protobuf and TypeScript types
 6. **Developer Experience Excellence**: Type-safe MESSAGE_TYPE constants, ergonomic static deserialization methods, and performance-optimized shared factory instances for production-ready usage
 
-**Production Readiness**: System handles complex nested object hierarchies, cross-package dependencies, real-world proto features (maps, external types), and maintains full TypeScript type safety with 100% test validation success.
+**Production Readiness**: System handles complex nested object hierarchies, cross-package dependencies, real-world proto features (maps, external types), per-service client generation, browser service integration, and maintains full TypeScript type safety with comprehensive test validation.

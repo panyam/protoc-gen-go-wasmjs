@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
 
@@ -157,18 +158,27 @@ func (tg *TSGenerator) planTSFiles(
 	hasServices := tg.serviceFilter.HasAnyServices(packageInfo.Files, criteria)
 	hasTypes := tg.hasTypesToGenerate(packageInfo.Files, criteria)
 
-	// Plan client file if package has services
+	// Plan separate client files per service
 	if hasServices {
-		clientFilename := tg.calculateClientFilename(packageInfo, config)
-		specs = append(specs, builders.FileSpec{
-			Name:     "client",
-			Filename: clientFilename,
-			Type:     "client",
-			Required: true,
-			ContentHints: builders.ContentHints{
-				HasServices: true,
-			},
-		})
+		// Get filtered services for this package
+		filteredServices := tg.serviceFilter.GetIncludedServices(packageInfo.Files, criteria)
+		
+		for _, service := range filteredServices {
+			serviceClientFilename := tg.calculateServiceClientFilename(packageInfo, service, config)
+			specs = append(specs, builders.FileSpec{
+				Name:     fmt.Sprintf("client_%s", service.GoName),
+				Filename: serviceClientFilename,
+				Type:     "service_client",
+				Required: true,
+				ContentHints: builders.ContentHints{
+					HasServices: true,
+				},
+				// Store service info for template data building
+				Metadata: map[string]interface{}{
+					"service": service,
+				},
+			})
+		}
 	}
 
 	// BrowserServiceManager is now imported from @protoc-gen-go-wasmjs/runtime package
@@ -255,16 +265,24 @@ func (tg *TSGenerator) renderFilesFromPlan(
 	config *builders.GenerationConfig,
 ) error {
 
-	// Render client file if planned
-	if clientFile := fileSet.GetFile("client"); clientFile != nil {
-		clientData, err := tg.dataBuilder.BuildClientData(packageInfo, criteria, config)
-		if err != nil {
-			return fmt.Errorf("failed to build client data: %w", err)
-		}
+	// Render service client files (one per service)
+	serviceClientFiles := fileSet.GetFilesByType("service_client")
+	for fileName, serviceFile := range serviceClientFiles {
+		// Get the service info from metadata
+		spec := fileSet.GetFileSpec(fileName)
+		if spec != nil && spec.Metadata != nil {
+			if service, ok := spec.Metadata["service"].(*protogen.Service); ok {
+				// Build client data for this specific service
+				serviceClientData, err := tg.dataBuilder.BuildServiceClientData(packageInfo, service, criteria, config)
+				if err != nil {
+					return fmt.Errorf("failed to build service client data for %s: %w", service.GoName, err)
+				}
 
-		if clientData != nil {
-			if err := tg.renderer.RenderClient(clientFile, clientData); err != nil {
-				return fmt.Errorf("failed to render client: %w", err)
+				if serviceClientData != nil {
+					if err := tg.renderer.RenderServiceClient(serviceFile, serviceClientData); err != nil {
+						return fmt.Errorf("failed to render service client %s: %w", service.GoName, err)
+					}
+				}
 			}
 		}
 	}
@@ -328,10 +346,24 @@ func (tg *TSGenerator) hasTypesToGenerate(files []*protogen.File, criteria *filt
 
 // File naming calculation methods - Generator controls all file naming decisions
 
-// calculateClientFilename determines the output filename for the TypeScript client.
-func (tg *TSGenerator) calculateClientFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
-	moduleName := tg.getModuleName(packageInfo.Name, config)
-	return moduleName + "Client.ts"
+
+
+// calculateServiceClientFilename determines the output filename for a specific service client.
+func (tg *TSGenerator) calculateServiceClientFilename(packageInfo *builders.PackageInfo, service *protogen.Service, config *builders.GenerationConfig) string {
+	// Generate file in the package directory following proto structure
+	// e.g., presenter/v1/presenterServiceClient.ts
+	serviceFileName := tg.convertToFileName(service.GoName) + "Client.ts"
+	return filepath.Join(packageInfo.Path, serviceFileName)
+}
+
+// convertToFileName converts a service name to a filename-friendly format
+func (tg *TSGenerator) convertToFileName(serviceName string) string {
+	// Convert PascalCase to camelCase for filenames
+	// e.g., "PresenterService" -> "presenterService"
+	if len(serviceName) == 0 {
+		return serviceName
+	}
+	return strings.ToLower(serviceName[:1]) + serviceName[1:]
 }
 
 // calculateInterfacesFilename determines the output filename for TypeScript interfaces.
