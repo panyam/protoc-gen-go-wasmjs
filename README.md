@@ -6,16 +6,16 @@ It generates flexible WASM exports and TypeScript clients from your protobuf ser
 
 ## Features
 
+- **Per-Service Client Generation**: Each service generates to its own TypeScript client following proto directory structure
 - **Dual-Target Architecture**: Generate WASM and TypeScript artifacts separately for flexible deployment
+- **Full TypeScript Type Safety**: Automatically generates typed method signatures with IntelliSense support
+- **Runtime Package Integration**: Clean inheritance-based architecture with shared utilities
+- **Browser Service Communication**: Seamless WASM to browser API integration with async support
 - **Smart Import Detection**: Automatically analyzes proto files to generate accurate TypeScript imports
-- **Auto-Extension Detection**: Automatically detects `.ts` vs `.js` extensions based on protoc-gen-es configuration
-- **Multi-Target Generation**: Generate optimized WASM bundles per page/use case (user page, admin page, etc.)
 - **Dependency Injection**: Full control over service initialization with database, auth, config injection
-- **Optimized Bundles**: Each target includes only the services it needs for smaller bundle sizes
 - **Local-First Architecture**: Same service interface runs on server (full database) or browser (local storage)
 - **Export Pattern**: Generates reusable exports instead of fixed main() for maximum flexibility
-- **TypeScript Integration**: Works with existing protobuf TypeScript generators (protoc-gen-es, protoc-gen-ts)
-- **Flexible Deployment**: TypeScript clients can be placed directly in frontend source directories
+- **Split Generator Architecture**: Language-specific generators for focused, testable code generation
 - **Extensive Customization**: Method filtering, renaming, and service targeting
 - **Build Pipeline Integration**: Seamless integration with buf and modern protobuf toolchains
 
@@ -31,13 +31,13 @@ go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@lates
 **Option 2: Use from buf.build (Recommended)**
 No installation required - use the remote plugin directly in your `buf.gen.yaml`.
 
-**Option 3: Split Generators (Latest)**
+**Option 3: Split Generators (Recommended)**
 Install language-specific generators for focused generation:
 ```bash
-# Install Go generator only
+# Install Go generator for WASM wrapper generation
 go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-go@latest
 
-# Install TypeScript generator only  
+# Install TypeScript generator for client generation  
 go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-ts@latest
 ```
 
@@ -55,42 +55,9 @@ yarn add @protoc-gen-go-wasmjs/runtime
 
 ## Architecture Patterns
 
-### Dual-Target Architecture (Most Flexible)
+### Per-Service Client Generation (Production Ready)
 
-Generate WASM and TypeScript artifacts separately for maximum deployment flexibility:
-
-```yaml
-plugins:
-  # Standard protobuf generation...
-  
-  # WASM wrapper only - optimized for server-side deployment
-  - local: protoc-gen-go-wasmjs
-    out: ./gen/wasm/user-services
-    opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=../../../gen/ts  # Relative to out directory
-      - services=UsersService
-      - generate_typescript=false  # Only generate WASM
-      
-  # TypeScript client only - deploy directly to frontend
-  - local: protoc-gen-go-wasmjs
-    out: ./web/frontend/src/wasm-clients
-    opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=../../../gen/ts  # Relative to out directory
-      - services=UsersService
-      - generate_wasm=false  # Only generate TypeScript
-```
-
-**Benefits:**
-- **Flexible placement**: TypeScript clients can go directly into frontend source directories
-- **Clean separation**: WASM and TypeScript artifacts in completely different locations
-- **Independent generation**: Generate just WASM, just TypeScript, or both as needed
-- **Standard buf patterns**: Each target uses native protoc `out` directories
-
-### Multi-Target Usage (Co-located)
-
-Generate optimized WASM bundles per page/use case:
+Generate separate TypeScript client files per service following proto directory structure:
 
 ```yaml
 plugins:
@@ -104,57 +71,60 @@ plugins:
     out: ./gen/go
     opt: paths=source_relative
 
-  # Generate TypeScript protobuf types (shared)
-  - remote: buf.build/bufbuild/es
-    out: ./web/frontend/gen
-    opt: target=ts
-
-  # User page target (UsersService only)
-  - local: protoc-gen-go-wasmjs
-    out: ./gen/wasm/user-page
+  # Generate Go WASM wrappers
+  - local: protoc-gen-go-wasmjs-go
+    out: ./gen/wasm/go
     opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=web/frontend/gen
-      - services=UsersService
-      - module_name=user_page_services
-      - js_namespace=userPage
+      - js_structure=namespaced
+      - js_namespace=myApp
+      - module_name=my_services
 
-  # Game page target (GamesService + WorldsService)
-  - local: protoc-gen-go-wasmjs
-    out: ./gen/wasm/game-page
+  # Generate TypeScript clients (per-service)
+  - local: protoc-gen-go-wasmjs-ts
+    out: ./web/src/generated
     opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=web/frontend/gen
-      - services=GamesService,WorldsService
-      - module_name=game_page_services
-      - js_namespace=gamePage
-
-  # Admin page target (all services)
-  - local: protoc-gen-go-wasmjs
-    out: ./gen/wasm/admin-page
-    opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=web/frontend/gen
-      - module_name=admin_services
-      - js_namespace=admin
+      - js_structure=namespaced
+      - js_namespace=myApp
 ```
 
-### Single Target Usage (Simple)
+**Benefits:**
+- **Per-service files**: Each service generates to its own client file following proto directory structure
+- **Full type safety**: Generated clients use proper TypeScript types with IntelliSense support
+- **Clean organization**: Services separated by proto package hierarchy
+- **No conflicts**: Multiple services no longer overwrite each other
+- **Runtime integration**: Clients extend base classes from @protoc-gen-go-wasmjs/runtime package
 
-For simple projects with one WASM module:
+### Browser Service Integration
 
-```yaml
-plugins:
-  # Standard protobuf generation...
-  
-  # Single WASM target
-  - local: protoc-gen-go-wasmjs
-    out: ./gen/wasm
-    opt:
-      - ts_generator=protoc-gen-es
-      - ts_import_path=./gen/ts
-      - js_structure=namespaced
-      - js_namespace=myapp
+For services that need to call browser APIs (localStorage, fetch, etc.):
+
+```protobuf
+// browser/v1/browser.proto
+service BrowserAPI {
+    option (wasmjs.v1.browser_provided) = true;
+    
+    rpc GetLocalStorage(StorageKeyRequest) returns (StorageValueResponse);
+    rpc SetLocalStorage(StorageSetRequest) returns (StorageSetResponse); 
+    rpc Alert(AlertRequest) returns (AlertResponse);
+}
+```
+
+```typescript
+// Register browser service implementation
+const client = new Presenter_v1Client();
+client.registerBrowserService('BrowserAPI', {
+  async getLocalStorage(request) {
+    return { value: localStorage.getItem(request.key) || '', exists: true };
+  },
+  async setLocalStorage(request) {
+    localStorage.setItem(request.key, request.value);
+    return { success: true };
+  },
+  async alert(request) {
+    alert(request.message);
+    return { shown: true };
+  }
+});
 ```
 
 ### Using Generated Exports (Dependency Injection)
@@ -212,50 +182,68 @@ await client.loadWasm('./user_page.wasm');
 const user = await client.usersService.getUser({ id: "123" });
 ```
 
-### Example Service
+### Example Service with Full Type Safety (from browser-callbacks example)
 
 ```protobuf
 syntax = "proto3";
-package library.v1;
+package presenter.v1;
 
 import "wasmjs/v1/annotations.proto";
 
-service LibraryService {
-  // Custom method name for cleaner JavaScript API
-  rpc FindBooks(FindBooksRequest) returns (FindBooksResponse) {
-    option (wasmjs.v1.wasm_method_name) = "searchBooks";
-  }
-  
-  rpc CheckoutBook(CheckoutBookRequest) returns (CheckoutBookResponse);
+service PresenterService {
+    // Regular sync method
+    rpc LoadUserData(LoadUserRequest) returns (LoadUserResponse);
+
+    // Streaming method for real-time updates
+    rpc UpdateUIState(StateUpdateRequest) returns (stream UIUpdate);
+
+    // Async method for long-running operations  
+    rpc RunCallbackDemo(CallbackDemoRequest) returns (CallbackDemoResponse) {
+        option (wasmjs.v1.async_method) = { is_async: true };
+    };
 }
 ```
 
 This generates:
 
-**Go WASM wrapper** (`library_v1_services.wasm.go`):
-```go
-//go:build js && wasm
-
-// Namespaced JavaScript API: library.libraryService.searchBooks()
-js.Global().Set("library", js.ValueOf(map[string]interface{}{
-  "libraryService": map[string]interface{}{
-    "searchBooks": js.FuncOf(libraryServiceFindBooks),
-    "checkoutBook": js.FuncOf(libraryServiceCheckoutBook),
-  },
-}))
-```
-
-**TypeScript client** (`Library_v1_servicesClient.ts`):
+**Per-service TypeScript client** (`presenter/v1/presenterServiceClient.ts`):
 ```typescript
-export class Library_v1_servicesClient {
-  public readonly libraryService: LibraryServiceClientImpl;
+import { WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+import {
+  LoadUserRequest,
+  LoadUserResponse,
+  StateUpdateRequest,
+  UIUpdate,
+  CallbackDemoRequest,
+  CallbackDemoResponse,
+} from './interfaces';
+
+export class Presenter_v1Client extends WASMServiceClient {
+  public readonly presenterService: PresenterServiceClientImpl;
   
-  async loadWasm(wasmPath?: string): Promise<void> { /* ... */ }
+  async loadWasm(wasmPath: string): Promise<void> { /* ... */ }
 }
 
-class LibraryServiceClientImpl {
-  async searchBooks(request: FindBooksRequest): Promise<FindBooksResponse> {
-    return this.parent.callMethod('libraryService.searchBooks', request);
+class PresenterServiceClientImpl {
+  // Fully typed sync method
+  async loadUserData(request: LoadUserRequest): Promise<LoadUserResponse> {
+    return this.parent.callMethod('presenterService.loadUserData', request);
+  }
+  
+  // Fully typed streaming method
+  updateUIState(
+    request: StateUpdateRequest,
+    callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean
+  ): void {
+    return this.parent.callStreamingMethod('presenterService.updateUIState', request, callback);
+  }
+  
+  // Fully typed async method with callback
+  async runCallbackDemo(
+    request: CallbackDemoRequest, 
+    callback: (response: CallbackDemoResponse, error?: string) => void
+  ): Promise<void> {
+    return this.parent.callMethodWithCallback('presenterService.runCallbackDemo', request, callback);
   }
 }
 ```
@@ -383,19 +371,33 @@ func (s *LibraryService) FindBooks(ctx context.Context, req *FindBooksRequest) (
 }
 ```
 
-**Frontend Code** (Same Interface):
+**Frontend Code** (Fully Typed):
 ```typescript
-// Import from runtime package for shared utilities
-import { WASMResponse, WasmError } from '@protoc-gen-go-wasmjs/runtime';
+// Import the generated per-service client
+import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient';
+import type { LoadUserRequest, CallbackDemoRequest } from './generated/presenter/v1/interfaces';
 
-// Can switch between local WASM or remote HTTP seamlessly
-const client = new LibraryServicesClient();
-await client.loadWasm('./library.wasm');
+// Create and load WASM client
+const client = new Presenter_v1Client();
+await client.loadWasm('./presenter.wasm');
 
-// Same API regardless of backend
-const books = await client.libraryService.searchBooks({ 
-  query: "golang", 
-  limit: 10 
+// Fully typed method calls with IntelliSense support
+const loadRequest: LoadUserRequest = { 
+  userId: "user123" 
+};
+const userData = await client.presenterService.loadUserData(loadRequest);
+
+// Async method with typed callback
+const demoRequest: CallbackDemoRequest = {
+  demoName: 'User Input Collection'
+};
+await client.presenterService.runCallbackDemo(demoRequest, (response, error) => {
+  if (error) {
+    console.error('Demo failed:', error);
+    return;
+  }
+  console.log('Demo completed:', response.completed);
+  console.log('Collected inputs:', response.collectedInputs.join(', '));
 });
 ```
 
@@ -412,22 +414,23 @@ Generated TypeScript code imports shared utilities from the runtime package, red
 
 ### **Benefits**
 
-- **🚀 Smaller bundles**: Shared utilities eliminate code duplication
-- **🔧 Better maintenance**: Runtime fixes benefit all projects immediately
-- **📦 Tree-shakeable**: Import only the utilities you need
-- **🎯 Type safety**: Full TypeScript support with complete definitions
+- **Smaller bundles**: Shared utilities eliminate code duplication
+- **Better maintenance**: Runtime fixes benefit all projects immediately
+- **Tree-shakeable**: Import only the utilities you need
+- **Type safety**: Full TypeScript support with complete definitions
+- **Inheritance-based**: Clean architecture with base class functionality
 
 ### **Usage**
 
 ```typescript
-// Generated clients automatically import runtime utilities
-import { MyServiceClient } from './generated/my_service_client';
+// Generated per-service clients automatically extend WASMServiceClient
+import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient';
 
 // Manual usage (advanced scenarios)
 import { 
   WASMServiceClient, 
-  BaseDeserializer,
-  FieldType 
+  BrowserServiceManager,
+  WasmError 
 } from '@protoc-gen-go-wasmjs/runtime';
 ```
 
@@ -439,7 +442,7 @@ Generated files include a build script:
 # Generated build.sh
 #!/bin/bash
 export GOOS=js GOARCH=wasm
-go build -o library_v1_services.wasm library_v1_services.wasm.go
+go build -o presenter_v1.wasm presenter_v1.wasm.go
 cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
 ```
 
@@ -447,23 +450,19 @@ Integration in web applications:
 
 ```html
 <script src="wasm_exec.js"></script>
-<script>
-  // Initialize WASM
-  const go = new Go();
-  WebAssembly.instantiateStreaming(fetch("library.wasm"), go.importObject)
-    .then(result => {
-      go.run(result.instance);
-      
-      // Use generated TypeScript client
-      const client = new LibraryServicesClient();
-      // WASM is already loaded, so this returns immediately
-      await client.waitUntilReady();
-      
-      const books = await client.libraryService.searchBooks({
-        query: "javascript",
-        limit: 5
-      });
-    });
+<script type="module">
+  import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient.js';
+  
+  // Initialize and load WASM
+  const client = new Presenter_v1Client();
+  await client.loadWasm('./presenter.wasm');
+  
+  // Use with full type safety (in TypeScript)
+  const userData = await client.presenterService.loadUserData({
+    userId: "user123"
+  });
+  
+  console.log('User loaded:', userData.username);
 </script>
 ```
 
@@ -591,20 +590,26 @@ To publish this plugin to buf.build (for maintainers):
 ## Project Structure
 
 ```
-├── cmd/protoc-gen-go-wasmjs/     # Plugin entry point
-├── pkg/generator/                # Code generation logic
-│   ├── templates/                # Embedded template files
-│   │   ├── wasm.go.tmpl         # Go WASM wrapper template
-│   │   ├── client.ts.tmpl       # TypeScript client template
-│   │   └── build.sh.tmpl        # Build script template
-│   ├── config.go                # Configuration parsing
-│   ├── generator.go             # Main generation logic
-│   └── types.go                 # Template data structures
-├── proto/wasmjs/v1/             # WASM annotation definitions
-├── examples/                    # Comprehensive examples
-│   ├── library/                 # LibraryService example
-│   └── connect4/                # Real-time multiplayer Connect4 with stateful proxies
-└── PLAN.md                      # Development progress tracking
+├── cmd/
+│   ├── protoc-gen-go-wasmjs-go/     # Go WASM generator
+│   ├── protoc-gen-go-wasmjs-ts/     # TypeScript client generator
+│   └── protoc-gen-go-wasmjs-old/    # Legacy monolithic generator
+├── pkg/
+│   ├── core/                        # Pure utility functions (30+ tests)
+│   ├── filters/                     # Business logic filtering (25+ tests)
+│   ├── builders/                    # Template data building
+│   ├── renderers/                   # Template rendering with typed imports
+│   ├── generators/                  # Top-level orchestrators
+│   └── wasm/                        # WASM runtime utilities
+├── runtime/                         # @protoc-gen-go-wasmjs/runtime NPM package
+│   ├── src/client/                  # WASMServiceClient base class
+│   ├── src/browser/                 # BrowserServiceManager
+│   └── src/schema/                  # Type utilities
+├── proto/wasmjs/v1/                 # WASM annotation definitions
+├── examples/
+│   ├── browser-callbacks/           # Complete demo with per-service clients, typed callbacks, and browser services
+│   └── streaming/                   # Server streaming example
+└── docs/                            # Architecture and development guides
 ```
 
 ## Development
@@ -617,15 +622,14 @@ For detailed development instructions, testing guidelines, and contribution work
 # Run the test suite
 ./test.sh
 
-# Build the plugin  
-make tool
+# Build the split generators  
+make split
 
 # Test with examples
-cd examples/library && buf generate
-cd examples/connect4 && make all
+cd examples/browser-callbacks && make buf && make wasm
 
-# Run core utility tests
-go test ./pkg/core/... -v
+# Run framework tests
+go test ./pkg/... -v
 ```
 
 ## Contributing
