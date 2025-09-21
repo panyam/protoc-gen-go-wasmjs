@@ -2,21 +2,30 @@
 // source: {{ .SourcePath }}
 
 import { BrowserServiceManager, WASMResponse, WasmError, WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+{{- if .TypeImports }}
+
+// Import TypeScript types for method signatures
+import {
+{{- range .TypeImports }}
+    {{ . }},
+{{- end }}
+} from './interfaces';
+{{- end }}
 
 {{- range .Services }}
 /**
  * {{ .Name }} service client interface
- * Uses any types since we generate our own TypeScript interfaces
+ * Fully typed method signatures with TypeScript interfaces
  */
 export interface {{ .Name }}Methods {
 	{{- range .Methods }}
 		{{- if .ShouldGenerate }}
 			{{- if .IsServerStreaming }}
-	{{ .JSName }}(request: any, callback: (response: any | null, error: string | null, done: boolean) => boolean): void;
+	{{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }} | null, error: string | null, done: boolean) => boolean): void;
 			{{- else if .IsAsync }}
-	{{ .JSName }}(request: any, callback: (response: any, error?: string) => void): Promise<void>;
+	{{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }}, error?: string) => void): Promise<void>;
 			{{- else }}
-	{{ .JSName }}(request: any): Promise<any>;
+	{{ .JSName }}(request: {{ .RequestTSType }}): Promise<{{ .ResponseTSType }}>;
 			{{- end }}
 		{{- end }}
 	{{- end }}
@@ -196,8 +205,8 @@ class {{ .Name }}ClientImpl implements {{ .Name }}Methods {
 		{{- if .ShouldGenerate }}
 			{{- if .IsServerStreaming }}
     {{ .JSName }}(
-        request: any,
-        callback: (response: any | null, error: string | null, done: boolean) => boolean
+        request: {{ .RequestTSType }},
+        callback: (response: {{ .ResponseTSType }} | null, error: string | null, done: boolean) => boolean
     ): void {
 				{{- if eq $.APIStructure "namespaced" }}
         return this.parent.callStreamingMethod('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
@@ -208,7 +217,7 @@ class {{ .Name }}ClientImpl implements {{ .Name }}Methods {
 				{{- end }}
     }
 			{{- else if .IsAsync }}
-    async {{ .JSName }}(request: any, callback: (response: any, error?: string) => void): Promise<void> {
+    async {{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }}, error?: string) => void): Promise<void> {
 				{{- if eq $.APIStructure "namespaced" }}
         return this.parent.callMethodWithCallback('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
 				{{- else if eq $.APIStructure "flat" }}
@@ -218,7 +227,7 @@ class {{ .Name }}ClientImpl implements {{ .Name }}Methods {
 				{{- end }}
     }
 			{{- else }}
-    async {{ .JSName }}(request: any): Promise<any> {
+    async {{ .JSName }}(request: {{ .RequestTSType }}): Promise<{{ .ResponseTSType }}> {
 				{{- if eq $.APIStructure "namespaced" }}
         return this.parent.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
 				{{- else if eq $.APIStructure "flat" }}

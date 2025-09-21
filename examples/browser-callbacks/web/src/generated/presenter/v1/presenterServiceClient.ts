@@ -2,15 +2,27 @@
 // source: presenter/v1/presenter.proto
 
 import { BrowserServiceManager, WASMResponse, WasmError, WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+
+// Import TypeScript types for method signatures
+import {
+    PreferencesResponse,
+    CallbackDemoRequest,
+    CallbackDemoResponse,
+    LoadUserRequest,
+    LoadUserResponse,
+    StateUpdateRequest,
+    UIUpdate,
+    PreferencesRequest,
+} from './interfaces';
 /**
  * PresenterService service client interface
- * Uses any types since we generate our own TypeScript interfaces
+ * Fully typed method signatures with TypeScript interfaces
  */
 export interface PresenterServiceMethods {
-	loadUserData(request: any): Promise<any>;
-	updateUIState(request: any, callback: (response: any | null, error: string | null, done: boolean) => boolean): void;
-	savePreferences(request: any): Promise<any>;
-	runCallbackDemo(request: any, callback: (response: any, error?: string) => void): Promise<void>;
+	loadUserData(request: LoadUserRequest): Promise<LoadUserResponse>;
+	updateUIState(request: StateUpdateRequest, callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean): void;
+	savePreferences(request: PreferencesRequest): Promise<PreferencesResponse>;
+	runCallbackDemo(request: CallbackDemoRequest, callback: (response: CallbackDemoResponse, error?: string) => void): Promise<void>;
 }
 
 // Base WASMServiceClient functionality is now imported from @protoc-gen-go-wasmjs/runtime
@@ -101,19 +113,19 @@ export class Presenter_v1Client extends WASMServiceClient {
  */
 class PresenterServiceClientImpl implements PresenterServiceMethods {
     constructor(private parent: Presenter_v1Client) {}
-    async loadUserData(request: any): Promise<any> {
+    async loadUserData(request: LoadUserRequest): Promise<LoadUserResponse> {
         return this.parent.callMethod('presenterService.loadUserData', request);
     }
     updateUIState(
-        request: any,
-        callback: (response: any | null, error: string | null, done: boolean) => boolean
+        request: StateUpdateRequest,
+        callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean
     ): void {
         return this.parent.callStreamingMethod('presenterService.updateUIState', request, callback);
     }
-    async savePreferences(request: any): Promise<any> {
+    async savePreferences(request: PreferencesRequest): Promise<PreferencesResponse> {
         return this.parent.callMethod('presenterService.savePreferences', request);
     }
-    async runCallbackDemo(request: any, callback: (response: any, error?: string) => void): Promise<void> {
+    async runCallbackDemo(request: CallbackDemoRequest, callback: (response: CallbackDemoResponse, error?: string) => void): Promise<void> {
         return this.parent.callMethodWithCallback('presenterService.runCallbackDemo', request, callback);
     }
 }

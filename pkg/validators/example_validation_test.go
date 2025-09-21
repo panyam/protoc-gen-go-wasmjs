@@ -129,14 +129,21 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 			t.Error("Example should use async_method annotation")
 		}
 
-		// Check generated TypeScript has callback signature
+		// Check generated TypeScript has typed callback signature
 		clientPath := filepath.Join(exampleDir, "web/src/generated/presenter/v1/presenterServiceClient.ts")
 		if clientContent, err := os.ReadFile(clientPath); err == nil {
 			clientStr := string(clientContent)
-			if !strings.Contains(clientStr, "callback: (response: any, error?: string) => void") {
-				t.Error("Generated client should have callback signature for async method")
+			
+			// Check for typed callback signature (updated for Phase 2)
+			if !strings.Contains(clientStr, "callback: (response: CallbackDemoResponse, error?: string) => void") {
+				t.Error("Generated client should have typed callback signature for async method")
 			} else {
-				t.Logf("✅ Example async method properly configured")
+				t.Logf("✅ Example async method properly configured with typed callbacks")
+			}
+			
+			// Also check that it imports the response type
+			if !strings.Contains(clientStr, "CallbackDemoResponse,") {
+				t.Error("Generated client should import CallbackDemoResponse type")
 			}
 		}
 	})

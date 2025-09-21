@@ -2,6 +2,14 @@
 import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient';
 import { BrowserServiceManager, WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 
+// Import TypeScript types for better type safety
+import type { 
+  LoadUserRequest, 
+  StateUpdateRequest, 
+  PreferencesRequest,
+  CallbackDemoRequest 
+} from './generated/presenter/v1/interfaces';
+
 
 
 // Types for better code organization
@@ -205,9 +213,10 @@ function setupEventHandlers(presenterClient: Presenter_v1Client) {
     log(`Loading user data for: ${userId}`);
 
     try {
-      const response = await presenterClient.presenterService.loadUserData({
+      const request: LoadUserRequest = {
         userId: userId
-      });
+      };
+      const response = await presenterClient.presenterService.loadUserData(request);
 
       log(`User loaded: ${response.username} (${response.email})`, 'success');
       log(`Permissions: ${response.permissions.join(', ')}`);
@@ -224,13 +233,14 @@ function setupEventHandlers(presenterClient: Presenter_v1Client) {
     const action = actionSelect?.value || 'refresh';
     log(`Updating UI state: ${action}`);
 
-    const params = action === 'navigate' ?
+    const params: Record<string, string> = action === 'navigate' ?
       { page: '/dashboard' } :
       { timestamp: new Date().toISOString() };
 
     try {
+      const request: StateUpdateRequest = { action, params };
       await presenterClient.presenterService.updateUIState(
-        { action, params },
+        request,
         (update, error, done) => {
           if (error) {
             log(`Stream error: ${error}`, 'error');
@@ -266,9 +276,10 @@ function setupEventHandlers(presenterClient: Presenter_v1Client) {
     log(`Saving preferences: ${JSON.stringify(preferences)}`);
 
     try {
-      const response = await presenterClient.presenterService.savePreferences({
+      const request: PreferencesRequest = {
         preferences
-      });
+      };
+      const response = await presenterClient.presenterService.savePreferences(request);
 
       log(`Preferences saved: ${response.itemsSaved} items`, 'success');
     } catch (error: any) {
@@ -292,9 +303,10 @@ function setupEventHandlers(presenterClient: Presenter_v1Client) {
     if (logOutput) logOutput.innerHTML = '';
 
     try {
-      await presenterClient.presenterService.runCallbackDemo({
+      const request: CallbackDemoRequest = {
         demoName: 'User Input Collection'
-      }, (response, error) => {
+      };
+      await presenterClient.presenterService.runCallbackDemo(request, (response, error) => {
         if (error) {
           throw new Error(error);
         }

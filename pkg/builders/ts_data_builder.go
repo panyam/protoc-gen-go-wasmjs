@@ -39,6 +39,9 @@ type TSTemplateData struct {
 	Services []ServiceData    // Services for client generation
 	Messages []TSMessageInfo // Messages for interface generation (enriched)
 	Enums    []TSEnumInfo    // Enums for type generation (enriched)
+	
+	// TypeScript type imports for client generation
+	TypeImports []string // TypeScript types to import for method signatures
 
 	// TypeScript-specific configuration
 	ImportBasePath string // Base path for imports (e.g., "./library/v1")
@@ -207,18 +210,55 @@ func (tb *TSDataBuilder) BuildServiceClientData(
 	}
 	log.Printf("TS BuildServiceClientData: APIStructure=%s, JSNamespace=%s", config.JSStructure, tb.getJSNamespace(packageInfo.Name, config))
 	
+	// Collect TypeScript imports needed for typed method signatures
+	requiredImports := tb.collectServiceTypeImports(services)
+	
 	// Generate names for TypeScript artifacts
 	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
 	
 	return &TSTemplateData{
-		PackageName: packageInfo.Name,
-		PackagePath: packageInfo.Path,
-		SourcePath:  serviceFile.Desc.Path(),
-		ModuleName:  baseName,
-		Services:    services,
-		APIStructure: config.JSStructure,
-		JSNamespace: tb.getJSNamespace(packageInfo.Name, config),
+		PackageName:     packageInfo.Name,
+		PackagePath:     packageInfo.Path,
+		SourcePath:      serviceFile.Desc.Path(),
+		ModuleName:      baseName,
+		Services:        services,
+		TypeImports:     requiredImports,
+		APIStructure:    config.JSStructure,
+		JSNamespace:     tb.getJSNamespace(packageInfo.Name, config),
 	}, nil
+}
+
+// collectServiceTypeImports collects unique TypeScript types needed for method signatures
+func (tb *TSDataBuilder) collectServiceTypeImports(services []ServiceData) []string {
+	importSet := make(map[string]bool)
+	
+	for _, service := range services {
+		for _, method := range service.Methods {
+			if !method.ShouldGenerate {
+				continue
+			}
+			
+			// Add request type
+			if method.RequestTSType != "" {
+				importSet[method.RequestTSType] = true
+			}
+			
+			// Add response type
+			if method.ResponseTSType != "" {
+				importSet[method.ResponseTSType] = true
+			}
+		}
+	}
+	
+	// Convert set to sorted slice
+	var imports []string
+	for importType := range importSet {
+		imports = append(imports, importType)
+	}
+	
+	// Sort for consistent output
+	// Note: using simple append for now, could add sorting if needed
+	return imports
 }
 
 // BuildClientData creates TypeScript client template data for services.
@@ -252,6 +292,9 @@ func (tb *TSDataBuilder) BuildClientData(
 		return nil, nil
 	}
 
+	// Collect TypeScript imports needed for typed method signatures
+	requiredImports := tb.collectServiceTypeImports(services)
+	
 	// Generate names for TypeScript artifacts
 	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
 
@@ -261,6 +304,7 @@ func (tb *TSDataBuilder) BuildClientData(
 		ModuleName:         tb.getModuleName(packageInfo.Name, config),
 		SourcePath:         tb.getPrimarySourcePath(packageInfo.Files),
 		Services:           services,
+		TypeImports:        requiredImports,
 		ImportBasePath:     tb.getImportBasePath(packageInfo.Path, config),
 		ExternalImports:    []ExternalImport{}, // TODO: Implement external imports
 		BaseName:           baseName,

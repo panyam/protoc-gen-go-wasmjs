@@ -2,18 +2,36 @@
 // source: browser/v1/browser.proto
 
 import { BrowserServiceManager, WASMResponse, WasmError, WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+
+// Import TypeScript types for method signatures
+import {
+    StorageKeyRequest,
+    StorageValueResponse,
+    StorageSetRequest,
+    StorageSetResponse,
+    PromptRequest,
+    PromptResponse,
+    CookieRequest,
+    CookieResponse,
+    AlertRequest,
+    AlertResponse,
+    LogRequest,
+    LogResponse,
+    FetchRequest,
+    FetchResponse,
+} from './interfaces';
 /**
  * BrowserAPI service client interface
- * Uses any types since we generate our own TypeScript interfaces
+ * Fully typed method signatures with TypeScript interfaces
  */
 export interface BrowserAPIMethods {
-	fetch(request: any): Promise<any>;
-	getLocalStorage(request: any): Promise<any>;
-	setLocalStorage(request: any): Promise<any>;
-	getCookie(request: any): Promise<any>;
-	alert(request: any): Promise<any>;
-	promptUser(request: any): Promise<any>;
-	logToWindow(request: any): Promise<any>;
+	fetch(request: FetchRequest): Promise<FetchResponse>;
+	getLocalStorage(request: StorageKeyRequest): Promise<StorageValueResponse>;
+	setLocalStorage(request: StorageSetRequest): Promise<StorageSetResponse>;
+	getCookie(request: CookieRequest): Promise<CookieResponse>;
+	alert(request: AlertRequest): Promise<AlertResponse>;
+	promptUser(request: PromptRequest): Promise<PromptResponse>;
+	logToWindow(request: LogRequest): Promise<LogResponse>;
 }
 
 // Base WASMServiceClient functionality is now imported from @protoc-gen-go-wasmjs/runtime
@@ -104,25 +122,25 @@ export class Browser_v1Client extends WASMServiceClient {
  */
 class BrowserAPIClientImpl implements BrowserAPIMethods {
     constructor(private parent: Browser_v1Client) {}
-    async fetch(request: any): Promise<any> {
+    async fetch(request: FetchRequest): Promise<FetchResponse> {
         return this.parent.callMethod('browserAPI.fetch', request);
     }
-    async getLocalStorage(request: any): Promise<any> {
+    async getLocalStorage(request: StorageKeyRequest): Promise<StorageValueResponse> {
         return this.parent.callMethod('browserAPI.getLocalStorage', request);
     }
-    async setLocalStorage(request: any): Promise<any> {
+    async setLocalStorage(request: StorageSetRequest): Promise<StorageSetResponse> {
         return this.parent.callMethod('browserAPI.setLocalStorage', request);
     }
-    async getCookie(request: any): Promise<any> {
+    async getCookie(request: CookieRequest): Promise<CookieResponse> {
         return this.parent.callMethod('browserAPI.getCookie', request);
     }
-    async alert(request: any): Promise<any> {
+    async alert(request: AlertRequest): Promise<AlertResponse> {
         return this.parent.callMethod('browserAPI.alert', request);
     }
-    async promptUser(request: any): Promise<any> {
+    async promptUser(request: PromptRequest): Promise<PromptResponse> {
         return this.parent.callMethod('browserAPI.promptUser', request);
     }
-    async logToWindow(request: any): Promise<any> {
+    async logToWindow(request: LogRequest): Promise<LogResponse> {
         return this.parent.callMethod('browserAPI.logToWindow', request);
     }
 }
