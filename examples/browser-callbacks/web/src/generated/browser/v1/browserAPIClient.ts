@@ -5,20 +5,20 @@ import { WASMBundle, WASMBundleConfig, ServiceClient } from '@protoc-gen-go-wasm
 
 // Import TypeScript types for method signatures
 import {
-    LogResponse,
-    StorageKeyRequest,
-    StorageValueResponse,
+    FetchRequest,
     StorageSetRequest,
     CookieRequest,
     CookieResponse,
-    AlertRequest,
     AlertResponse,
-    PromptResponse,
-    FetchRequest,
-    FetchResponse,
-    StorageSetResponse,
     PromptRequest,
     LogRequest,
+    LogResponse,
+    FetchResponse,
+    StorageKeyRequest,
+    StorageValueResponse,
+    StorageSetResponse,
+    AlertRequest,
+    PromptResponse,
 } from './interfaces';
 /**
  * BrowserAPI service client interface

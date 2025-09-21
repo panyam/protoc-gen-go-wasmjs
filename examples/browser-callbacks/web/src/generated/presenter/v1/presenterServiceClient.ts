@@ -5,14 +5,14 @@ import { WASMBundle, WASMBundleConfig, ServiceClient } from '@protoc-gen-go-wasm
 
 // Import TypeScript types for method signatures
 import {
-    StateUpdateRequest,
-    UIUpdate,
-    PreferencesRequest,
-    PreferencesResponse,
     CallbackDemoRequest,
     CallbackDemoResponse,
     LoadUserRequest,
     LoadUserResponse,
+    StateUpdateRequest,
+    UIUpdate,
+    PreferencesRequest,
+    PreferencesResponse,
 } from './interfaces';
 /**
  * PresenterService service client interface
