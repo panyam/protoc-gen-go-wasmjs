@@ -139,7 +139,7 @@ class BrowserAPIImpl implements BrowserAPIImpl {
     log(`PromptUser: ${request.message}`);
     // Note: protobuf uses snake_case (default_value) but JavaScript typically uses camelCase
     const defaultValue = request.defaultValue || request.default_value || '';
-    const result = "hello world" ; //window.prompt(request.message, defaultValue);
+    const result = window.prompt(request.message, defaultValue);
     return {
       value: result || '',
       cancelled: result === null
