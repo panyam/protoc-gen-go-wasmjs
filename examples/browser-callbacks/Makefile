@@ -70,14 +70,8 @@ serve-go: build-wasm
 run: buf build-wasm serve
 
 # TypeScript development commands
-ts-install:
-	@cd web && pnpm install
-
-ts-typecheck:
-	@cd web && pnpm run typecheck
-
-ts-build:
-	@cd web && pnpm run build
+tsbuild:
+	@cd web && pnpm run typecheck && pnpm run build
 
 ts-preview:
 	@cd web && pnpm run preview
