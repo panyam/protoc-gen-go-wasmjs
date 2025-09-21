@@ -84,23 +84,9 @@ func (g *FileGenerator) generateTypeScriptClient(data *TemplateData) error {
 	return tmpl.Execute(generatedFile, data)
 }
 
-// generateBrowserServiceManager generates the shared BrowserServiceManager TypeScript file
-func (g *FileGenerator) generateBrowserServiceManager() error {
-	// Always generate in the root of output directory
-	filename := "browserServiceManager.ts"
-
-	// Create generated file
-	generatedFile := g.plugin.NewGeneratedFile(filename, "")
-
-	// Parse and execute template
-	tmpl, err := template.New("browserServiceManager").Funcs(templateFuncMap).Parse(browserServiceManagerTemplate)
-	if err != nil {
-		return err
-	}
-
-	// No data needed for this template
-	return tmpl.Execute(generatedFile, nil)
-}
+// generateBrowserServiceManager is no longer needed as BrowserServiceManager 
+// is now imported from @protoc-gen-go-wasmjs/runtime package
+// Removed: generateBrowserServiceManager() - now imported from runtime package
 
 // generateBuildScript generates a build script for compiling the WASM wrapper
 func (g *FileGenerator) generateBuildScript(data *TemplateData) error {

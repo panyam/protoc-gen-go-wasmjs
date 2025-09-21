@@ -16,3 +16,5 @@ export {
   type WASMResponse,
   WasmError,
 } from './types.js';
+
+export { WASMServiceClient } from './base-client.js';

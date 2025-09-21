@@ -50,16 +50,9 @@ func (tr *TSRenderer) RenderToFile(file *protogen.GeneratedFile, templateContent
 	return ExecuteTemplate("typescript", templateContent, data, file)
 }
 
-// RenderBrowserServiceManager renders the BrowserServiceManager utility class.
-// This is a singleton utility that manages browser-provided services.
-// TODO: This should be moved to an npm package in the future.
-func (tr *TSRenderer) RenderBrowserServiceManager(file *protogen.GeneratedFile) error {
-	// BrowserServiceManager doesn't need data - it's a static utility
-	// We pass an empty struct to satisfy the template executor
-	data := struct{}{}
-
-	return tr.RenderToFile(file, TSBrowserServiceManagerTemplate, data)
-}
+// RenderBrowserServiceManager is no longer needed as BrowserServiceManager
+// is now imported from @protoc-gen-go-wasmjs/runtime package
+// Removed: RenderBrowserServiceManager() - now imported from runtime package
 
 // RenderClient generates the TypeScript client using the provided GeneratedFile.
 // This is a convenience method that uses the embedded client template.

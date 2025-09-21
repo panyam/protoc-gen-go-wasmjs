@@ -20,12 +20,15 @@ export {
   FieldType,
   type FieldSchema,
   type MessageSchema,
+  BaseDeserializer,
+  BaseSchemaRegistry,
 } from './schema/index.js';
 
 // Client types
 export {
   type WASMResponse,
   WasmError,
+  WASMServiceClient,
 } from './client/index.js';
 
 // Factory and patch types

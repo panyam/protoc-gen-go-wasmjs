@@ -2,7 +2,7 @@
 // Generated TypeScript schemas from proto file
 // DO NOT EDIT - This file is auto-generated
 
-import { FieldType, FieldSchema, MessageSchema } from "./deserializer_schemas";
+import { FieldType, FieldSchema, MessageSchema, BaseSchemaRegistry } from "@protoc-gen-go-wasmjs/runtime";
 
 {{range .Messages}}
 /**
@@ -34,40 +34,15 @@ export const {{.SchemaRegistryName}}: Record<string, MessageSchema> = {
 {{end}}};
 
 /**
- * Get schema for a message type from {{.PackageName}} package
+ * Schema registry instance for {{.PackageName}} package with utility methods
+ * Extends BaseSchemaRegistry with package-specific schema data
  */
-export function getSchema(messageType: string): MessageSchema | undefined {
-  return {{.SchemaRegistryName}}[messageType];
-}
+// Schema utility functions (now inherited from BaseSchemaRegistry in runtime package)
+// Creating instance with package-specific schema registry
+const registryInstance = new BaseSchemaRegistry({{.SchemaRegistryName}});
 
-/**
- * Get field schema by name from {{.PackageName}} package
- */
-export function getFieldSchema(messageType: string, fieldName: string): FieldSchema | undefined {
-  const schema = getSchema(messageType);
-  return schema?.fields.find(field => field.name === fieldName);
-}
-
-/**
- * Get field schema by proto field ID from {{.PackageName}} package
- */
-export function getFieldSchemaById(messageType: string, fieldId: number): FieldSchema | undefined {
-  const schema = getSchema(messageType);
-  return schema?.fields.find(field => field.id === fieldId);
-}
-
-/**
- * Check if field is part of a oneof group in {{.PackageName}} package
- */
-export function isOneofField(messageType: string, fieldName: string): boolean {
-  const fieldSchema = getFieldSchema(messageType, fieldName);
-  return fieldSchema?.oneofGroup !== undefined;
-}
-
-/**
- * Get all fields in a oneof group from {{.PackageName}} package
- */
-export function getOneofFields(messageType: string, oneofGroup: string): FieldSchema[] {
-  const schema = getSchema(messageType);
-  return schema?.fields.filter(field => field.oneofGroup === oneofGroup) || [];
-}
+export const getSchema = registryInstance.getSchema.bind(registryInstance);
+export const getFieldSchema = registryInstance.getFieldSchema.bind(registryInstance);
+export const getFieldSchemaById = registryInstance.getFieldSchemaById.bind(registryInstance);
+export const isOneofField = registryInstance.isOneofField.bind(registryInstance);
+export const getOneofFields = registryInstance.getOneofFields.bind(registryInstance);

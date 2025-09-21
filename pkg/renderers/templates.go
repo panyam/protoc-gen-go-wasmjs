@@ -34,8 +34,7 @@ var GoBuildScriptTemplate string
 //go:embed templates/client_simple.ts.tmpl
 var TSSimpleClientTemplate string
 
-//go:embed templates/browser_service_manager.ts.tmpl
-var TSBrowserServiceManagerTemplate string
+// Removed: TSBrowserServiceManagerTemplate (now imported from @protoc-gen-go-wasmjs/runtime)
 
 //go:embed templates/interfaces.ts.tmpl
 var TSInterfacesTemplate string
@@ -52,8 +51,6 @@ var TSSchemaTemplate string
 //go:embed templates/deserializer.ts.tmpl
 var TSDeserializerTemplate string
 
-//go:embed templates/deserializer_schemas.ts.tmpl
-var TSDeserializerSchemasTemplate string
+// Removed: TSDeserializerSchemasTemplate (now imported from @protoc-gen-go-wasmjs/runtime)
 
-//go:embed templates/client.ts.tmpl
-var TSClientTemplate string
+// Removed: TSClientTemplate (unused dead code)

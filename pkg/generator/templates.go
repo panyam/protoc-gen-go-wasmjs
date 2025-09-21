@@ -21,7 +21,7 @@ import (
 // Legacy template access through renderers package
 var wasmTemplate = renderers.GoWasmTemplate
 var typescriptTemplate = renderers.TSSimpleClientTemplate
-var browserServiceManagerTemplate = renderers.TSBrowserServiceManagerTemplate
+// Removed: browserServiceManagerTemplate (now imported from @protoc-gen-go-wasmjs/runtime)
 var buildScriptTemplate = renderers.GoBuildScriptTemplate
 var mainExampleTemplate = renderers.GoMainTemplate
 
@@ -31,4 +31,4 @@ var modelsTemplate = renderers.TSModelsTemplate
 var factoryTemplate = renderers.TSFactoryTemplate
 var schemasTemplate = renderers.TSSchemaTemplate
 var deserializerTemplate = renderers.TSDeserializerTemplate
-var deserializerSchemasTemplate = renderers.TSDeserializerSchemasTemplate
+// Removed: deserializerSchemasTemplate (now imported from @protoc-gen-go-wasmjs/runtime)

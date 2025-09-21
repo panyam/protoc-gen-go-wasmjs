@@ -17,3 +17,6 @@ export {
   type FieldSchema,
   type MessageSchema,
 } from './types.js';
+
+export { BaseDeserializer } from './base-deserializer.js';
+export { BaseSchemaRegistry } from './base-registry.js';

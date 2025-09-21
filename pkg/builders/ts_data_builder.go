@@ -15,6 +15,7 @@
 package builders
 
 import (
+	"log"
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
@@ -89,6 +90,7 @@ type TSFieldInfo struct {
 	TSName       string // TypeScript field name (camelCase)
 	TSType       string // TypeScript type
 	Number       int32  // Field number
+	ProtoFieldID int32  // Proto field ID (alias for Number, for template compatibility)
 	DefaultValue string // Default value for the field
 	IsOptional   bool   // Whether the field is optional
 	IsRepeated   bool   // Whether this is repeated
@@ -173,6 +175,15 @@ func (tb *TSDataBuilder) BuildClientData(
 		return nil, err
 	}
 
+	// Log services and methods for debugging
+	for _, svc := range services {
+		log.Printf("TS BuildClientData: Service %s has %d methods", svc.Name, len(svc.Methods))
+		for _, m := range svc.Methods {
+			log.Printf("  - Method %s (JSName=%s, ShouldGenerate=%v)", m.Name, m.JSName, m.ShouldGenerate)
+		}
+	}
+	log.Printf("TS BuildClientData: APIStructure=%s, JSNamespace=%s", config.JSStructure, tb.getJSNamespace(packageInfo.Name, config))
+
 	// Skip if no services
 	if len(services) == 0 {
 		return nil, nil
@@ -216,7 +227,7 @@ func (tb *TSDataBuilder) BuildTypeData(
 	}
 
 	// Transform to TypeScript-specific structures
-	tsMessages := tb.transformMessages(messageResult.Items)
+	tsMessages := tb.transformMessages(messageResult.Items, packageInfo.Files)
 	tsEnums := tb.transformEnums(enumResult.Items)
 
 	// Build external imports for cross-package references
@@ -337,6 +348,7 @@ func (tb *TSDataBuilder) buildMethodDataForTS(
 	return MethodData{
 		Name:              methodName,
 		JSName:            jsName,
+		ShouldGenerate:    true, // Method passed filtering, should be generated
 		Comment:           strings.TrimSpace(string(method.Comments.Leading)),
 		RequestTSType:     string(method.Input.GoIdent.GoName),
 		ResponseTSType:    string(method.Output.GoIdent.GoName),
@@ -390,10 +402,16 @@ func (tb *TSDataBuilder) getPrimarySourcePath(files []*protogen.File) string {
 }
 
 // transformMessages converts basic MessageInfo to TypeScript-enriched structures.
-func (tb *TSDataBuilder) transformMessages(messages []filters.MessageInfo) []TSMessageInfo {
+func (tb *TSDataBuilder) transformMessages(messages []filters.MessageInfo, protoFiles []*protogen.File) []TSMessageInfo {
 	result := make([]TSMessageInfo, 0, len(messages))
 
+	// Create a map for quick lookup of protogen.Message by fully qualified name
+	protoMessageMap := tb.buildProtoMessageMap(protoFiles)
+
 	for _, msg := range messages {
+		// Find the corresponding protogen.Message for field extraction
+		protoMessage := protoMessageMap[msg.FullyQualifiedName]
+		
 		tsMsg := TSMessageInfo{
 			Name:               msg.Name,
 			TSName:             msg.Name, // TypeScript uses same name as proto
@@ -402,15 +420,153 @@ func (tb *TSDataBuilder) transformMessages(messages []filters.MessageInfo) []TSM
 			ProtoFile:          msg.ProtoFile,
 			Comment:            msg.Comment,
 			MethodName:         "new" + msg.Name, // Factory method name
-			Fields:             []TSFieldInfo{}, // TODO: Add field analysis
+			Fields:             tb.extractFieldInfo(protoMessage),
 			IsNested:           msg.IsNested,
 			IsMapEntry:         msg.IsMapEntry,
-			OneofGroups:        []string{}, // TODO: Add oneof analysis
+			OneofGroups:        tb.extractOneofGroups(protoMessage),
 		}
 		result = append(result, tsMsg)
 	}
 
 	return result
+}
+
+// buildProtoMessageMap creates a lookup map of protogen.Message by fully qualified name
+func (tb *TSDataBuilder) buildProtoMessageMap(protoFiles []*protogen.File) map[string]*protogen.Message {
+	messageMap := make(map[string]*protogen.Message)
+	
+	for _, file := range protoFiles {
+		packageName := string(file.Desc.Package())
+		
+		// Add top-level messages
+		for _, msg := range file.Messages {
+			messageName := string(msg.Desc.Name())
+			fullyQualifiedName := packageName + "." + messageName
+			messageMap[fullyQualifiedName] = msg
+			
+			// Add nested messages recursively
+			tb.addNestedMessages(messageMap, msg, packageName)
+		}
+	}
+	
+	return messageMap
+}
+
+// addNestedMessages recursively adds nested messages to the map
+func (tb *TSDataBuilder) addNestedMessages(messageMap map[string]*protogen.Message, parentMsg *protogen.Message, packageName string) {
+	for _, nestedMsg := range parentMsg.Messages {
+		parentName := string(parentMsg.Desc.Name())
+		nestedName := string(nestedMsg.Desc.Name())
+		fullyQualifiedName := packageName + "." + parentName + "." + nestedName
+		messageMap[fullyQualifiedName] = nestedMsg
+		
+		// Recursively add nested messages
+		tb.addNestedMessages(messageMap, nestedMsg, packageName)
+	}
+}
+
+// extractFieldInfo extracts field information from a protogen.Message
+func (tb *TSDataBuilder) extractFieldInfo(protoMessage *protogen.Message) []TSFieldInfo {
+	if protoMessage == nil {
+		return []TSFieldInfo{}
+	}
+	
+	fields := make([]TSFieldInfo, 0, len(protoMessage.Fields))
+	
+	for _, field := range protoMessage.Fields {
+		fieldNumber := int32(field.Desc.Number())
+		fieldInfo := TSFieldInfo{
+			Name:         string(field.Desc.Name()),
+			TSName:       field.Desc.JSONName(), // camelCase name
+			Number:       fieldNumber,
+			ProtoFieldID: fieldNumber, // Alias for template compatibility
+			IsRepeated:   field.Desc.IsList(),
+			IsOptional:   field.Desc.HasOptionalKeyword(),
+			Comment:      strings.TrimSpace(string(field.Comments.Leading)),
+		}
+		
+		// Handle oneof fields
+		if field.Oneof != nil {
+			fieldInfo.IsOneof = true
+			fieldInfo.OneofGroup = string(field.Oneof.Desc.Name())
+		}
+		
+		// Determine field type and TypeScript type
+		kind := field.Desc.Kind()
+		switch kind.String() {
+		case "string":
+			fieldInfo.TSType = "string"
+			fieldInfo.DefaultValue = `""`
+		case "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "sfixed32", "sfixed64", "double", "float":
+			fieldInfo.TSType = "number"
+			fieldInfo.DefaultValue = "0"
+		case "bool":
+			fieldInfo.TSType = "boolean"
+			fieldInfo.DefaultValue = "false"
+		case "bytes":
+			fieldInfo.TSType = "Uint8Array"
+			fieldInfo.DefaultValue = "new Uint8Array()"
+		case "message":
+			if field.Message != nil {
+				// Get fully qualified message type
+				msgPackage := string(field.Message.Desc.ParentFile().Package())
+				msgName := string(field.Message.Desc.Name())
+				fieldInfo.MessageType = msgPackage + "." + msgName
+				fieldInfo.TSType = msgName // Simple name for TypeScript
+				fieldInfo.DefaultValue = "undefined"
+			}
+		case "enum":
+			if field.Enum != nil {
+				enumName := string(field.Enum.Desc.Name())
+				fieldInfo.TSType = enumName
+				// Find first enum value for default
+				if len(field.Enum.Values) > 0 {
+					fieldInfo.DefaultValue = enumName + "." + string(field.Enum.Values[0].Desc.Name())
+				}
+			}
+		default:
+			fieldInfo.TSType = "any"
+			fieldInfo.DefaultValue = "undefined"
+		}
+		
+		// Handle repeated fields
+		if fieldInfo.IsRepeated {
+			fieldInfo.TSType = fieldInfo.TSType + "[]"
+			fieldInfo.DefaultValue = "[]"
+		}
+		
+		// Handle optional fields
+		if fieldInfo.IsOptional {
+			fieldInfo.TSType = fieldInfo.TSType + " | undefined"
+		}
+		
+		fields = append(fields, fieldInfo)
+	}
+	
+	return fields
+}
+
+// extractOneofGroups extracts oneof group names from a protogen.Message
+func (tb *TSDataBuilder) extractOneofGroups(protoMessage *protogen.Message) []string {
+	if protoMessage == nil {
+		return []string{}
+	}
+	
+	oneofMap := make(map[string]bool)
+	
+	for _, field := range protoMessage.Fields {
+		if field.Oneof != nil {
+			oneofName := string(field.Oneof.Desc.Name())
+			oneofMap[oneofName] = true
+		}
+	}
+	
+	groups := make([]string, 0, len(oneofMap))
+	for group := range oneofMap {
+		groups = append(groups, group)
+	}
+	
+	return groups
 }
 
 // transformEnums converts basic EnumInfo to TypeScript-enriched structures.

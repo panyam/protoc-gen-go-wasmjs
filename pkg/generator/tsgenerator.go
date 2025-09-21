@@ -316,12 +316,8 @@ func (ts *TSGenerator) GenerateAll(messages []MessageInfo, enums []EnumInfo, pac
 		}
 	}
 
-	// Generate deserializer schemas (framework types) - only if we have messages
-	if len(messages) > 0 {
-		if err := ts.generateDeserializerSchemas(packagePath); err != nil {
-			return err
-		}
-	}
+	// Schema framework types are now imported from @protoc-gen-go-wasmjs/runtime package
+	// No longer generating deserializer_schemas.ts - imported from runtime package
 
 	// Generate schemas (only for messages)
 	if len(messages) > 0 {
@@ -850,42 +846,13 @@ func (ts *TSGenerator) generateDeserializerContent(messages []MessageInfo, baseN
 	return result.String(), nil
 }
 
-// generateDeserializerSchemas generates the framework schema types for deserializer
-func (ts *TSGenerator) generateDeserializerSchemas(packagePath string) error {
-	// Create filename for deserializer schemas
-	filename := filepath.Join(packagePath, "deserializer_schemas.ts")
+// generateDeserializerSchemas is no longer needed as schema types
+// are now imported from @protoc-gen-go-wasmjs/runtime package  
+// Removed: generateDeserializerSchemas() - now imported from runtime package
 
-	// Create generated file
-	generatedFile := ts.fileGen.plugin.NewGeneratedFile(filename, "")
-
-	// Generate deserializer schema content (no template data needed - just static types)
-	content, err := ts.generateDeserializerSchemaContent()
-	if err != nil {
-		return err
-	}
-
-	_, err = generatedFile.Write([]byte(content))
-	return err
-}
-
-// generateDeserializerSchemaContent generates the deserializer schema framework types
-func (ts *TSGenerator) generateDeserializerSchemaContent() (string, error) {
-	// Use empty data since this template doesn't need any dynamic content
-	var emptyData struct{}
-
-	tmpl, err := template.New("deserializer_schemas").Funcs(templateFuncMap).Parse(deserializerSchemasTemplate)
-	if err != nil {
-		return "", err
-	}
-
-	var result strings.Builder
-	err = tmpl.Execute(&result, emptyData)
-	if err != nil {
-		return "", err
-	}
-
-	return result.String(), nil
-}
+// generateDeserializerSchemaContent is no longer needed as schema types 
+// are now imported from @protoc-gen-go-wasmjs/runtime package
+// Removed: generateDeserializerSchemaContent() - now imported from runtime package
 
 // buildFactoryName converts package name to factory class name
 func (ts *TSGenerator) buildFactoryName(packageName string) string {

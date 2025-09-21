@@ -85,15 +85,6 @@ export class {{.FactoryName}} {
     return undefined;
   }
 
-{{/* Legacy factory methods for backward compatibility - currently disabled
-{{range .Messages}}  {{.MethodName}}Legacy = (data?: any): {{.TSName}}Interface => {
-    const result = this.{{.MethodName}}(undefined, undefined, undefined, data);
-    return result.fullyLoaded ? result.instance : this.deserializeObject(result.instance, data);
-  }
-
-{{end}}
-*/}}
-
   /**
    * Generic object deserializer that respects factory decisions
    */

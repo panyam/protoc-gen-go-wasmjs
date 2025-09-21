@@ -186,13 +186,8 @@ func (g *FileGenerator) Generate() error {
 			}
 		}
 
-		// Generate BrowserServiceManager (shared component) - only once per generation run
-		// We check if this is the first file being processed to avoid duplicates
-		if g.isFirstFileInGeneration() {
-			if err := g.generateBrowserServiceManager(); err != nil {
-				return err
-			}
-		}
+		// BrowserServiceManager is now imported from @protoc-gen-go-wasmjs/runtime package
+		// No longer generating BrowserServiceManager - it's imported from runtime package
 
 		// Generate new TypeScript interfaces, models, factory, schemas, deserializers
 		// Generate these for ANY package that has messages or enums (not just services)

@@ -139,6 +139,10 @@ func ExecuteTemplateToFile(templateName, templateContent string, data any, file 
 		log.Printf("TEMPLATE: GoTemplateData - Package=%s, ModuleName=%s, Services=%d, JSNamespace=%s, APIStructure=%s",
 			goData.PackageName, goData.ModuleName, len(goData.Services), goData.JSNamespace, goData.APIStructure)
 	}
+	if tsData, ok := data.(*builders.TSTemplateData); ok {
+		log.Printf("TEMPLATE: TSTemplateData - Package=%s, ModuleName=%s, Services=%d, JSNamespace=%s, APIStructure=%s",
+			tsData.PackageName, tsData.ModuleName, len(tsData.Services), tsData.JSNamespace, tsData.APIStructure)
+	}
 
 	if err := tmpl.Execute(file, data); err != nil {
 		log.Printf("ExecuteTEMPLATEToFile: EXECUTION ERROR: %v", err)
