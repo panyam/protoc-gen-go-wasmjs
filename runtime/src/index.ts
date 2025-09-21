@@ -29,6 +29,9 @@ export {
   type WASMResponse,
   WasmError,
   WASMServiceClient,
+  WASMBundle,
+  type WASMBundleConfig,
+  ServiceClient,
 } from './client/index.js';
 
 // Factory and patch types

@@ -18,3 +18,5 @@ export {
 } from './types.js';
 
 export { WASMServiceClient } from './base-client.js';
+export { WASMBundle, type WASMBundleConfig } from './wasm-bundle.js';
+export { ServiceClient } from './service-client.js';
