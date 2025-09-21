@@ -5,7 +5,7 @@ buf: ensureenv clean parent
 	goimports -w `find gen | grep "\.go"`
 
 ensureenv:
-	@test -f buf.yaml && test -f buf.gen.yaml && echo "buf.yaml does not exist.  Run `make setupdev` or `make setupprod` to setup your environment..."
+	@test -f buf.yaml && test -f buf.gen.yaml && echo "buf.yaml does not exist.  Run 'make setupdev' or 'make setupprod' to setup your environment..."
 
 setupdev: cleanall symlink-wasmjs
 	ln -s buf.gen.yaml.dev buf.gen.yaml

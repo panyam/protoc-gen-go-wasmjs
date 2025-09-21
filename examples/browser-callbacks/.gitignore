@@ -1,1 +1,5 @@
-gen/wasm/browser_example.wasm
+*.wasm
+proto/wasmjs
+gen
+buf.yaml
+buf.gen.yaml
