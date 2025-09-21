@@ -180,6 +180,24 @@ export abstract class WASMServiceClient {
     }
 
     /**
+     * Load the WASM module asynchronously
+     */
+    public async loadWasm(wasmPath: string): Promise<void> {
+        if (this.wasmLoadPromise) {
+            return this.wasmLoadPromise;
+        }
+
+        this.wasmLoadPromise = this.loadWASMModule(wasmPath);
+        return this.wasmLoadPromise;
+    }
+
+    /**
+     * Load the WASM module implementation (implemented by subclasses)
+     * This is abstract because it contains template-specific logic
+     */
+    protected abstract loadWASMModule(wasmPath: string): Promise<void>;
+
+    /**
      * Abstract method for getting WASM method function by path
      * Implementation depends on API structure (namespaced, flat, service_based)
      */
