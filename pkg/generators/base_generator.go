@@ -108,16 +108,37 @@ func (bg *BaseGenerator) CollectAllArtifacts(config *builders.GenerationConfig, 
 		Packages: make(map[string]*builders.PackageInfo),
 	}
 
-	// Phase 1: Build complete package map
-	packageFiles, stats := bg.packageFilter.FilterPackages(bg.plugin.Files, criteria)
-	for packageName, files := range packageFiles {
-		packageInfo := &builders.PackageInfo{
-			Name:  packageName,
-			Path:  bg.pathCalc.BuildPackagePath(packageName),
-			Files: files,
+	// Phase 1: Build complete package map from ALL files (ignore Generate flag for artifact collection)
+	allPackageFiles := make(map[string][]*protogen.File)
+	for _, file := range bg.plugin.Files {
+		// Include ALL files for artifact collection, not just those marked for generation
+		packageName := string(file.Desc.Package())
+		// Skip only system packages that we definitely don't want
+		if packageName == "google.protobuf" {
+			continue
 		}
-		catalog.Packages[packageName] = packageInfo
+		allPackageFiles[packageName] = append(allPackageFiles[packageName], file)
 	}
+
+	// Convert to PackageInfo and add to catalog
+	for packageName, files := range allPackageFiles {
+		if len(files) > 0 {
+			packageInfo := &builders.PackageInfo{
+				Name:  packageName,
+				Path:  bg.pathCalc.BuildPackagePath(packageName),
+				Files: files,
+			}
+			catalog.Packages[packageName] = packageInfo
+		}
+	}
+
+	log.Printf("Collected packages from ALL files: %v", func() []string {
+		var names []string
+		for name := range catalog.Packages {
+			names = append(names, name)
+		}
+		return names
+	}())
 
 	// Phase 2: Collect all services across all packages
 	for packageName, packageInfo := range catalog.Packages {
@@ -174,7 +195,6 @@ func (bg *BaseGenerator) CollectAllArtifacts(config *builders.GenerationConfig, 
 
 	log.Printf("Artifact collection complete: %d services, %d browser services, %d message groups, %d enum groups across %d packages",
 		len(catalog.Services), len(catalog.BrowserServices), len(catalog.Messages), len(catalog.Enums), len(catalog.Packages))
-	log.Printf("Package filtering stats: %s", stats.Summary())
 
 	return catalog, nil
 }

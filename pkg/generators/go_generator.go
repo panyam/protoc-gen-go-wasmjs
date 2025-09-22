@@ -23,7 +23,6 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/builders"
-	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/filters"
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/renderers"
 )
@@ -31,57 +30,36 @@ import (
 // GoGenerator orchestrates the complete Go WASM generation process.
 // This is the top-level generator that coordinates all layers to produce Go WASM artifacts.
 type GoGenerator struct {
-	// Core dependencies
-	analyzer *core.ProtoAnalyzer
-	pathCalc *core.PathCalculator
-	nameConv *core.NameConverter
+	// Embed base generator for artifact collection
+	*BaseGenerator
 
-	// Filter layer
-	packageFilter *filters.PackageFilter
-	serviceFilter *filters.ServiceFilter
-	methodFilter  *filters.MethodFilter
-	msgCollector  *filters.MessageCollector
-	enumCollector *filters.EnumCollector
-
-	// Builder and renderer
+	// Builder and renderer specific to Go WASM
 	dataBuilder *builders.GoDataBuilder
 	renderer    *renderers.GoRenderer
-
-	// Generation context
-	plugin *protogen.Plugin
 }
 
 // NewGoGenerator creates a new Go generator with all necessary dependencies.
 // This sets up the complete processing pipeline for Go WASM generation.
 func NewGoGenerator(plugin *protogen.Plugin) *GoGenerator {
-	// Create core utilities
-	analyzer := core.NewProtoAnalyzer()
-	pathCalc := core.NewPathCalculator()
-	nameConv := core.NewNameConverter()
+	// Create base generator with artifact collection capabilities
+	baseGenerator := NewBaseGenerator(plugin)
 
-	// Create filter layer
-	msgCollector := filters.NewMessageCollector(analyzer)
-	enumCollector := filters.NewEnumCollector(analyzer)
-	packageFilter := filters.NewPackageFilter(analyzer, msgCollector, enumCollector)
-	serviceFilter := filters.NewServiceFilter(analyzer)
-	methodFilter := filters.NewMethodFilter(analyzer)
-
-	// Create builder and renderer
-	dataBuilder := builders.NewGoDataBuilder(analyzer, pathCalc, nameConv, serviceFilter, methodFilter, msgCollector, enumCollector)
+	// Create Go-specific builder and renderer  
+	dataBuilder := builders.NewGoDataBuilder(
+		baseGenerator.analyzer,
+		baseGenerator.pathCalc,
+		baseGenerator.nameConv,
+		baseGenerator.serviceFilter,
+		baseGenerator.methodFilter,
+		baseGenerator.msgCollector,
+		baseGenerator.enumCollector,
+	)
 	renderer := renderers.NewGoRenderer()
 
 	return &GoGenerator{
-		analyzer:      analyzer,
-		pathCalc:      pathCalc,
-		nameConv:      nameConv,
-		packageFilter: packageFilter,
-		serviceFilter: serviceFilter,
-		methodFilter:  methodFilter,
-		msgCollector:  msgCollector,
-		enumCollector: enumCollector,
+		BaseGenerator: baseGenerator,
 		dataBuilder:   dataBuilder,
 		renderer:      renderer,
-		plugin:        plugin,
 	}
 }
 

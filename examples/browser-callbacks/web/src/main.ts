@@ -1,5 +1,7 @@
-// Import the generated bundle and runtime  
-import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
+// Import the generated base bundle and service clients
+import { Browser_callbacksBundle } from './generated';
+import { PresenterServiceServiceClient } from './generated/presenter/v1/presenterServiceClient';
+import { BrowserAPIServiceClient } from './generated/browser/v1/browserAPIClient';
 
 // Import TypeScript types for better type safety
 import type { 
@@ -175,14 +177,18 @@ async function init() {
   try {
     setStatus('Loading WASM module...', 'loading');
 
-    // Create presenter bundle
-    const presenterBundle = new Browser_callbacksBundle();
+    // Create base bundle with module configuration
+    const wasmBundle = new Browser_callbacksBundle();
+
+    // Create service clients using composition
+    const presenterService = new PresenterServiceServiceClient(wasmBundle);
+    const browserAPI = new BrowserAPIServiceClient(wasmBundle);
 
     // Register browser API implementation
-    presenterBundle.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
+    wasmBundle.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
 
     // Load WASM module
-    await presenterBundle.loadWasm('/browser_example.wasm');
+    await wasmBundle.loadWasm('/browser_example.wasm');
 
     setStatus('WASM module loaded successfully!', 'success');
     log('WASM module initialized', 'success');
@@ -195,7 +201,7 @@ async function init() {
     });
 
     // Wire up button handlers
-    setupEventHandlers(presenterBundle);
+    setupEventHandlers(presenterService);
   } catch (error: any) {
     setStatus(`Failed to initialize: ${error.message}`, 'error');
     log(`Initialization failed: ${error.message}`, 'error');
@@ -203,7 +209,7 @@ async function init() {
   }
 }
 
-function setupEventHandlers(presenterBundle: Browser_callbacksBundle) {
+function setupEventHandlers(presenterService: PresenterServiceServiceClient) {
   // Load User Data button
   const loadUserBtn = document.getElementById('loadUserBtn');
   loadUserBtn?.addEventListener('click', async () => {
@@ -215,7 +221,7 @@ function setupEventHandlers(presenterBundle: Browser_callbacksBundle) {
       const request: LoadUserRequest = {
         userId: userId
       };
-      const response = await presenterBundle.presenterService.loadUserData(request);
+      const response = await presenterService.loadUserData(request);
 
       log(`User loaded: ${response.username} (${response.email})`, 'success');
       log(`Permissions: ${response.permissions.join(', ')}`);
@@ -238,7 +244,7 @@ function setupEventHandlers(presenterBundle: Browser_callbacksBundle) {
 
     try {
       const request: StateUpdateRequest = { action, params };
-      await presenterBundle.presenterService.updateUIState(
+      await presenterService.updateUIState(
         request,
         (update, error, done) => {
           if (error) {
@@ -278,7 +284,7 @@ function setupEventHandlers(presenterBundle: Browser_callbacksBundle) {
       const request: PreferencesRequest = {
         preferences
       };
-      const response = await presenterBundle.presenterService.savePreferences(request);
+      const response = await presenterService.savePreferences(request);
 
       log(`Preferences saved: ${response.itemsSaved} items`, 'success');
     } catch (error: any) {
@@ -305,7 +311,7 @@ function setupEventHandlers(presenterBundle: Browser_callbacksBundle) {
       const request: CallbackDemoRequest = {
         demoName: 'User Input Collection'
       };
-      await presenterBundle.presenterService.runCallbackDemo(request, (response, error) => {
+      await presenterService.runCallbackDemo(request, (response, error) => {
         if (error) {
           throw new Error(error);
         }

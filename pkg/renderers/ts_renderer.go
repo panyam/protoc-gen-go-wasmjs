@@ -150,6 +150,36 @@ func (tr *TSRenderer) RenderDeserializer(file *protogen.GeneratedFile, data *bui
 	return tr.RenderToFile(file, TSDeserializerTemplate, data)
 }
 
+// RenderBundle generates TypeScript bundle class using the provided GeneratedFile.
+// This renders the shared WASM bundle that manages all service clients for a module.
+func (tr *TSRenderer) RenderBundle(file *protogen.GeneratedFile, data *builders.TSTemplateData) error {
+	if data == nil {
+		return nil
+	}
+
+	// Validate TypeScript template data before rendering
+	if err := tr.ValidateTSTemplateData(data); err != nil {
+		return fmt.Errorf("invalid bundle data: %w", err)
+	}
+
+	return tr.RenderToFile(file, TSBundleTemplate, data)
+}
+
+// RenderBrowserServices generates TypeScript browser service interfaces using the provided GeneratedFile.
+// This renders interfaces that browser implementations must implement.
+func (tr *TSRenderer) RenderBrowserServices(file *protogen.GeneratedFile, data *builders.TSTemplateData) error {
+	if data == nil {
+		return nil
+	}
+
+	// Validate TypeScript template data before rendering
+	if err := tr.ValidateTSTemplateData(data); err != nil {
+		return fmt.Errorf("invalid browser services data: %w", err)
+	}
+
+	return tr.RenderToFile(file, TSBrowserServiceTemplate, data)
+}
+
 // ValidateTSTemplateData performs validation on TypeScript template data before rendering.
 // This catches common issues that would cause template execution failures.
 func (tr *TSRenderer) ValidateTSTemplateData(data *builders.TSTemplateData) error {

@@ -23,7 +23,6 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/builders"
-	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/filters"
 	"github.com/panyam/protoc-gen-go-wasmjs/pkg/renderers"
 )
@@ -31,88 +30,249 @@ import (
 // TSGenerator orchestrates the complete TypeScript generation process.
 // This is the top-level generator that coordinates all layers to produce TypeScript artifacts.
 type TSGenerator struct {
-	// Core dependencies
-	analyzer *core.ProtoAnalyzer
-	pathCalc *core.PathCalculator
-	nameConv *core.NameConverter
+	// Embed base generator for artifact collection
+	*BaseGenerator
 
-	// Filter layer
-	packageFilter *filters.PackageFilter
-	serviceFilter *filters.ServiceFilter
-	methodFilter  *filters.MethodFilter
-	msgCollector  *filters.MessageCollector
-	enumCollector *filters.EnumCollector
-
-	// Builder and renderer
+	// Builder and renderer specific to TypeScript
 	dataBuilder *builders.TSDataBuilder
 	renderer    *renderers.TSRenderer
-
-	// Generation context
-	plugin *protogen.Plugin
 }
 
 // NewTSGenerator creates a new TypeScript generator with all necessary dependencies.
 // This sets up the complete processing pipeline for TypeScript generation.
 func NewTSGenerator(plugin *protogen.Plugin) *TSGenerator {
-	// Create core utilities
-	analyzer := core.NewProtoAnalyzer()
-	pathCalc := core.NewPathCalculator()
-	nameConv := core.NewNameConverter()
+	// Create base generator with artifact collection capabilities
+	baseGenerator := NewBaseGenerator(plugin)
 
-	// Create filter layer
-	msgCollector := filters.NewMessageCollector(analyzer)
-	enumCollector := filters.NewEnumCollector(analyzer)
-	packageFilter := filters.NewPackageFilter(analyzer, msgCollector, enumCollector)
-	serviceFilter := filters.NewServiceFilter(analyzer)
-	methodFilter := filters.NewMethodFilter(analyzer)
-
-	// Create builder and renderer
-	dataBuilder := builders.NewTSDataBuilder(analyzer, pathCalc, nameConv, serviceFilter, methodFilter, msgCollector, enumCollector)
+	// Create TypeScript-specific builder and renderer
+	dataBuilder := builders.NewTSDataBuilder(
+		baseGenerator.analyzer, 
+		baseGenerator.pathCalc, 
+		baseGenerator.nameConv, 
+		baseGenerator.serviceFilter, 
+		baseGenerator.methodFilter, 
+		baseGenerator.msgCollector, 
+		baseGenerator.enumCollector,
+	)
 	renderer := renderers.NewTSRenderer()
 
 	return &TSGenerator{
-		analyzer:      analyzer,
-		pathCalc:      pathCalc,
-		nameConv:      nameConv,
-		packageFilter: packageFilter,
-		serviceFilter: serviceFilter,
-		methodFilter:  methodFilter,
-		msgCollector:  msgCollector,
-		enumCollector: enumCollector,
+		BaseGenerator: baseGenerator,
 		dataBuilder:   dataBuilder,
 		renderer:      renderer,
-		plugin:        plugin,
 	}
 }
 
 // Generate performs the complete TypeScript generation process.
-// This is the main entry point that coordinates all layers to produce TypeScript artifacts.
+// This uses BaseGenerator to collect all artifacts first, then maps them to files.
 func (tg *TSGenerator) Generate(config *builders.GenerationConfig, filterCriteria *filters.FilterCriteria) error {
-	// Phase 1: Filter packages
-	packageFiles, stats := tg.packageFilter.FilterPackages(tg.plugin.Files, filterCriteria)
-
-	if len(packageFiles) == 0 {
-		return nil // No packages to process
+	// Phase 1: Collect all artifacts from all packages
+	catalog, err := tg.CollectAllArtifacts(config, filterCriteria)
+	if err != nil {
+		return fmt.Errorf("artifact collection failed: %w", err)
 	}
 
-	// Phase 2: Generate TypeScript artifacts for each package
-	for packageName, files := range packageFiles {
-		packageInfo := &builders.PackageInfo{
-			Name:  packageName,
-			Path:  tg.pathCalc.BuildPackagePath(packageName),
-			Files: files,
-		}
-
-		// Generate files for this package
-		if err := tg.generatePackageFiles(packageInfo, filterCriteria, config); err != nil {
-			return fmt.Errorf("failed to generate files for package %s: %w", packageName, err)
-		}
+	// Phase 2: Plan files based on artifacts (TypeScript-specific slice/dice/group logic)
+	filePlan := tg.planFilesFromCatalog(catalog, config)
+	
+	if len(filePlan.Specs) == 0 {
+		return nil // No files to generate
 	}
 
-	// Log generation summary (not to stdout to avoid corrupting protobuf response)
-	log.Printf("TypeScript generator processed %s", stats.Summary())
+	// Phase 3: Create file set structure (without protogen files yet)
+	fileSet := builders.NewGeneratedFileSet(filePlan)
+
+	// Phase 4: Create actual protogen files after all mapping decisions are made
+	if err := fileSet.CreateFiles(tg.plugin); err != nil {
+		return fmt.Errorf("file creation failed: %w", err)
+	}
+
+	// Phase 5: Validate file set
+	if err := fileSet.ValidateFileSet(); err != nil {
+		return fmt.Errorf("file planning validation failed: %w", err)
+	}
+
+	// Phase 6: Render all files
+	if err := tg.renderFilesFromCatalog(fileSet, catalog, config, filterCriteria); err != nil {
+		return fmt.Errorf("file rendering failed: %w", err)
+	}
+
+	log.Printf("TypeScript generator processed %d services, %d browser services across %d packages",
+		len(catalog.Services), len(catalog.BrowserServices), len(catalog.Packages))
 
 	return nil
+}
+
+// planFilesFromCatalog creates a file plan based on the complete artifact catalog.
+// This is where TypeScript-specific slice/dice/group logic happens.
+func (tg *TSGenerator) planFilesFromCatalog(catalog *ArtifactCatalog, config *builders.GenerationConfig) *builders.FilePlan {
+	var specs []builders.FileSpec
+
+	// Plan service client files (one per service, organized by package)
+	for _, svcArtifact := range catalog.Services {
+		serviceClientFilename := tg.calculateServiceClientFilename(svcArtifact.Package, svcArtifact.Service, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     fmt.Sprintf("client_%s_%s", svcArtifact.Package.Name, svcArtifact.Service.GoName),
+			Filename: serviceClientFilename,
+			Type:     "service_client",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				HasServices: true,
+			},
+			Metadata: map[string]interface{}{
+				"service":     svcArtifact.Service,
+				"packageInfo": svcArtifact.Package,
+			},
+		})
+	}
+
+	// Plan browser service client files  
+	for _, browserSvcArtifact := range catalog.BrowserServices {
+		serviceClientFilename := tg.calculateServiceClientFilename(browserSvcArtifact.Package, browserSvcArtifact.Service, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     fmt.Sprintf("client_%s_%s", browserSvcArtifact.Package.Name, browserSvcArtifact.Service.GoName),
+			Filename: serviceClientFilename,
+			Type:     "service_client",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				HasServices:        true,
+				HasBrowserServices: true,
+			},
+			Metadata: map[string]interface{}{
+				"service":     browserSvcArtifact.Service,
+				"packageInfo": browserSvcArtifact.Package,
+			},
+		})
+	}
+
+	// Always plan module-level bundle file (simple base class with module config)
+	// Generate bundle once per module - protoc will deduplicate automatically
+	specs = append(specs, builders.FileSpec{
+		Name:     "bundle",
+		Filename: "index.ts", // Module-level bundle
+		Type:     "bundle",
+		Required: true,
+		ContentHints: builders.ContentHints{
+			HasServices: false, // Simple bundle doesn't contain services
+		},
+	})
+
+	// Plan type files per package
+	for _, msgArtifact := range catalog.Messages {
+		packageInfo := msgArtifact.Package
+		
+		// Interfaces file
+		interfacesFilename := tg.calculateInterfacesFilename(packageInfo, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     fmt.Sprintf("interfaces_%s", packageInfo.Name),
+			Filename: interfacesFilename,
+			Type:     "interfaces",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				HasMessages: true,
+			},
+			Metadata: map[string]interface{}{
+				"packageInfo": packageInfo,
+			},
+		})
+
+		// Models, factory, schemas, deserializer files
+		// ... (add other type files as needed)
+	}
+
+	return &builders.FilePlan{
+		PackageName: "module", // This is module-level, not package-level
+		Specs:       specs,
+		Config:      config,
+	}
+}
+
+// renderFilesFromCatalog renders all files using the artifact catalog.
+func (tg *TSGenerator) renderFilesFromCatalog(
+	fileSet *builders.GeneratedFileSet,
+	catalog *ArtifactCatalog,
+	config *builders.GenerationConfig,
+	criteria *filters.FilterCriteria,
+) error {
+	// Render service client files
+	serviceClientFiles := fileSet.GetFilesByType("service_client")
+	for fileName, serviceFile := range serviceClientFiles {
+		spec := fileSet.GetFileSpec(fileName)
+		if spec != nil && spec.Metadata != nil {
+			service := spec.Metadata["service"].(*protogen.Service)
+			packageInfo := spec.Metadata["packageInfo"].(*builders.PackageInfo)
+
+			// Build service client data for this specific service
+			serviceClientData, err := tg.dataBuilder.BuildServiceClientData(packageInfo, service, criteria, config)
+			if err != nil {
+				return fmt.Errorf("failed to build service client data for %s: %w", service.GoName, err)
+			}
+
+			if serviceClientData != nil {
+				if err := tg.renderer.RenderServiceClient(serviceFile, serviceClientData); err != nil {
+					return fmt.Errorf("failed to render service client %s: %w", service.GoName, err)
+				}
+			}
+		}
+	}
+
+	// Render module-level bundle file
+	if bundleFile := fileSet.GetFile("bundle"); bundleFile != nil {
+		bundleData, err := tg.buildBundleDataFromCatalog(catalog, config)
+		if err != nil {
+			return fmt.Errorf("failed to build bundle data: %w", err)
+		}
+
+		if bundleData != nil {
+			if err := tg.renderer.RenderBundle(bundleFile, bundleData); err != nil {
+				return fmt.Errorf("failed to render bundle: %w", err)
+			}
+		}
+	}
+
+	// Render type files
+	interfaceFiles := fileSet.GetFilesByType("interfaces")
+	for fileName, interfaceFile := range interfaceFiles {
+		spec := fileSet.GetFileSpec(fileName)
+		if spec != nil && spec.Metadata != nil {
+			packageInfo := spec.Metadata["packageInfo"].(*builders.PackageInfo)
+
+			// Build type data for this package
+			typeData, err := tg.dataBuilder.BuildTypeData(packageInfo, criteria, config)
+			if err != nil {
+				return fmt.Errorf("failed to build type data for %s: %w", packageInfo.Name, err)
+			}
+
+			if typeData != nil {
+				if err := tg.renderer.RenderInterfaces(interfaceFile, typeData); err != nil {
+					return fmt.Errorf("failed to render interfaces for %s: %w", packageInfo.Name, err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// buildBundleDataFromCatalog creates bundle template data with just module configuration.
+// The simplified bundle only needs module config - no service information needed.
+func (tg *TSGenerator) buildBundleDataFromCatalog(catalog *ArtifactCatalog, config *builders.GenerationConfig) (*builders.TSTemplateData, error) {
+	// Build minimal bundle template data - just module configuration
+	return &builders.TSTemplateData{
+		PackageName:  "module",                           // Module-level bundle
+		PackagePath:  ".",                                // Root level path
+		ModuleName:   tg.getModuleName("", config),       // Module-level name
+		APIStructure: config.JSStructure,                 // Pass-through configuration
+		JSNamespace:  config.JSNamespace,                 // Pass-through configuration
+		Services:     []builders.ServiceData{},           // No services needed for simple bundle
+		Messages:     []builders.TSMessageInfo{},         // No messages needed
+		Enums:        []builders.TSEnumInfo{},             // No enums needed
+		// Minimal flags to satisfy validation
+		HasBrowserServices: false,
+		HasBrowserClients:  false,
+		HasMessages:        false,
+		HasEnums:           false,
+	}, nil
 }
 
 // generatePackageFiles handles complete file generation for a package using file planning.
@@ -184,6 +344,19 @@ func (tg *TSGenerator) planTSFiles(
 				},
 			})
 		}
+
+		// Plan a single bundle file per module (shared by all services)
+		// This should be generated at the root level (e.g., generated/index.ts)
+		bundleFilename := tg.calculateBundleFilename(packageInfo, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     "bundle",
+			Filename: bundleFilename,
+			Type:     "bundle",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				HasServices: true,
+			},
+		})
 	}
 
 	// BrowserServiceManager is now imported from @protoc-gen-go-wasmjs/runtime package
@@ -292,6 +465,21 @@ func (tg *TSGenerator) renderFilesFromPlan(
 		}
 	}
 
+	// Render bundle file if planned
+	if bundleFile := fileSet.GetFile("bundle"); bundleFile != nil {
+		// Build bundle data (includes all services in this package)
+		bundleData, err := tg.dataBuilder.BuildClientData(packageInfo, criteria, config)
+		if err != nil {
+			return fmt.Errorf("failed to build bundle data: %w", err)
+		}
+
+		if bundleData != nil {
+			if err := tg.renderer.RenderBundle(bundleFile, bundleData); err != nil {
+				return fmt.Errorf("failed to render bundle: %w", err)
+			}
+		}
+	}
+
 	// BrowserServiceManager is now imported from @protoc-gen-go-wasmjs/runtime package
 	// No longer rendering BrowserServiceManager - it's imported from runtime package
 
@@ -394,6 +582,13 @@ func (tg *TSGenerator) calculateSchemasFilename(packageInfo *builders.PackageInf
 // calculateDeserializerFilename determines the output filename for TypeScript deserializers.
 func (tg *TSGenerator) calculateDeserializerFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
 	return filepath.Join(packageInfo.Path, "deserializer.ts")
+}
+
+// calculateBundleFilename determines the output filename for the TypeScript bundle.
+// For now, generate one bundle per package alongside the service files.
+func (tg *TSGenerator) calculateBundleFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
+	// Place bundle alongside service files in the package directory
+	return filepath.Join(packageInfo.Path, "index.ts")
 }
 
 // getModuleName determines the TypeScript module name.
