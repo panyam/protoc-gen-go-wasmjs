@@ -27,7 +27,7 @@ clean:
 	rm -f buf.lock
 
 parent:
-	cd ../../ && make default old
+	cd ../../ && make default
 
 # Create symlink to wasmjs annotations for development
 symlink-wasmjs:
