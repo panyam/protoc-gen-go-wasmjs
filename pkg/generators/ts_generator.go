@@ -130,15 +130,20 @@ func (tg *TSGenerator) generatePackageFiles(
 		return nil // No files to generate
 	}
 
-	// Phase 2: Create all GeneratedFile objects
-	fileSet := builders.NewGeneratedFileSet(filePlan, tg.plugin)
+	// Phase 2: Create file set structure (without protogen files yet)
+	fileSet := builders.NewGeneratedFileSet(filePlan)
 
-	// Phase 3: Validate file set
+	// Phase 3: Create actual protogen files after all mapping decisions are made
+	if err := fileSet.CreateFiles(tg.plugin); err != nil {
+		return fmt.Errorf("file creation failed: %w", err)
+	}
+
+	// Phase 4: Validate file set
 	if err := fileSet.ValidateFileSet(); err != nil {
 		return fmt.Errorf("file planning validation failed: %w", err)
 	}
 
-	// Phase 4: Render each file
+	// Phase 5: Render each file
 	if err := tg.renderFilesFromPlan(fileSet, packageInfo, criteria, config); err != nil {
 		return fmt.Errorf("file rendering failed: %w", err)
 	}

@@ -57,6 +57,7 @@ type TSTemplateData struct {
 
 	// Computed flags for template conditionals
 	HasBrowserServices bool // Whether any browser services exist
+	HasBrowserClients  bool // Whether any browser clients exist (alias for HasBrowserServices)
 	HasMessages        bool // Whether there are any messages
 	HasEnums           bool // Whether there are any enums
 
@@ -295,6 +296,15 @@ func (tb *TSDataBuilder) BuildClientData(
 	// Generate names for TypeScript artifacts
 	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
 
+	// Determine if there are any browser services
+	hasBrowserServices := false
+	for _, svc := range services {
+		if svc.IsBrowserProvided {
+			hasBrowserServices = true
+			break
+		}
+	}
+
 	return &TSTemplateData{
 		PackageName:        packageInfo.Name,
 		PackagePath:        packageInfo.Path,
@@ -307,7 +317,8 @@ func (tb *TSDataBuilder) BuildClientData(
 		BaseName:           baseName,
 		APIStructure:       config.JSStructure,
 		JSNamespace:        tb.getJSNamespace(packageInfo.Name, config),
-		HasBrowserServices: false, // TODO: Determine from services
+		HasBrowserServices: hasBrowserServices,
+		HasBrowserClients:  hasBrowserServices, // Same as HasBrowserServices
 	}, nil
 }
 
@@ -355,6 +366,7 @@ func (tb *TSDataBuilder) BuildTypeData(
 		HasMessages:        len(tsMessages) > 0,
 		HasEnums:           len(tsEnums) > 0,
 		HasBrowserServices: false, // This is for type generation, no browser services here
+		HasBrowserClients:  false, // This is for type generation, no browser clients here
 	}, nil
 }
 

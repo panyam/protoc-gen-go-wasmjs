@@ -38,9 +38,9 @@ type FileSpec struct {
 
 	// Content hints for conditional rendering
 	ContentHints ContentHints // Metadata about what content this file will have
-	
+
 	// Additional metadata for template data building
-	Metadata map[string]interface{} // Optional metadata for complex generation scenarios
+	Metadata map[string]any // Optional metadata for complex generation scenarios
 }
 
 // ContentHints provides metadata about what a file will contain.
@@ -71,20 +71,33 @@ type GeneratedFileSet struct {
 	Plan  *FilePlan                          // Original plan this set was created from
 }
 
-// NewGeneratedFileSet creates a new file set from a plan using protogen plugin.
-func NewGeneratedFileSet(plan *FilePlan, plugin *protogen.Plugin) *GeneratedFileSet {
+// NewGeneratedFileSet creates a new file set from a plan without creating protogen files yet.
+// Call CreateFiles() after all artifact mapping decisions are made.
+func NewGeneratedFileSet(plan *FilePlan) *GeneratedFileSet {
 	files := make(map[string]*protogen.GeneratedFile)
 
+	// Initialize map with nil values - files will be created later
 	for _, spec := range plan.Specs {
-		file := plugin.NewGeneratedFile(spec.Filename, "")
-		log.Printf("Created GeneratedFile: %s -> %p", spec.Filename, file)
-		files[spec.Name] = file
+		files[spec.Name] = nil
 	}
 
 	return &GeneratedFileSet{
 		Files: files,
 		Plan:  plan,
 	}
+}
+
+// CreateFiles creates the actual protogen.GeneratedFile objects using the plugin.
+// This should be called after all artifact mapping decisions are finalized.
+func (gfs *GeneratedFileSet) CreateFiles(plugin *protogen.Plugin) error {
+	for _, spec := range gfs.Plan.Specs {
+		if gfs.Files[spec.Name] == nil {
+			file := plugin.NewGeneratedFile(spec.Filename, "")
+			log.Printf("Created GeneratedFile: %s -> %p", spec.Filename, file)
+			gfs.Files[spec.Name] = file
+		}
+	}
+	return nil
 }
 
 // GetFile returns the GeneratedFile for a given logical file name.
