@@ -112,10 +112,10 @@ service BrowserAPI {
 
 ```typescript
 // New bundle-based architecture
-import { Presenter_v1Bundle } from './generated/presenter/v1/presenterServiceClient';
+import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
 
 // Create bundle (manages WASM loading for all services in the module)
-const bundle = new Presenter_v1Bundle();
+const bundle = new Browser_callbacksBundle();
 
 // Register browser service implementations
 bundle.registerBrowserService('BrowserAPI', {
@@ -222,7 +222,7 @@ This generates:
 
 **Per-service TypeScript client** (`presenter/v1/presenterServiceClient.ts`):
 ```typescript
-import { WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+import { WASMBundle, WASMBundleConfig, ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 import {
   LoadUserRequest,
   LoadUserResponse,
@@ -232,16 +232,27 @@ import {
   CallbackDemoResponse,
 } from './interfaces';
 
-export class Presenter_v1Client extends WASMServiceClient {
-  public readonly presenterService: PresenterServiceClientImpl;
+export class Browser_callbacksBundle {
+  private wasmBundle: WASMBundle;
+  public readonly presenterService: PresenterServiceServiceClient;
+  
+  constructor() {
+    const config: WASMBundleConfig = {
+      moduleName: 'browser_callbacks',
+      apiStructure: 'namespaced',
+      jsNamespace: 'browserCallbacks'
+    };
+    this.wasmBundle = new WASMBundle(config);
+    this.presenterService = new PresenterServiceServiceClient(this.wasmBundle);
+  }
   
   async loadWasm(wasmPath: string): Promise<void> { /* ... */ }
 }
 
-class PresenterServiceClientImpl {
+export class PresenterServiceServiceClient extends ServiceClient implements PresenterServiceMethods {
   // Fully typed sync method
   async loadUserData(request: LoadUserRequest): Promise<LoadUserResponse> {
-    return this.parent.callMethod('presenterService.loadUserData', request);
+    return this.callMethod('presenterService.loadUserData', request);
   }
   
   // Fully typed streaming method
@@ -249,7 +260,7 @@ class PresenterServiceClientImpl {
     request: StateUpdateRequest,
     callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean
   ): void {
-    return this.parent.callStreamingMethod('presenterService.updateUIState', request, callback);
+    return this.callStreamingMethod('presenterService.updateUIState', request, callback);
   }
   
   // Fully typed async method with callback
@@ -257,7 +268,7 @@ class PresenterServiceClientImpl {
     request: CallbackDemoRequest, 
     callback: (response: CallbackDemoResponse, error?: string) => void
   ): Promise<void> {
-    return this.parent.callMethodWithCallback('presenterService.runCallbackDemo', request, callback);
+    return this.callMethodWithCallback('presenterService.runCallbackDemo', request, callback);
   }
 }
 ```
@@ -387,25 +398,25 @@ func (s *LibraryService) FindBooks(ctx context.Context, req *FindBooksRequest) (
 
 **Frontend Code** (Fully Typed):
 ```typescript
-// Import the generated per-service client
-import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient';
+// Import the generated per-service bundle
+import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
 import type { LoadUserRequest, CallbackDemoRequest } from './generated/presenter/v1/interfaces';
 
-// Create and load WASM client
-const client = new Presenter_v1Client();
-await client.loadWasm('./presenter.wasm');
+// Create and load WASM bundle
+const bundle = new Browser_callbacksBundle();
+await bundle.loadWasm('./browser_callbacks.wasm');
 
 // Fully typed method calls with IntelliSense support
 const loadRequest: LoadUserRequest = { 
   userId: "user123" 
 };
-const userData = await client.presenterService.loadUserData(loadRequest);
+const userData = await bundle.presenterService.loadUserData(loadRequest);
 
 // Async method with typed callback
 const demoRequest: CallbackDemoRequest = {
   demoName: 'User Input Collection'
 };
-await client.presenterService.runCallbackDemo(demoRequest, (response, error) => {
+await bundle.presenterService.runCallbackDemo(demoRequest, (response, error) => {
   if (error) {
     console.error('Demo failed:', error);
     return;
@@ -437,12 +448,13 @@ Generated TypeScript code imports shared utilities from the runtime package, red
 ### **Usage**
 
 ```typescript
-// Generated per-service clients automatically extend WASMServiceClient
-import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient';
+// Generated per-service bundles automatically use WASMBundle and ServiceClient
+import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
 
 // Manual usage (advanced scenarios)
 import { 
-  WASMServiceClient, 
+  WASMBundle, 
+  ServiceClient,
   BrowserServiceManager,
   WasmError 
 } from '@protoc-gen-go-wasmjs/runtime';
@@ -456,7 +468,7 @@ Generated files include a build script:
 # Generated build.sh
 #!/bin/bash
 export GOOS=js GOARCH=wasm
-go build -o presenter_v1.wasm presenter_v1.wasm.go
+go build -o browser_callbacks.wasm browser_callbacks.wasm.go
 cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
 ```
 
@@ -465,14 +477,14 @@ Integration in web applications:
 ```html
 <script src="wasm_exec.js"></script>
 <script type="module">
-  import { Presenter_v1Client } from './generated/presenter/v1/presenterServiceClient.js';
+  import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient.js';
   
   // Initialize and load WASM
-  const client = new Presenter_v1Client();
-  await client.loadWasm('./presenter.wasm');
+  const bundle = new Browser_callbacksBundle();
+  await bundle.loadWasm('./browser_callbacks.wasm');
   
   // Use with full type safety (in TypeScript)
-  const userData = await client.presenterService.loadUserData({
+  const userData = await bundle.presenterService.loadUserData({
     userId: "user123"
   });
   

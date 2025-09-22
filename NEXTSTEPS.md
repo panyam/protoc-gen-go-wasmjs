@@ -49,6 +49,14 @@
 - **✅ TypeScript compilation**: All generated code compiles without errors
 - **✅ Runtime package**: Clean inheritance-based architecture working
 
+### ✅ **5. Bundle Naming Issue (CRITICAL) - RESOLVED** (September 2025)
+- **✅ Root cause identified**: Line 223 in `TSDataBuilder.BuildServiceClientData` used package names instead of configured module_name
+- **✅ Fix implemented**: Updated to use `tb.getModuleName(packageInfo.Name, config)` method
+- **✅ Correct behavior**: Both `presenter.v1` and `browser.v1` packages now generate `Browser_callbacksBundle`
+- **✅ Configuration usage**: Proper usage of `module_name=browser_callbacks` parameter from buf.gen.yaml
+- **✅ Tests updated**: Integration tests and examples updated to reflect correct naming
+- **✅ Regression prevention**: Added debug tests to prevent future occurrences
+
 ## 🚀 **NEXT PHASE: Enhanced Developer Experience**
 
 ### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**

@@ -323,18 +323,26 @@ export class LibraryV2Deserializer {
 Generated TypeScript classes extend runtime base classes:
 
 ```typescript
-// Generated client (simplified)
-import { WASMServiceClient } from '@protoc-gen-go-wasmjs/runtime';
+// Generated bundle client (simplified)
+import { WASMBundle, WASMBundleConfig, ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 
-export class MyServicesClient extends WASMServiceClient {
+export class My_servicesBundle {
+  private wasmBundle: WASMBundle;
+  public readonly myService: MyServiceServiceClient;
+  
   constructor() {
-    super();
-    this.myService = new MyServiceClientImpl(this);
+    const config: WASMBundleConfig = {
+      moduleName: 'my_services',
+      apiStructure: 'namespaced',
+      jsNamespace: 'myApp'
+    };
+    this.wasmBundle = new WASMBundle(config);
+    this.myService = new MyServiceServiceClient(this.wasmBundle);
   }
   
-  // Only template-specific methods (API structure, WASM loading)
-  protected getWasmMethod(methodPath: string): Function { /* generated */ }
-  private async loadWASMModule(wasmPath: string): Promise<void> { /* generated */ }
+  // Only template-specific methods (WASM loading, service registration)
+  async loadWasm(wasmPath: string): Promise<void> { /* generated */ }
+  registerBrowserService(name: string, implementation: any): void { /* generated */ }
 }
 
 // Generated deserializer (simplified)  

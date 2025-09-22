@@ -201,11 +201,35 @@ export class MyClient extends WASMServiceClient { /* only template-specific code
    - Integration tests with real proto files and plugin execution
    - Test-driven development with proper .proto test files
 
+### ✅ **Phase 7 Complete: Bundle Naming Fix** (September 2025)
+
+**Issue Resolved:**
+- **Problem**: Generated bundles were incorrectly named after package names instead of configured module_name
+- **Examples**: `Presenter_v1Bundle` and `Browser_v1Bundle` instead of `Browser_callbacksBundle`
+- **Root Cause**: Line 223 in `TSDataBuilder.BuildServiceClientData` used `baseName` instead of `getModuleName()`
+
+**Fix Applied:**
+- **File**: `pkg/builders/ts_data_builder.go:223`
+- **Before**: `ModuleName: baseName` (package-derived naming)
+- **After**: `ModuleName: tb.getModuleName(packageInfo.Name, config)` (uses configured module_name)
+
+**Results:**
+- Both `presenter.v1` and `browser.v1` packages now correctly generate `Browser_callbacksBundle`
+- `moduleName: 'browser_callbacks'` in both generated files (was `'presenter_v1'` and `'browser_v1'`)
+- Proper usage of configured `module_name` parameter from buf.gen.yaml
+- Updated examples and tests to reflect correct bundle naming
+
+**Test-Driven Debugging Success:**
+- Created comprehensive debug tests to isolate the exact issue
+- Confirmed parameter parsing, configuration flow, and template logic all worked correctly
+- Identified the single line causing incorrect behavior through methodical elimination
+- Added regression tests to prevent future occurrences
+
 ### 🚀 **Next Development Phase:**
 
-1. **Typed Callback Generation**: Generate proper TypeScript types for async method callbacks
-2. **Enhanced Import System**: Auto-import response types in client templates
-3. **Developer Experience**: Full IntelliSense support for all method signatures
+1. **Enhanced Error Handling**: Improve error messages and validation
+2. **Performance Optimizations**: Bundle size reduction and load time improvements
+3. **Advanced Features**: Additional protocol buffer features and optimizations
 
 ## Architecture Benefits Already Achieved
 

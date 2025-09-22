@@ -124,10 +124,10 @@ browser-callbacks/
 The example uses the new bundle-based architecture:
 
 ```typescript
-import { Presenter_v1Bundle } from './generated/presenter/v1/presenterServiceClient';
+import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
 
 // Create bundle - manages WASM loading for all services
-const bundle = new Presenter_v1Bundle();
+const bundle = new Browser_callbacksBundle();
 
 // Register browser API implementation
 bundle.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
