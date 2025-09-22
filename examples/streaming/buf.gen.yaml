@@ -20,19 +20,17 @@ plugins:
   # =================================================================
 
   # Target 1: Generate WASM wrapper
-  - local: ../../bin/protoc-gen-go-wasmjs-old
+  - local: ../../bin/protoc-gen-go-wasmjs-go
     out: ./gen/wasm
     opt:
       - js_structure=namespaced
       - js_namespace=streamingService
       - module_name=streaming_service
-      - generate_typescript=false  # Only generate WASM
 
   # Target 2: Generate TypeScript client  
-  - local: ../../bin/protoc-gen-go-wasmjs-old
+  - local: ../../bin/protoc-gen-go-wasmjs-ts
     out: ./web/gen/wasmts
     opt:
       - js_structure=namespaced
       - js_namespace=streamingService
       - module_name=streaming_service
-      - generate_wasm=false  # Only generate TypeScript

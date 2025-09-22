@@ -42,9 +42,6 @@ type GoTemplateData struct {
 	// Client interfaces (for browser-provided services)
 	BrowserClients []ServiceData // Clients for browser-provided services
 
-	// Legacy field for compatibility (deprecated)
-	BrowserServices []ServiceData // Browser-provided services (JS implementations)
-
 	// JavaScript API configuration
 	JSNamespace  string // Global namespace (e.g., "library_v1")
 	APIStructure string // namespaced|flat|service_based
@@ -58,7 +55,6 @@ type GoTemplateData struct {
 	HasEnums           bool // Whether any enums exist
 	HasServices        bool // Whether any services to implement exist
 	HasBrowserClients  bool // Whether any browser clients exist
-	HasBrowserServices bool // Whether any browser services exist (deprecated)
 }
 
 // GoDataBuilder builds template data structures specifically for Go WASM generation.
@@ -148,7 +144,6 @@ func (gb *GoDataBuilder) BuildTemplateData(
 		Enums:              enums,
 		Services:           serviceImplementations,
 		BrowserClients:     browserClients,
-		BrowserServices:    browserClients, // Legacy field for backward compatibility
 		JSNamespace:        jsNamespace,
 		APIStructure:       config.JSStructure,
 		Imports:            context.GetImports(),
@@ -157,7 +152,6 @@ func (gb *GoDataBuilder) BuildTemplateData(
 		HasEnums:           len(enums) > 0,
 		HasServices:        len(serviceImplementations) > 0,
 		HasBrowserClients:  len(browserClients) > 0,
-		HasBrowserServices: len(browserClients) > 0, // Legacy flag
 	}, nil
 }
 
@@ -295,43 +289,7 @@ func (gb *GoDataBuilder) buildBrowserClients(
 	return clients, nil
 }
 
-// buildBrowserServices builds service data for browser-provided services.
-// These services are implemented in JavaScript and consumed by Go WASM.
-// DEPRECATED: Use buildBrowserClients instead
-func (gb *GoDataBuilder) buildBrowserServices(
-	allBrowserServices []*protogen.Service,
-	criteria *filters.FilterCriteria,
-	context *BuildContext,
-) ([]ServiceData, error) {
 
-	var services []ServiceData
-
-	for _, service := range allBrowserServices {
-		// Browser services should already be filtered, but double-check
-		serviceResult := gb.serviceFilter.ShouldIncludeService(service, criteria)
-		if !serviceResult.Include || !serviceResult.IsBrowserProvided {
-			continue
-		}
-
-		// Get the file for this service
-		file := gb.findFileForService(service)
-		if file == nil {
-			continue
-		}
-
-		// Build service data
-		serviceData, err := gb.buildServiceData(service, file, serviceResult, criteria, context)
-		if err != nil {
-			return nil, err
-		}
-
-		if serviceData != nil {
-			services = append(services, *serviceData)
-		}
-	}
-
-	return services, nil
-}
 
 // buildServiceData creates ServiceData from a protogen.Service and filter result.
 func (gb *GoDataBuilder) buildServiceData(

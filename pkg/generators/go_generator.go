@@ -129,8 +129,8 @@ func (gg *GoGenerator) Generate(config *builders.GenerationConfig, filterCriteri
 			continue
 		}
 		
-		log.Printf("Generated template data for package %s: %d services, %d browser services", 
-			packageName, len(templateData.Services), len(templateData.BrowserServices))
+		log.Printf("Generated template data for package %s: %d services, %d browser clients", 
+			packageName, len(templateData.Services), len(templateData.BrowserClients))
 
 		// Validate template data
 		if err := gg.renderer.ValidateGoTemplateData(templateData); err != nil {
@@ -222,7 +222,7 @@ func (gg *GoGenerator) planGoFiles(data *builders.GoTemplateData, config *builde
 		Required: true,
 		ContentHints: builders.ContentHints{
 			HasServices:        len(data.Services) > 0,
-			HasBrowserServices: data.HasBrowserServices,
+			HasBrowserServices: data.HasBrowserClients,
 		},
 	})
 

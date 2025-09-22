@@ -618,8 +618,7 @@ To publish this plugin to buf.build (for maintainers):
 ```
 ├── cmd/
 │   ├── protoc-gen-go-wasmjs-go/     # Go WASM generator
-│   ├── protoc-gen-go-wasmjs-ts/     # TypeScript client generator
-│   └── protoc-gen-go-wasmjs-old/    # Legacy monolithic generator
+│   └── protoc-gen-go-wasmjs-ts/     # TypeScript client generator
 ├── pkg/
 │   ├── core/                        # Pure utility functions (30+ tests)
 │   ├── filters/                     # Business logic filtering (25+ tests)

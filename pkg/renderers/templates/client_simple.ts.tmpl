@@ -32,13 +32,13 @@ export interface {{ .Name }}Methods {
 }
 {{- end }}
 
-{{- if .HasBrowserServices }}
+{{- if .HasBrowserClients }}
 
 // =============================================================================
 // Browser Service Interfaces
 // =============================================================================
 
-{{- range .BrowserServices }}
+{{- range .BrowserClients }}
 /**
  * {{ .Name }} browser service interface
  * Implement this interface to provide browser functionality to WASM

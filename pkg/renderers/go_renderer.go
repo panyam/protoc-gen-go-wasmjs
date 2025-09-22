@@ -201,10 +201,10 @@ func (gr *GoRenderer) ValidateGoTemplateData(data *builders.GoTemplateData) erro
 		}
 	}
 
-	// Validate browser services
-	for i, service := range data.BrowserServices {
+	// Validate browser clients
+	for i, service := range data.BrowserClients {
 		if !service.IsBrowserProvided {
-			return fmt.Errorf("browser service %s at index %d has IsBrowserProvided=false", service.Name, i)
+			return fmt.Errorf("browser client %s at index %d has IsBrowserProvided=false", service.Name, i)
 		}
 	}
 

@@ -9,7 +9,7 @@ import { {{ .Name }}ServiceClient } from './{{ .PackagePath }}/{{ .FileName }}';
 {{- end }}
 
 // Import browser service interfaces (for type hints in registerBrowserService)
-{{- range .BrowserServices }}
+{{- range .BrowserClients }}
 import { {{ .Name }}Server } from './{{ .PackagePath }}/{{ .FileName }}';
 {{- end }}
 
