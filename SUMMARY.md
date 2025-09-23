@@ -169,19 +169,24 @@ Same business logic runs in both environments:
 - Maintain consistent API across deployments
 
 ## Current Status (September 2025)
-The project has completed a comprehensive refactoring and achieved **production-ready status** with:
-- ✅ **Enhanced Factory Method Design** with context-aware construction and parent object tracking
-- ✅ **Schema-Aware Deserialization** with type-safe field resolution and proto field ID support
-- ✅ **Cross-Package Factory Composition** with automatic dependency detection and delegation
-- ✅ **Package-Scoped Schema Registries** for conflict-free multi-version support
-- ✅ **Self-contained TypeScript generation** eliminating external generator dependencies
-- ✅ **Simplified client architecture** with direct JSON serialization
-- ✅ **Multi-target generation support** for flexible deployment patterns
-- ✅ **Template-based generation system** with full customization support
-- ✅ **Production-ready code generation** with comprehensive testing
-- ✅ **Per-service client generation** following proto directory structure
-- ✅ **Runtime package architecture** with inheritance-based TypeScript clients
-- ✅ **Browser service communication** with full WASM ↔ JavaScript integration
+The project has completed a comprehensive refactoring and achieved **production-ready status** with BaseGenerator architecture:
+
+### **Core Architecture (September 2025)**
+- **BaseGenerator Artifact Collection**: Complete 4-step approach separating artifact collection from protogen file creation
+- **Cross-Package Visibility**: BaseGenerator collects ALL artifacts regardless of protoc's Generate flags
+- **Flexible File Mapping**: N artifacts to 1 file or 1 artifact to N files based on generator logic
+- **Simplified Bundle Generation**: Base bundle class with user composition patterns
+- **Per-Service Client Files**: Clean package-level service client generation
+- **TypeScript Type Safety**: Full compilation with proper interface generation
+
+### **Completed Major Features**
+- **Enhanced Factory Method Design** with context-aware construction and parent object tracking
+- **Schema-Aware Deserialization** with type-safe field resolution and proto field ID support
+- **Cross-Package Factory Composition** with automatic dependency detection and delegation
+- **Package-Scoped Schema Registries** for conflict-free multi-version support
+- **Self-contained TypeScript generation** eliminating external generator dependencies
+- **Runtime package architecture** with inheritance-based TypeScript clients
+- **Browser service communication** with full WASM ↔ JavaScript integration
 
 ### Recent Quality & TypeScript Improvements (Latest)
 - ✅ **Native Map Type Support**: Fixed proto `map<K,V>` fields to generate TypeScript `Map<K,V>` instead of synthetic interfaces
@@ -218,12 +223,22 @@ The project has completed a comprehensive refactoring and achieved **production-
 - 🔄 **Phase 2: Client Streaming** (Planned): Connection objects with `send()`, `close()`, `isOpen()` methods
 - 🔄 **Phase 3: Bidirectional Streaming** (Planned): Combined server and client streaming capabilities
 
-**Major Architecture Achievements**: 
-1. **Factory Composition System**: Implemented sophisticated cross-package factory delegation enabling seamless object creation across package boundaries with automatic dependency injection
-2. **Schema-Aware Architecture**: Built complete schema generation and deserialization system with field metadata, proto field IDs, and oneof support for type-safe runtime processing
-3. **Self-Generated TypeScript**: Successfully transitioned from complex conversion-based architecture to streamlined self-generated TypeScript classes that match Go's protojson format exactly
-4. **Type-Safe Map Handling**: Proper conversion of protobuf map fields to native TypeScript Map types with synthetic message filtering
-5. **External Type Integration**: Complete external type mapping system with configurable mappings, table-driven factory methods, and seamless conversion between protobuf and TypeScript types
-6. **Developer Experience Excellence**: Type-safe MESSAGE_TYPE constants, ergonomic static deserialization methods, and performance-optimized shared factory instances for production-ready usage
+### **BaseGenerator Architecture Implementation (September 2025)**
+**Complete artifact-centric approach implemented:**
 
-**Production Readiness**: System handles complex nested object hierarchies, cross-package dependencies, real-world proto features (maps, external types), per-service client generation, browser service integration, and maintains full TypeScript type safety with comprehensive test validation.
+1. **BaseGenerator Foundation**: Both TSGenerator and GoGenerator embed BaseGenerator for unified artifact collection
+2. **4-Step Processing**: CollectAllArtifacts() → Classify → Map → CreateFiles() separates concerns cleanly  
+3. **Cross-Package Visibility**: Artifact collection sees ALL packages/services regardless of protoc Generate flags
+4. **Flexible File Mapping**: Generator-specific slice/dice/group logic with N:1 and 1:N file mapping
+5. **Delayed File Creation**: protogen.NewGeneratedFile() calls delayed until after all artifact mapping decisions
+6. **Simplified Bundle**: Base bundle extends WASMBundle with module config, users add services via composition
+
+**Major Architecture Achievements**: 
+1. **Artifact-Driven Generation**: Complete separation of artifact discovery from file generation decisions
+2. **Generator Independence**: Each generator controls its own file mapping logic without protogen constraints
+3. **Bundle Architecture Simplification**: Eliminated complex cross-package coordination in favor of user composition
+4. **File Visit Order Resolution**: Protogen only involved in final step after all mapping decisions complete
+5. **Template Architecture**: Clean separation between service clients, bundle, browser services, and type files
+6. **User Experience**: Composition pattern gives users complete control over service inclusion
+
+**Production Readiness**: System provides complete artifact visibility for mapping decisions, eliminates file generation ordering issues, maintains TypeScript type safety, and enables flexible user patterns for service composition.

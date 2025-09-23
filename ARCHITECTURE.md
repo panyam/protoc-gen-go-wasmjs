@@ -2,7 +2,7 @@
 
 ## Overview
 
-protoc-gen-go-wasmjs follows a plugin architecture that integrates with the Protocol Buffers compiler toolchain. It generates two primary artifacts: Go WASM wrappers and TypeScript clients, enabling seamless communication between JavaScript environments and Go service implementations compiled to WebAssembly.
+protoc-gen-go-wasmjs follows a layered plugin architecture with BaseGenerator artifact collection that integrates with the Protocol Buffers compiler toolchain. It implements a 4-step artifact processing approach that separates protogen dependency from file mapping decisions, enabling flexible artifact grouping and reliable file generation order.
 
 ## High-Level Architecture
 
@@ -13,26 +13,70 @@ protoc-gen-go-wasmjs follows a plugin architecture that integrates with the Prot
                                │                           │
                                ▼                           ▼
                      ┌──────────────────┐         ┌─────────────────┐
-                     │ protoc-gen-go-   │         │ • WASM wrapper  │
-                     │     wasmjs        │         │ • TS client     │
-                     └──────────────────┘         │ • Build script  │
+                     │  BaseGenerator   │         │ Service clients │
+                     │  + TSGenerator   │         │ Base bundle     │
+                     │  + GoGenerator   │         │ TypeScript types│
+                     └──────────────────┘         │ WASM wrapper    │
                                                   └─────────────────┘
+```
+
+## 4-Step Artifact Processing Approach
+
+The architecture implements a clean separation between artifact collection and file generation:
+
+```
+1. COLLECT ALL ARTIFACTS    → BaseGenerator.CollectAllArtifacts()
+   ├─ Get map of all artifacts from protogen
+   └─ Available regardless of protoc's Generate flags
+
+2. CLASSIFY ARTIFACTS       → ArtifactCatalog
+   ├─ Services (regular + browser)
+   ├─ Messages by package
+   └─ Enums by package
+
+3. MAP ARTIFACTS TO FILES   → planFilesFromCatalog()
+   ├─ Generator-specific slice/dice/group logic
+   ├─ N artifacts → 1 file (bundle with multiple services)
+   └─ 1 artifact → 1 file (per-service clients)
+
+4. CREATE PROTOGEN FILES    → fileSet.CreateFiles(plugin)
+   ├─ Send final mapping to protogen
+   └─ Only after all artifact mapping decisions are complete
 ```
 
 ## Core Components
 
-### 1. Plugin Entry Point (`cmd/protoc-gen-go-wasmjs/main.go`)
-- Receives CodeGeneratorRequest from protoc
-- Delegates to generator package
-- Returns CodeGeneratorResponse with generated files
+### 1. BaseGenerator (`pkg/generators/base_generator.go`)
+The foundation component that provides artifact collection for all generators:
+- Collects complete artifact catalog from ALL proto files (ignores Generate flags)
+- Classifies artifacts into services, messages, enums by package
+- Provides shared utilities (ProtoAnalyzer, PathCalculator, NameConverter)
+- Embedded by both GoGenerator and TSGenerator for consistency
 
-### 2. Generator (`pkg/generator/generator.go`)
-The main orchestrator that:
-- Parses configuration options
-- Analyzes proto files and services
-- Groups files by package
-- Applies filtering and transformation rules
-- Executes templates
+```go
+type ArtifactCatalog struct {
+    Services        []ServiceArtifact  // Regular services
+    BrowserServices []ServiceArtifact  // Browser-provided services
+    Messages        []MessageArtifact  // Messages by package
+    Enums           []EnumArtifact     // Enums by package
+    Packages        map[string]*PackageInfo // Complete package map
+}
+```
+
+### 2. TSGenerator (`pkg/generators/ts_generator.go`) 
+TypeScript-specific generator that embeds BaseGenerator:
+- Collects all artifacts using BaseGenerator.CollectAllArtifacts()
+- Maps artifacts to files with TypeScript-specific logic
+- Generates service clients at package level (presenter/v1/presenterServiceClient.ts)
+- Generates simple base bundle at module level (index.ts)
+- Renders TypeScript interfaces, types, and clients
+
+### 3. GoGenerator (`pkg/generators/go_generator.go`)
+Go WASM-specific generator that embeds BaseGenerator:
+- Uses BaseGenerator for artifact collection and utilities
+- Maps artifacts to Go WASM files with Go-specific logic
+- Generates WASM wrappers, examples, and build scripts
+- Maintains direct file creation for Go artifacts
 
 ### 3. Configuration System (`pkg/generator/config.go`)
 Comprehensive configuration parsing:
@@ -61,27 +105,64 @@ type Config struct {
 }
 ```
 
-### 4. Template System (`pkg/generator/templates/`)
-Embedded templates using Go's `embed` package:
+### 4. Template System (`pkg/renderers/templates/`)
+Embedded templates using Go's `embed` package with inheritance-based architecture:
+
+**Go Templates:**
 - `wasm.go.tmpl` - Go WASM wrapper generation
-- `client_simple.ts.tmpl` - Simplified TypeScript client generation
+- `main.go.tmpl` - Example usage generation  
+- `build.sh.tmpl` - Build script generation
+
+**TypeScript Templates:**
+- `client_simple.ts.tmpl` - Service client generation (cleaned of bundle code)
+- `bundle.ts.tmpl` - Simple base bundle class extending WASMBundle
+- `browser_service.ts.tmpl` - Browser service interfaces
 - `interfaces.ts.tmpl` - TypeScript interface generation
 - `models.ts.tmpl` - TypeScript model class generation
 - `factory.ts.tmpl` - TypeScript factory generation
-- `build.sh.tmpl` - Build script generation
-- `main.go.tmpl` - Example usage generation
+- `schemas.ts.tmpl` - Schema definitions
+- `deserializer.ts.tmpl` - Schema-aware deserializers
 
-### 5. TypeScript Generation (`pkg/generator/tsgenerator.go`)
-Dedicated TypeScript generation logic:
-- Proto message analysis and field type conversion
-- Interface and model class generation
-- Enhanced factory pattern with cross-package composition
-- Schema generation with field metadata and proto field IDs
-- Deserializer generation with factory integration
-- Package-based nested directory structure
-- Cross-package dependency detection and import management
-- **Comprehensive Enum Support**: Complete enum collection, generation, and import system
-- **wasmjs.v1 Package Filtering**: Intelligent filtering to exclude annotation packages from artifact generation
+### 5. Simplified Bundle Architecture
+The bundle architecture uses composition and inheritance patterns for maximum flexibility:
+
+**Generated Base Bundle:**
+```typescript
+// generated/index.ts - Simple base class with module configuration
+export class Browser_callbacksBundle extends WASMBundle {
+    constructor() {
+        super({
+            moduleName: 'browser_callbacks',
+            apiStructure: 'namespaced',
+            jsNamespace: 'browserCallbacks'
+        });
+    }
+}
+```
+
+**User Composition Pattern:**
+```typescript
+// User creates their own bundle with needed services
+const wasmBundle = new Browser_callbacksBundle();
+const presenterService = new PresenterServiceServiceClient(wasmBundle);
+const browserAPI = new BrowserAPIServiceClient(wasmBundle);
+
+// Users can also extend for convenience
+class MyAppBundle extends Browser_callbacksBundle {
+    public readonly presenter: PresenterServiceServiceClient;
+    constructor() {
+        super();
+        this.presenter = new PresenterServiceServiceClient(this);
+    }
+}
+```
+
+**Benefits:**
+- No cross-package coordination complexity
+- Users include only needed services
+- Clean separation between WASM management and service usage
+- Eliminates duplicate file generation issues
+- Maximum flexibility for different use cases
 
 ### 6. Type System (`pkg/generator/types.go`)
 Data structures passed to templates and message analysis:

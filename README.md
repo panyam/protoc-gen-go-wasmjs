@@ -6,17 +6,17 @@ It generates flexible WASM exports and TypeScript clients from your protobuf ser
 
 ## Features
 
-- **Bundle-Based Client Generation**: Services grouped into WASM bundles with shared loading and individual service clients
-- **Dual-Target Architecture**: Generate WASM and TypeScript artifacts separately for flexible deployment
-- **Full TypeScript Type Safety**: Automatically generates typed method signatures with IntelliSense support
+- **BaseGenerator Architecture**: 4-step artifact processing approach separating collection from file generation
+- **Composition-Based Bundles**: Simple base bundle classes with user-controlled service composition
+- **Per-Service Client Generation**: Individual service clients following proto directory structure
+- **Cross-Package Artifact Visibility**: Complete artifact catalog regardless of protoc Generate flags
+- **Flexible File Mapping**: Generator-specific logic for N:1 and 1:N artifact-to-file mapping
+- **Dual-Target Architecture**: Generate WASM and TypeScript artifacts with shared BaseGenerator foundation
+- **Full TypeScript Type Safety**: Automatically generates typed interfaces with proper import resolution
 - **Runtime Package Integration**: Clean inheritance-based architecture with shared utilities
 - **Browser Service Communication**: Seamless WASM to browser API integration with async support
-- **Smart Import Detection**: Automatically analyzes proto files to generate accurate TypeScript imports
 - **Dependency Injection**: Full control over service initialization with database, auth, config injection
 - **Local-First Architecture**: Same service interface runs on server (full database) or browser (local storage)
-- **Export Pattern**: Generates reusable exports instead of fixed main() for maximum flexibility
-- **Split Generator Architecture**: Language-specific generators for focused, testable code generation
-- **Extensive Customization**: Method filtering, renaming, and service targeting
 - **Build Pipeline Integration**: Seamless integration with buf and modern protobuf toolchains
 
 ## Quick Start
@@ -111,14 +111,20 @@ service BrowserAPI {
 ```
 
 ```typescript
-// New bundle-based architecture
-import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
+// New composition-based architecture
+import { Browser_callbacksBundle } from './generated';
+import { PresenterServiceServiceClient } from './generated/presenter/v1/presenterServiceClient';
+import { BrowserAPIServiceClient } from './generated/browser/v1/browserAPIClient';
 
-// Create bundle (manages WASM loading for all services in the module)
-const bundle = new Browser_callbacksBundle();
+// Create base bundle with module configuration
+const wasmBundle = new Browser_callbacksBundle();
+
+// Create service clients using composition
+const presenterService = new PresenterServiceServiceClient(wasmBundle);
+const browserAPI = new BrowserAPIServiceClient(wasmBundle);
 
 // Register browser service implementations
-bundle.registerBrowserService('BrowserAPI', {
+wasmBundle.registerBrowserService('BrowserAPI', {
   async getLocalStorage(request) {
     return { value: localStorage.getItem(request.key) || '', exists: true };
   },
@@ -132,12 +138,41 @@ bundle.registerBrowserService('BrowserAPI', {
   }
 });
 
-// Load WASM once for all services in this bundle
-await bundle.loadWasm('./my_module.wasm');
+// Load WASM once for all services in this module
+await wasmBundle.loadWasm('./my_module.wasm');
 
 // Use individual service clients (all share the same WASM)
-await bundle.presenterService.loadUserData({ userId: '123' });
+await presenterService.loadUserData({ userId: '123' });
 ```
+
+## Generated File Structure
+
+The generators create clean, organized file structures following proto package hierarchy:
+
+```
+web/src/generated/
+├── index.ts                           # Base bundle class (module-level)
+├── presenter/v1/
+│   ├── presenterServiceClient.ts      # Service client (package-level)
+│   └── interfaces.ts                  # TypeScript interfaces
+└── browser/v1/
+    ├── browserAPIClient.ts            # Browser service client
+    └── interfaces.ts                  # TypeScript interfaces
+
+gen/wasm/go/
+├── presenter/v1/
+│   ├── presenter_v1.wasm.go          # WASM wrapper
+│   └── main.go.example               # Usage example
+└── browser/v1/
+    ├── browser_v1.wasm.go
+    └── main.go.example
+```
+
+**Key Architecture:**
+- **Base Bundle**: Simple class extending WASMBundle with module configuration
+- **Service Clients**: Individual clients per service following proto structure
+- **User Composition**: Users choose which services to include
+- **Package Organization**: Mirrors proto package structure for clarity
 
 ### Using Generated Exports (Dependency Injection)
 
@@ -410,13 +445,13 @@ await bundle.loadWasm('./browser_callbacks.wasm');
 const loadRequest: LoadUserRequest = { 
   userId: "user123" 
 };
-const userData = await bundle.presenterService.loadUserData(loadRequest);
+const userData = await presenterService.loadUserData(loadRequest);
 
 // Async method with typed callback
 const demoRequest: CallbackDemoRequest = {
   demoName: 'User Input Collection'
 };
-await bundle.presenterService.runCallbackDemo(demoRequest, (response, error) => {
+await presenterService.runCallbackDemo(demoRequest, (response, error) => {
   if (error) {
     console.error('Demo failed:', error);
     return;
@@ -484,7 +519,7 @@ Integration in web applications:
   await bundle.loadWasm('./browser_callbacks.wasm');
   
   // Use with full type safety (in TypeScript)
-  const userData = await bundle.presenterService.loadUserData({
+  const userData = await presenterService.loadUserData({
     userId: "user123"
   });
   
