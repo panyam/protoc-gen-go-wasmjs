@@ -4,7 +4,7 @@ buf: ensureenv clean parent
 	buf generate
 	goimports -w `find gen | grep "\.go"`
 
-all: buf wasm serve
+all: buf wasm tsbuild serve
 
 ensureenv:
 	@test -f buf.yaml && test -f buf.gen.yaml && echo "buf.yaml does not exist.  Run 'make setupdev' or 'make setupprod' to setup your environment..."
