@@ -107,12 +107,12 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 			t.Error("main.ts should use Browser_callbacksBundle")
 		}
 
-		// Should access service property
-		if !strings.Contains(contentStr, ".presenterService.") {
-			t.Error("main.ts should access presenterService property")
+		// Should access service via composition pattern
+		if !strings.Contains(contentStr, "presenterService.") && !strings.Contains(contentStr, "PresenterService") {
+			t.Error("main.ts should access presenterService via composition pattern")
 		}
 
-		t.Logf("✅ Example main.js properly uses per-service clients")
+		t.Log("Example main.js properly uses per-service clients with composition pattern")
 	})
 
 	t.Run("AsyncMethodProperlyConfigured", func(t *testing.T) {
