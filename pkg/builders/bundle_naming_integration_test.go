@@ -21,12 +21,12 @@ import (
 	"testing"
 )
 
-// TestBundleNamingIntegration reads the actual generated file and checks if the bundle name is correct
+// TestBundleNamingIntegration reads the actual generated bundle file and checks if the bundle name is correct
 // This test verifies that bundles use the configured module_name instead of package names
 func TestBundleNamingIntegration(t *testing.T) {
-	// Path to the generated file in browser-callbacks example
+	// Path to the generated bundle file in browser-callbacks example
 	generatedFilePath := filepath.Join("..", "..", "examples", "browser-callbacks", 
-		"web", "src", "generated", "presenter", "v1", "presenterServiceClient.ts")
+		"web", "src", "generated", "index.ts")
 	
 	// Check if the file exists
 	if _, err := os.Stat(generatedFilePath); os.IsNotExist(err) {
@@ -41,23 +41,23 @@ func TestBundleNamingIntegration(t *testing.T) {
 
 	fileContent := string(content)
 
-	// Check for CORRECT behavior - should use configured module_name
-	if !strings.Contains(fileContent, "export class Browser_callbacksBundle") {
-		t.Error("Expected to find 'Browser_callbacksBundle' (using configured module_name), but didn't")
+	// Check for CORRECT behavior - simple base bundle with configured module_name
+	if !strings.Contains(fileContent, "export class Browser_callbacksBundle extends WASMBundle") {
+		t.Error("Expected to find 'Browser_callbacksBundle extends WASMBundle' (base bundle class), but didn't")
 	}
 
 	if !strings.Contains(fileContent, "moduleName: 'browser_callbacks'") {
 		t.Error("Expected to find moduleName: 'browser_callbacks' (using configured module_name), but didn't")
 	}
 
-	// These should NOT be present (they're the old broken behavior)
-	if strings.Contains(fileContent, "Presenter_v1Bundle") {
-		t.Error("Found 'Presenter_v1Bundle' which indicates the old broken behavior is still present")
+	// Verify it's the simple base bundle, not the old complex bundle
+	if strings.Contains(fileContent, "public readonly presenterService") {
+		t.Error("Found service properties in bundle - should be simple base bundle without services")
 	}
 
-	if strings.Contains(fileContent, "moduleName: 'presenter_v1'") {
-		t.Error("Found moduleName: 'presenter_v1' which indicates the old broken behavior is still present")
+	if strings.Contains(fileContent, "new PresenterServiceServiceClient") {
+		t.Error("Found service instantiation in bundle - should be simple base bundle")
 	}
 
-	t.Log("✅ Bundle naming fixed: bundles now use configured module_name instead of package names")
+	t.Log("Bundle naming and architecture updated: simple base bundle with configured module_name")
 }
