@@ -157,12 +157,43 @@ func (tr *TSRenderer) RenderBundle(file *protogen.GeneratedFile, data *builders.
 		return nil
 	}
 
-	// Validate TypeScript template data before rendering
-	if err := tr.ValidateTSTemplateData(data); err != nil {
+	// Validate bundle data with bundle-specific validation (allows empty methods)
+	if err := tr.ValidateBundleTemplateData(data); err != nil {
 		return fmt.Errorf("invalid bundle data: %w", err)
 	}
 
 	return tr.RenderToFile(file, TSBundleTemplate, data)
+}
+
+// ValidateBundleTemplateData validates TSTemplateData specifically for bundle rendering.
+// Bundle validation is less strict since bundles don't use method data.
+func (tr *TSRenderer) ValidateBundleTemplateData(data *builders.TSTemplateData) error {
+	if data == nil {
+		return nil
+	}
+	
+	// Basic validation (same as regular validation)
+	if data.PackageName == "" {
+		return fmt.Errorf("TSTemplateData.PackageName cannot be empty")
+	}
+	
+	if data.PackagePath == "" {
+		return fmt.Errorf("TSTemplateData.PackagePath cannot be empty")
+	}
+	
+	// For bundles, we don't validate that services have methods
+	// Services are just used for import/property generation
+	for _, service := range data.Services {
+		if service.Name == "" {
+			return fmt.Errorf("service has empty Name")
+		}
+		
+		if service.JSName == "" {
+			return fmt.Errorf("service %s has empty JSName", service.Name)
+		}
+	}
+	
+	return nil
 }
 
 // RenderBrowserServices generates TypeScript browser service interfaces using the provided GeneratedFile.
@@ -196,15 +227,18 @@ func (tr *TSRenderer) ValidateTSTemplateData(data *builders.TSTemplateData) erro
 		return fmt.Errorf("TSTemplateData.PackagePath cannot be empty")
 	}
 
-	// Validate services have methods
-	for i, service := range data.Services {
-		if len(service.Methods) == 0 {
-			return fmt.Errorf("service %s at index %d has no methods", service.Name, i)
+	// Validate services have proper names (methods are optional)
+	for _, service := range data.Services {
+		if service.Name == "" {
+			return fmt.Errorf("service has empty Name")
 		}
 
 		if service.JSName == "" {
 			return fmt.Errorf("service %s has empty JSName", service.Name)
 		}
+		
+		// Note: We now allow services with 0 methods (e.g., browser services with no RPCs)
+		// The service client will be generated but have no callable methods
 	}
 
 	// Validate messages have names

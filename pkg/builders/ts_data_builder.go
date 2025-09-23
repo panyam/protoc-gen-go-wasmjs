@@ -425,10 +425,9 @@ func (tb *TSDataBuilder) buildServiceDataForTS(
 		methods = append(methods, methodData)
 	}
 
-	// Skip services with no methods
-	if len(methods) == 0 {
-		return nil, nil
-	}
+	// Continue with empty methods array - still generate client with 0 methods
+	// This handles services like: service TestService { option (wasmjs.v1.browser_provided) = true; }
+	// where the service exists but has no RPC methods defined
 
 	// JavaScript name
 	jsName := tb.nameConv.ToCamelCase(serviceName)
