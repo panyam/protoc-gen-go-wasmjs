@@ -31,6 +31,7 @@ export interface WASMBundleConfig {
 export class WASMBundle {
     private wasm: any = null;
     private wasmLoadPromise: Promise<void> | null = null;
+    private wasmLoaded = false
     private browserServiceManager: BrowserServiceManager | null = null;
     private config: WASMBundleConfig;
 
@@ -58,12 +59,22 @@ export class WASMBundle {
 
     /**
      * Wait for WASM to be ready (use during initialization)
+     * Ensure WASM module is loaded before API calls
      */
-    public async waitUntilReady(): Promise<void> {
+    public async waitUntilReady() {
+        if (this.wasmLoaded && this.isReady()) {
+            return
+        }
+
         if (!this.wasmLoadPromise) {
             throw new Error('WASM loading not started. Call loadWasm() first.');
         }
+
         await this.wasmLoadPromise;
+
+        if (!this.wasmLoaded || !this.isReady()) {
+            throw new Error('WASM module failed to load');
+        }
     }
 
     /**
@@ -75,14 +86,15 @@ export class WASMBundle {
         }
 
         this.wasmLoadPromise = this.loadWASMModule(wasmPath);
-        return this.wasmLoadPromise;
+        await this.wasmLoadPromise
+        this.wasmLoaded = true
     }
 
     /**
      * Get WASM method function by path
      */
     public getWasmMethod(methodPath: string): Function {
-        this.ensureWASMLoaded();
+        this.ensureReady();
 
         switch (this.config.apiStructure) {
             case 'namespaced':
@@ -234,7 +246,7 @@ export class WASMBundle {
     /**
      * Ensure WASM module is loaded (synchronous version for service calls)
      */
-    private ensureWASMLoaded(): void {
+    public ensureReady(): void {
         if (!this.isReady()) {
             throw new Error('WASM module not loaded. Call loadWasm() and waitUntilReady() first.');
         }

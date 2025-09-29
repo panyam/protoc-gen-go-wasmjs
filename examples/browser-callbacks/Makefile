@@ -9,14 +9,6 @@ all: buf wasm tsbuild serve
 ensureenv:
 	@test -f buf.yaml && test -f buf.gen.yaml && echo "buf.yaml does not exist.  Run 'make setupdev' or 'make setupprod' to setup your environment..."
 
-setupdev: cleanall symlink-wasmjs
-	ln -s buf.gen.yaml.dev buf.gen.yaml
-	ln -s buf.yaml.dev buf.yaml
-
-setupprod: cleanall remove-symlink
-	ln -s buf.gen.yaml.prod buf.gen.yaml
-	ln -s buf.yaml.prod buf.yaml
-
 cleanall: clean
 	rm -f buf.yaml
 	rm -f buf.gen.yaml
@@ -28,6 +20,14 @@ clean:
 
 parent:
 	cd ../../ && make default
+
+setupdev: cleanall symlink-wasmjs
+	ln -s buf.gen.yaml.dev buf.gen.yaml
+	ln -s buf.yaml.dev buf.yaml
+
+setupprod: cleanall remove-symlink
+	ln -s buf.gen.yaml.prod buf.gen.yaml
+	ln -s buf.yaml.prod buf.yaml
 
 # Create symlink to wasmjs annotations for development
 symlink-wasmjs:
