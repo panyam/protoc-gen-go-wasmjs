@@ -2,8 +2,9 @@ version: v2
 modules:
   - path: proto
 deps:
-  - buf.build/googleapis/googleapis
   - buf.build/protocolbuffers/wellknowntypes
+  - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
   # Note: wasmjs annotations are included via symlink, NOT from buf.build in dev mode
 lint:
   use:

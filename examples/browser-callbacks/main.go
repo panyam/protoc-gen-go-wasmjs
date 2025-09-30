@@ -20,12 +20,12 @@ type PresenterServiceImpl struct {
 }
 
 // LoadUserData fetches user data from API and stores it locally
-func (s *PresenterServiceImpl) LoadUserData(ctx context.Context, req *presenterv1.LoadUserRequest) (*presenterv1.LoadUserResponse, error) {
+func (s *PresenterServiceImpl) LoadUserData(ctx context.Context, req *presenterv1.LoadUserDataRequest) (*presenterv1.LoadUserDataResponse, error) {
 	fmt.Printf("LoadUserData called for user: %s\n", req.UserId)
 
 	// TODO: Make actual API call via browser service
 	// For now, return mock data
-	return &presenterv1.LoadUserResponse{
+	return &presenterv1.LoadUserDataResponse{
 		Username:    "john_doe",
 		Email:       "john@example.com",
 		Permissions: []string{"read", "write"},

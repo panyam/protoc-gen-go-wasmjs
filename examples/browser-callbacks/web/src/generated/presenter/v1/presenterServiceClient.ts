@@ -5,21 +5,21 @@ import { ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 
 // Import TypeScript types for method signatures
 import {
-    UIUpdate,
     PreferencesRequest,
     PreferencesResponse,
     CallbackDemoRequest,
     CallbackDemoResponse,
-    LoadUserRequest,
-    LoadUserResponse,
+    LoadUserDataRequest,
+    LoadUserDataResponse,
     StateUpdateRequest,
+    UIUpdate,
 } from './interfaces';
 /**
  * PresenterService service client interface
  * Fully typed method signatures with TypeScript interfaces
  */
 export interface PresenterServiceMethods {
-	loadUserData(request: LoadUserRequest): Promise<LoadUserResponse>;
+	loadUserData(request: LoadUserDataRequest): Promise<LoadUserDataResponse>;
 	updateUIState(request: StateUpdateRequest, callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean): void;
 	savePreferences(request: PreferencesRequest): Promise<PreferencesResponse>;
 	runCallbackDemo(request: CallbackDemoRequest, callback: (response: CallbackDemoResponse, error?: string) => void): Promise<void>;
@@ -29,7 +29,7 @@ export interface PresenterServiceMethods {
  * Lightweight facade that uses shared WASM bundle
  */
 export class PresenterServiceServiceClient extends ServiceClient implements PresenterServiceMethods {
-    async loadUserData(request: LoadUserRequest): Promise<LoadUserResponse> {
+    async loadUserData(request: LoadUserDataRequest): Promise<LoadUserDataResponse> {
         return this.callMethod('presenterService.loadUserData', request);
     }
     updateUIState(

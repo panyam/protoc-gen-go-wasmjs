@@ -1,6 +1,7 @@
 # Default: production mode using new split generators
 
 buf: ensureenv clean parent 
+	buf dep update
 	buf generate
 	goimports -w `find gen | grep "\.go"`
 

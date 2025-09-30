@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package presenter.v1;
 
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "wasmjs/v1/annotations.proto";
 
 option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1;presenterv1";
@@ -9,7 +11,12 @@ option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-cal
 // PresenterService runs in WASM and drives UI logic
 service PresenterService {
     // LoadUserData fetches user data from API and stores it locally
-    rpc LoadUserData(LoadUserRequest) returns (LoadUserResponse);
+    rpc LoadUserData(LoadUserDataRequest) returns (LoadUserDataResponse) {
+      option (google.api.http) = {
+        post: "/v1/LoadUserData",
+        body: "*",
+      };
+    }
 
     // UpdateUIState processes state changes and returns UI updates
     rpc UpdateUIState(StateUpdateRequest) returns (stream UIUpdate);
@@ -24,12 +31,17 @@ service PresenterService {
 }
 
 // Request to load user data
-message LoadUserRequest {
+message LoadUserDataRequest {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+      json_schema: {
+        title: "LoadUserDataRequest"
+      }
+    };
     string user_id = 1;
 }
 
 // Response with user data
-message LoadUserResponse {
+message LoadUserDataResponse {
     string username = 1;
     string email = 2;
     repeated string permissions = 3;

@@ -5,7 +5,7 @@
 /**
  * Request to load user data
  */
-export interface LoadUserRequest {
+export interface LoadUserDataRequest {
   userId: string;
 }
 
@@ -13,7 +13,7 @@ export interface LoadUserRequest {
 /**
  * Response with user data
  */
-export interface LoadUserResponse {
+export interface LoadUserDataResponse {
   username: string;
   email: string;
   permissions: string[];
