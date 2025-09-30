@@ -1,13 +1,14 @@
 version: v2
+clean: true
 managed:
   enabled: true
+  disable:
+    # Don't modify any files in buf.build/googleapis/googleapis
+    - module: buf.build/googleapis/googleapis
+    - module: buf.build/grpc-ecosystem/grpc-gateway
   override:
     - file_option: go_package_prefix
       value: github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go
-      except:
-        - buf.build/googleapis/googleapis
-        - buf.build/grpc-ecosystem/grpc-gateway
-        - buf.build/protocolbuffers/wellknowntypes
 plugins:
   # Generate standard Go protobuf types
   - remote: buf.build/protocolbuffers/go
