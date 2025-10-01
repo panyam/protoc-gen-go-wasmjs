@@ -1,6 +1,6 @@
 {{/* External imports for external types */}}
-{{if .ExternalImports}}{{range .ExternalImports}}{{if not .IsNative}}import { {{.TypeName}} } from "{{.ImportSource}}";
-{{end}}{{end}}
+{{if .ExternalImports}}{{range .ExternalImports}}import { {{range $i, $type := .Types}}{{if $i}}, {{end}}{{$type}}{{end}} } from "{{.ImportPath}}";
+{{end}}
 
 {{end}}{{/* Import all interfaces from single package file */}}
 import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}}{{if and .HasMessages .HasEnums}}, {{end}}{{range $i, $enum := .Enums}}{{if $i}}, {{end}}{{$enum.TSName}}{{end}} } from "./interfaces";

@@ -1,8 +1,8 @@
 // Generated TypeScript interfaces from proto file
 // DO NOT EDIT - This file is auto-generated
 
-{{if .ExternalImports}}{{range .ExternalImports}}{{if not .IsNative}}import { {{.TypeName}} } from "{{.ImportSource}}";
-{{end}}{{end}}
+{{if .ExternalImports}}{{range .ExternalImports}}import { {{range $i, $type := .Types}}{{if $i}}, {{end}}{{$type}}{{end}} } from "{{.ImportPath}}";
+{{end}}
 
 {{end}}{{range .Enums}}{{if .Comment}}/**
  * {{.Comment}}

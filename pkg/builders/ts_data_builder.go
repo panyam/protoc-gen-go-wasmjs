@@ -17,6 +17,7 @@ package builders
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
@@ -141,6 +142,7 @@ type TSDataBuilder struct {
 	methodFilter     *filters.MethodFilter
 	messageCollector *filters.MessageCollector
 	enumCollector    *filters.EnumCollector
+	wellKnownMapper  *core.WellKnownTypesMapper
 }
 
 // NewTSDataBuilder creates a new TypeScript data builder with all necessary dependencies.
@@ -161,6 +163,7 @@ func NewTSDataBuilder(
 		methodFilter:     methodFilter,
 		messageCollector: messageCollector,
 		enumCollector:    enumCollector,
+		wellKnownMapper:  core.NewWellKnownTypesMapper(),
 	}
 }
 
@@ -346,7 +349,7 @@ func (tb *TSDataBuilder) BuildTypeData(
 	tsEnums := tb.transformEnums(enumResult.Items)
 
 	// Build external imports for cross-package references
-	externalImports := tb.buildExternalImports(messageResult.Items, packageInfo, config)
+	externalImports := tb.buildExternalImportsFromTSMessages(tsMessages, packageInfo, config)
 
 	// Generate names for TypeScript artifacts
 	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
@@ -472,16 +475,62 @@ func (tb *TSDataBuilder) buildMethodDataForTS(
 	}
 }
 
-// buildExternalImports analyzes messages to determine cross-package type dependencies.
-func (tb *TSDataBuilder) buildExternalImports(
-	messages []filters.MessageInfo,
+// buildExternalImportsFromTSMessages analyzes TypeScript messages to determine cross-package type dependencies.
+func (tb *TSDataBuilder) buildExternalImportsFromTSMessages(
+	messages []TSMessageInfo,
 	packageInfo *PackageInfo,
 	config *GenerationConfig,
 ) []ExternalImport {
+	// Map to track unique imports by source
+	importMap := make(map[string]map[string]bool)
+	
+	// Analyze all messages to find external type references
+	for _, msg := range messages {
+		tb.collectTSMessageExternalTypes(msg, importMap)
+	}
+	
+	// Convert map to sorted ExternalImport list
+	var imports []ExternalImport
+	for importSource, types := range importMap {
+		// Convert type set to sorted list
+		var typeList []string
+		for typeName := range types {
+			typeList = append(typeList, typeName)
+		}
+		// Sort for consistent output
+		sort.Strings(typeList)
+		
+		imports = append(imports, ExternalImport{
+			ImportPath: importSource,
+			Types:      typeList,
+		})
+	}
+	
+	// Sort imports by path for consistent output
+	sort.Slice(imports, func(i, j int) bool {
+		return imports[i].ImportPath < imports[j].ImportPath
+	})
+	
+	return imports
+}
 
-	// For now, return empty - this would be implemented based on message field analysis
-	// TODO: Analyze message fields to find cross-package type references
-	return []ExternalImport{}
+// collectTSMessageExternalTypes collects external type dependencies from a TypeScript message
+func (tb *TSDataBuilder) collectTSMessageExternalTypes(msg TSMessageInfo, importMap map[string]map[string]bool) {
+	// Check each field for external type references
+	for _, field := range msg.Fields {
+		if field.MessageType != "" {
+			// Check if this is a well-known type
+			if mapping, exists := tb.wellKnownMapper.GetMapping(field.MessageType); exists {
+				if !mapping.IsNative && mapping.ImportSource != "" {
+					// Add to import map
+					if importMap[mapping.ImportSource] == nil {
+						importMap[mapping.ImportSource] = make(map[string]bool)
+					}
+					importMap[mapping.ImportSource][mapping.TSType] = true
+				}
+			}
+		}
+	}
 }
 
 // getModuleName determines the TypeScript module name.
@@ -650,9 +699,19 @@ func (tb *TSDataBuilder) extractFieldInfo(protoMessage *protogen.Message) []TSFi
 					// Regular message type
 					msgPackage := string(field.Message.Desc.ParentFile().Package())
 					msgName := string(field.Message.Desc.Name())
-					fieldInfo.MessageType = msgPackage + "." + msgName
-					fieldInfo.TSType = msgName // Simple name for TypeScript
-					fieldInfo.DefaultValue = "undefined"
+					fullTypeName := msgPackage + "." + msgName
+					fieldInfo.MessageType = fullTypeName
+					
+					// Check if this is a well-known type
+					if mapping, exists := tb.wellKnownMapper.GetMapping(fullTypeName); exists {
+						fieldInfo.TSType = mapping.TSType
+						// For well-known types, we typically don't set a default value
+						fieldInfo.DefaultValue = "undefined"
+					} else {
+						// For regular message types, use the simple name
+						fieldInfo.TSType = msgName
+						fieldInfo.DefaultValue = "undefined"
+					}
 				}
 			}
 		case "enum":

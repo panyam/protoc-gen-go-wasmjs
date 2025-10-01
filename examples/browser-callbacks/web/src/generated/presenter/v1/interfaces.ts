@@ -1,6 +1,9 @@
 // Generated TypeScript interfaces from proto file
 // DO NOT EDIT - This file is auto-generated
 
+import { Timestamp } from "@bufbuild/protobuf/wkt";
+
+
 
 /**
  * Request to load user data
