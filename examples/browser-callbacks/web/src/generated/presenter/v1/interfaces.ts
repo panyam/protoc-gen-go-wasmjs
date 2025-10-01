@@ -18,6 +18,7 @@ export interface LoadUserDataResponse {
   email: string;
   permissions: string[];
   fromCache: boolean;
+  createdAt?: Timestamp;
 }
 
 

@@ -5,7 +5,7 @@ import { BrowserAPIServiceClient } from './generated/browser/v1/browserAPIClient
 
 // Import TypeScript types for better type safety
 import type { 
-  LoadUserRequest, 
+  LoadUserDataRequest, 
   StateUpdateRequest, 
   PreferencesRequest,
   CallbackDemoRequest 
@@ -218,7 +218,7 @@ function setupEventHandlers(presenterService: PresenterServiceServiceClient) {
     log(`Loading user data for: ${userId}`);
 
     try {
-      const request: LoadUserRequest = {
+      const request: LoadUserDataRequest = {
         userId: userId
       };
       const response = await presenterService.loadUserData(request);

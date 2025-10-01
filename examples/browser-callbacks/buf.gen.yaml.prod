@@ -51,3 +51,12 @@ plugins:
       - generate_clients=true
       - generate_types=true
       - generate_factories=true
+
+  # This will invoke protoc-gen-es and write output to web/gen
+  # Using this for comparison
+  - local: protoc-gen-es
+    out: web/src/generated/es
+    # Also generate any imported dependencies
+    include_imports: true
+    # Add more plugin options here
+    opt: target=ts

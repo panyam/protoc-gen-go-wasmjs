@@ -5,7 +5,7 @@ buf: ensureenv clean parent
 	buf generate
 	goimports -w `find gen | grep "\.go"`
 
-all: buf wasm tsbuild serve
+all: buf serve
 
 ensureenv:
 	@test -f buf.yaml && test -f buf.gen.yaml && echo "buf.yaml does not exist.  Run 'make setupdev' or 'make setupprod' to setup your environment..."
@@ -57,13 +57,10 @@ wasm:
 	@cd web && pnpm install
 
 # Serve the example with Vite dev server
-serve: wasm
+serve: wasm tsbuild
 	@echo "Starting Vite dev server at http://localhost:8080/"
 	@echo "TypeScript will be compiled on-the-fly"
 	@cd web && pnpm run dev
-
-# Run the complete example - choose dev or prod setup with `make setupdev` or `make setupprod`
-run: buf wasm serve
 
 # TypeScript development commands
 tsbuild:

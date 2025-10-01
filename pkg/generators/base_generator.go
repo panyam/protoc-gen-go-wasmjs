@@ -112,11 +112,10 @@ func (bg *BaseGenerator) CollectAllArtifacts(config *builders.GenerationConfig, 
 	allPackageFiles := make(map[string][]*protogen.File)
 	for _, file := range bg.plugin.Files {
 		// Include ALL files for artifact collection, not just those marked for generation
-		packageName := string(file.Desc.Package())
-		// Skip only system packages that we definitely don't want
-		if packageName == "google.protobuf" {
+		if !file.Generate {
 			continue
 		}
+		packageName := string(file.Desc.Package())
 		allPackageFiles[packageName] = append(allPackageFiles[packageName], file)
 	}
 

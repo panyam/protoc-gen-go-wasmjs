@@ -5,7 +5,6 @@ import { ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 
 // Import TypeScript types for method signatures
 import {
-    PreferencesRequest,
     PreferencesResponse,
     CallbackDemoRequest,
     CallbackDemoResponse,
@@ -13,6 +12,7 @@ import {
     LoadUserDataResponse,
     StateUpdateRequest,
     UIUpdate,
+    PreferencesRequest,
 } from './interfaces';
 /**
  * PresenterService service client interface

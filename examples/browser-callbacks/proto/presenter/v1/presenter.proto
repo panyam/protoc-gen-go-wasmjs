@@ -3,6 +3,7 @@ syntax = "proto3";
 package presenter.v1;
 
 import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "wasmjs/v1/annotations.proto";
 
@@ -46,6 +47,7 @@ message LoadUserDataResponse {
     string email = 2;
     repeated string permissions = 3;
     bool from_cache = 4;
+    google.protobuf.Timestamp created_at = 5;
 }
 
 // Request to update state
