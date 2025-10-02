@@ -483,12 +483,12 @@ func (tb *TSDataBuilder) buildExternalImportsFromTSMessages(
 ) []ExternalImport {
 	// Map to track unique imports by source
 	importMap := make(map[string]map[string]bool)
-	
+
 	// Analyze all messages to find external type references
 	for _, msg := range messages {
-		tb.collectTSMessageExternalTypes(msg, importMap)
+		tb.collectTSMessageExternalTypes(msg, importMap, packageInfo)
 	}
-	
+
 	// Convert map to sorted ExternalImport list
 	var imports []ExternalImport
 	for importSource, types := range importMap {
@@ -499,38 +499,92 @@ func (tb *TSDataBuilder) buildExternalImportsFromTSMessages(
 		}
 		// Sort for consistent output
 		sort.Strings(typeList)
-		
+
 		imports = append(imports, ExternalImport{
 			ImportPath: importSource,
 			Types:      typeList,
 		})
 	}
-	
+
 	// Sort imports by path for consistent output
 	sort.Slice(imports, func(i, j int) bool {
 		return imports[i].ImportPath < imports[j].ImportPath
 	})
-	
+
 	return imports
 }
 
 // collectTSMessageExternalTypes collects external type dependencies from a TypeScript message
-func (tb *TSDataBuilder) collectTSMessageExternalTypes(msg TSMessageInfo, importMap map[string]map[string]bool) {
+func (tb *TSDataBuilder) collectTSMessageExternalTypes(msg TSMessageInfo, importMap map[string]map[string]bool, currentPackage *PackageInfo) {
 	// Check each field for external type references
 	for _, field := range msg.Fields {
-		if field.MessageType != "" {
-			// Check if this is a well-known type
-			if mapping, exists := tb.wellKnownMapper.GetMapping(field.MessageType); exists {
-				if !mapping.IsNative && mapping.ImportSource != "" {
-					// Add to import map
-					if importMap[mapping.ImportSource] == nil {
-						importMap[mapping.ImportSource] = make(map[string]bool)
-					}
-					importMap[mapping.ImportSource][mapping.TSType] = true
+		if field.MessageType == "" {
+			continue
+		}
+
+		// Check if this is a well-known type
+		if mapping, exists := tb.wellKnownMapper.GetMapping(field.MessageType); exists {
+			if !mapping.IsNative && mapping.ImportSource != "" {
+				// Add well-known type to import map
+				if importMap[mapping.ImportSource] == nil {
+					importMap[mapping.ImportSource] = make(map[string]bool)
 				}
+				importMap[mapping.ImportSource][mapping.TSType] = true
 			}
+			continue
+		}
+
+		// Handle cross-package message types
+		// field.MessageType is in format "package.name.MessageName" (e.g., "utils.v1.HelperUtilType")
+		// We need to extract the package name and check if it's different from current package
+		fieldPackage := tb.extractPackageFromTypeName(field.MessageType)
+		if fieldPackage != "" && fieldPackage != currentPackage.Name {
+			// This is a cross-package reference - calculate import path
+			importPath := tb.calculateCrossPackageImportPath(currentPackage.Path, fieldPackage)
+			typeName := tb.extractTypeNameFromFullyQualified(field.MessageType)
+
+			// Add to import map
+			if importMap[importPath] == nil {
+				importMap[importPath] = make(map[string]bool)
+			}
+			importMap[importPath][typeName] = true
 		}
 	}
+}
+
+// extractPackageFromTypeName extracts the package name from a fully qualified type name.
+// For example: "utils.v1.HelperUtilType" -> "utils.v1"
+func (tb *TSDataBuilder) extractPackageFromTypeName(fullyQualifiedName string) string {
+	// Split by dots and take all but the last part (which is the type name)
+	parts := strings.Split(fullyQualifiedName, ".")
+	if len(parts) <= 1 {
+		return ""
+	}
+	// Join all parts except the last one
+	return strings.Join(parts[:len(parts)-1], ".")
+}
+
+// extractTypeNameFromFullyQualified extracts just the type name from a fully qualified name.
+// For example: "utils.v1.HelperUtilType" -> "HelperUtilType"
+func (tb *TSDataBuilder) extractTypeNameFromFullyQualified(fullyQualifiedName string) string {
+	parts := strings.Split(fullyQualifiedName, ".")
+	if len(parts) == 0 {
+		return fullyQualifiedName
+	}
+	return parts[len(parts)-1]
+}
+
+// calculateCrossPackageImportPath calculates the relative import path from current package to target package.
+// For example, from "presenter/v1" to "utils.v1" -> "../../utils/v1/interfaces"
+func (tb *TSDataBuilder) calculateCrossPackageImportPath(currentPackagePath string, targetPackageName string) string {
+	// Convert target package name to path (e.g., "utils.v1" -> "utils/v1")
+	targetPackagePath := tb.pathCalc.BuildPackagePath(targetPackageName)
+
+	// Calculate relative path from current package directory to target package directory
+	relativePath := tb.pathCalc.CalculateRelativePath(currentPackagePath, targetPackagePath)
+
+	// Append "/interfaces" since types are defined in interfaces.ts
+	return relativePath + "/interfaces"
 }
 
 // getModuleName determines the TypeScript module name.

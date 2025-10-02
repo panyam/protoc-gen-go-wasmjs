@@ -1,6 +1,7 @@
 // Generated TypeScript interfaces from proto file
 // DO NOT EDIT - This file is auto-generated
 
+import { HelperUtilType } from "../../utils/v1/interfaces";
 import { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
 
 
