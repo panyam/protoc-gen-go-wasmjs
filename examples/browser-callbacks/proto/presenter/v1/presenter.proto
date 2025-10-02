@@ -68,6 +68,7 @@ message UIUpdate {
 
 message TestRecord {
     utils.v1.HelperUtilType helper_record = 1;
+    utils.v1.ParentUtilMessage.NestedUtilType nested_helper = 2;
 }
 
 // Request to save preferences

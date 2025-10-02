@@ -15,3 +15,21 @@ message HelperUtilType {
 
   google.protobuf.Timestamp created_at = 3;
 }
+
+// A top levle NestedUtilType
+message NestedUtilType {
+  int32 top_level_count = 1;
+  string top_level_value = 2;
+}
+
+// Parent message containing a nested type
+message ParentUtilMessage {
+  // Nested type to test cross-package nested imports
+  message NestedUtilType {
+    string nested_value = 1;
+    int32 nested_count = 2;
+  }
+
+  int32 parent_value = 1;
+  NestedUtilType nested = 2;
+}

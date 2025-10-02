@@ -197,13 +197,23 @@ The project has completed a comprehensive refactoring and achieved **production-
 - ✅ **Developer Experience Enhancements**: Ergonomic API improvements with MESSAGE_TYPE constants, static deserializer methods, and performance-optimized shared instances
 
 ### Latest Bug Fixes & Enum Support (January 2025)
-- ✅ **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages - they are now correctly excluded from generation while remaining visible for proto compilation
-- ✅ **Comprehensive Enum Support**: Implemented complete enum collection, generation, and import system for TypeScript
+- **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages - they are now correctly excluded from generation while remaining visible for proto compilation
+- **Comprehensive Enum Support**: Implemented complete enum collection, generation, and import system for TypeScript
   - Enums are generated in interfaces.ts with proper TypeScript enum syntax
   - All generated TypeScript files (models.ts, factory.ts) now correctly import and reference enums
   - Cross-package enum references work seamlessly with the import resolution system
   - Fixed template data structures to include enums in all generation contexts
-- ✅ **Enhanced Cross-Package Import Detection**: Improved import resolution to filter out wasmjs.v1 dependencies in factory composition
+- **Enhanced Cross-Package Import Detection**: Improved import resolution to filter out wasmjs.v1 dependencies in factory composition
+
+### Cross-Package Import System (October 2025)
+- **Issue Resolved**: Missing TypeScript imports for types from other proto packages in same project
+- **Protobuf Descriptor API**: Uses descriptor methods (`FullName()`, `ParentFile().Package()`, `Parent()`) for accurate type information instead of string parsing
+- **Nested Type Handling**: Properly flattens nested message types (e.g., `ParentMessage.NestedType` becomes `ParentMessage_NestedType`) to prevent name collisions
+- **Metadata Fields**: Added `MessagePackage` and `IsNestedType` to `TSFieldInfo` for storing descriptor-derived information
+- **Import Path Calculation**: Correctly generates relative import paths between packages (e.g., `../../utils/v1/interfaces`)
+- **MessageCollector Fix**: Fixed to use `message.Desc.FullName()` for accurate fully qualified names including parent messages
+- **Type Safety**: Field types use flattened names for nested types, simple names for top-level types
+- **Comprehensive Testing**: Unit tests for package extraction, type name flattening, and import path calculation
 
 ### Split Generator Architecture & Per-Service Generation (September 2025)
 - ✅ **Phase 1: Split Architecture**: Separate Go and TypeScript generators with layered architecture

@@ -57,6 +57,18 @@
 - **✅ Tests updated**: Integration tests and examples updated to reflect correct naming
 - **✅ Regression prevention**: Added debug tests to prevent future occurrences
 
+### ✅ **6. Cross-Package Type Imports (CRITICAL) - RESOLVED** (October 2025)
+- **✅ Issue**: Missing imports for types from other proto packages in same project
+- **✅ Root cause**: Import collection logic only handled well-known types, not cross-package message types
+- **✅ Fix implemented**:
+  - Uses protobuf descriptor API (`field.Message.Desc.FullName()`, `ParentFile().Package()`) instead of string parsing
+  - Added `MessagePackage` and `IsNestedType` fields to `TSFieldInfo` for accurate metadata
+  - Fixed `MessageCollector` to use `Desc.FullName()` for correct fully qualified names
+- **✅ Nested type support**: Properly flattens nested types (e.g., `ParentMessage_NestedType`) to avoid name collisions
+- **✅ Relative imports**: Correctly calculates relative import paths (e.g., `../../utils/v1/interfaces`)
+- **✅ Tests added**: Comprehensive unit tests for package extraction and type name flattening
+- **✅ Example verification**: `browser-callbacks` example now correctly imports `HelperUtilType` and `ParentUtilMessage_NestedUtilType`
+
 ## 🚀 **NEXT PHASE: Enhanced Developer Experience**
 
 ### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**

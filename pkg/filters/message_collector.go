@@ -114,8 +114,9 @@ func (mc *MessageCollector) buildMessageInfo(message *protogen.Message, file *pr
 	messageName := string(message.Desc.Name())
 	packageName := string(file.Desc.Package())
 
-	// Build fully qualified name (e.g., "library.v1.Book")
-	fullyQualifiedName := packageName + "." + messageName
+	// Build fully qualified name using the descriptor's FullName() method
+	// This correctly handles nested messages (e.g., "library.v1.ParentMessage.NestedMessage")
+	fullyQualifiedName := string(message.Desc.FullName())
 
 	return MessageInfo{
 		Name:               messageName,

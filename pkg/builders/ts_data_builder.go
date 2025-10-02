@@ -93,18 +93,20 @@ type TSMessageInfo struct {
 
 // TSFieldInfo represents a field in a TypeScript interface
 type TSFieldInfo struct {
-	Name         string // Proto field name
-	TSName       string // TypeScript field name (camelCase)
-	TSType       string // TypeScript type
-	Number       int32  // Field number
-	ProtoFieldID int32  // Proto field ID (alias for Number, for template compatibility)
-	DefaultValue string // Default value for the field
-	IsOptional   bool   // Whether the field is optional
-	IsRepeated   bool   // Whether this is repeated
-	IsOneof      bool   // Whether this is part of a oneof
-	OneofGroup   string // Oneof group name if applicable
-	MessageType  string // If this is a message type field
-	Comment      string // Field comment
+	Name           string // Proto field name
+	TSName         string // TypeScript field name (camelCase)
+	TSType         string // TypeScript type
+	Number         int32  // Field number
+	ProtoFieldID   int32  // Proto field ID (alias for Number, for template compatibility)
+	DefaultValue   string // Default value for the field
+	IsOptional     bool   // Whether the field is optional
+	IsRepeated     bool   // Whether this is repeated
+	IsOneof        bool   // Whether this is part of a oneof
+	OneofGroup     string // Oneof group name if applicable
+	MessageType    string // If this is a message type field (fully qualified name, e.g., "utils.v1.ParentMessage.NestedType")
+	MessagePackage string // Package where the message type is defined (e.g., "utils.v1"), extracted from descriptor
+	IsNestedType   bool   // Whether the message type is a nested message
+	Comment        string // Field comment
 }
 
 // TSEnumInfo extends basic enum info with TypeScript-specific fields
@@ -514,7 +516,8 @@ func (tb *TSDataBuilder) buildExternalImportsFromTSMessages(
 	return imports
 }
 
-// collectTSMessageExternalTypes collects external type dependencies from a TypeScript message
+// collectTSMessageExternalTypes collects external type dependencies from a TypeScript message.
+// This uses the MessagePackage field which was extracted from the protobuf descriptor API.
 func (tb *TSDataBuilder) collectTSMessageExternalTypes(msg TSMessageInfo, importMap map[string]map[string]bool, currentPackage *PackageInfo) {
 	// Check each field for external type references
 	for _, field := range msg.Fields {
@@ -535,12 +538,11 @@ func (tb *TSDataBuilder) collectTSMessageExternalTypes(msg TSMessageInfo, import
 		}
 
 		// Handle cross-package message types
-		// field.MessageType is in format "package.name.MessageName" (e.g., "utils.v1.HelperUtilType")
-		// We need to extract the package name and check if it's different from current package
-		fieldPackage := tb.extractPackageFromTypeName(field.MessageType)
-		if fieldPackage != "" && fieldPackage != currentPackage.Name {
+		// Use MessagePackage which was extracted directly from field.Message.Desc.ParentFile().Package()
+		// This is accurate and handles nested types correctly
+		if field.MessagePackage != "" && field.MessagePackage != currentPackage.Name {
 			// This is a cross-package reference - calculate import path
-			importPath := tb.calculateCrossPackageImportPath(currentPackage.Path, fieldPackage)
+			importPath := tb.calculateCrossPackageImportPath(currentPackage.Path, field.MessagePackage)
 			typeName := tb.extractTypeNameFromFullyQualified(field.MessageType)
 
 			// Add to import map
@@ -553,25 +555,74 @@ func (tb *TSDataBuilder) collectTSMessageExternalTypes(msg TSMessageInfo, import
 }
 
 // extractPackageFromTypeName extracts the package name from a fully qualified type name.
-// For example: "utils.v1.HelperUtilType" -> "utils.v1"
+// This handles both simple and nested types correctly.
+// Examples:
+//   - "utils.v1.HelperUtilType" -> "utils.v1"
+//   - "utils.v1.ParentMessage.NestedType" -> "utils.v1"
+//   - "google.protobuf.Timestamp" -> "google.protobuf"
+//
+// The heuristic: Proto package names are lowercase, message names are PascalCase.
+// We find the package by taking parts up to (but not including) the first PascalCase part.
 func (tb *TSDataBuilder) extractPackageFromTypeName(fullyQualifiedName string) string {
-	// Split by dots and take all but the last part (which is the type name)
 	parts := strings.Split(fullyQualifiedName, ".")
 	if len(parts) <= 1 {
 		return ""
 	}
-	// Join all parts except the last one
-	return strings.Join(parts[:len(parts)-1], ".")
+
+	// Find the first part that starts with an uppercase letter (message name)
+	// Everything before that is the package
+	packageParts := []string{}
+	for _, part := range parts {
+		// Check if this part starts with uppercase (indicates a message name)
+		if len(part) > 0 && part[0] >= 'A' && part[0] <= 'Z' {
+			// This is a message name, stop here
+			break
+		}
+		// This is part of the package name
+		packageParts = append(packageParts, part)
+	}
+
+	if len(packageParts) == 0 {
+		// Fallback: if no lowercase parts found, return all but last part
+		// This handles edge cases where package names might not follow conventions
+		return strings.Join(parts[:len(parts)-1], ".")
+	}
+
+	return strings.Join(packageParts, ".")
 }
 
-// extractTypeNameFromFullyQualified extracts just the type name from a fully qualified name.
-// For example: "utils.v1.HelperUtilType" -> "HelperUtilType"
+// extractTypeNameFromFullyQualified extracts the full type name (including parent messages) from a fully qualified name.
+// For nested types, this returns the complete message hierarchy for proper TypeScript import.
+// Examples:
+//   - "utils.v1.HelperUtilType" -> "HelperUtilType"
+//   - "utils.v1.ParentMessage.NestedType" -> "ParentMessage_NestedType" (for flattened TypeScript exports)
+//   - "google.protobuf.Timestamp" -> "Timestamp"
+//
+// Note: Some TypeScript generators flatten nested types with underscores, others keep them nested.
+// For now, we return the last part only, but this can be adjusted based on the generation strategy.
 func (tb *TSDataBuilder) extractTypeNameFromFullyQualified(fullyQualifiedName string) string {
 	parts := strings.Split(fullyQualifiedName, ".")
 	if len(parts) == 0 {
 		return fullyQualifiedName
 	}
-	return parts[len(parts)-1]
+
+	// Extract package parts (lowercase) vs message parts (PascalCase)
+	messageParts := []string{}
+	for _, part := range parts {
+		// If this part starts with uppercase, it's a message name
+		if len(part) > 0 && part[0] >= 'A' && part[0] <= 'Z' {
+			messageParts = append(messageParts, part)
+		}
+	}
+
+	if len(messageParts) == 0 {
+		// Fallback: return last part
+		return parts[len(parts)-1]
+	}
+
+	// For nested types, join with underscore: ParentMessage_NestedType
+	// This is a common TypeScript pattern for flattened nested types
+	return strings.Join(messageParts, "_")
 }
 
 // calculateCrossPackageImportPath calculates the relative import path from current package to target package.
@@ -629,15 +680,23 @@ func (tb *TSDataBuilder) transformMessages(messages []filters.MessageInfo, proto
 	for _, msg := range messages {
 		// Find the corresponding protogen.Message for field extraction
 		protoMessage := protoMessageMap[msg.FullyQualifiedName]
-		
+
+		// Calculate TypeScript name - for nested types, flatten with parent name
+		tsName := msg.Name
+		if msg.IsNested {
+			// For nested types, use flattened name: ParentMessage_NestedType
+			// Extract all message names from fully qualified name
+			tsName = tb.extractTypeNameFromFullyQualified(msg.FullyQualifiedName)
+		}
+
 		tsMsg := TSMessageInfo{
 			Name:               msg.Name,
-			TSName:             msg.Name, // TypeScript uses same name as proto
+			TSName:             tsName, // Flattened for nested types
 			PackageName:        msg.PackageName,
 			FullyQualifiedName: msg.FullyQualifiedName,
 			ProtoFile:          msg.ProtoFile,
 			Comment:            msg.Comment,
-			MethodName:         "new" + msg.Name, // Factory method name
+			MethodName:         "new" + tsName, // Factory method name uses flattened name
 			Fields:             tb.extractFieldInfo(protoMessage),
 			IsNested:           msg.IsNested,
 			IsMapEntry:         msg.IsMapEntry,
@@ -751,19 +810,34 @@ func (tb *TSDataBuilder) extractFieldInfo(protoMessage *protogen.Message) []TSFi
 					}
 				} else {
 					// Regular message type
-					msgPackage := string(field.Message.Desc.ParentFile().Package())
-					msgName := string(field.Message.Desc.Name())
-					fullTypeName := msgPackage + "." + msgName
+					// Use FullName() to get the complete qualified name including parent messages
+					// e.g., "utils.v1.ParentMessage.NestedType" for nested types
+					fullTypeName := string(field.Message.Desc.FullName())
 					fieldInfo.MessageType = fullTypeName
-					
+
+					// Extract package using the descriptor API
+					fieldInfo.MessagePackage = string(field.Message.Desc.ParentFile().Package())
+
+					// Check if this is a nested type using Parent() descriptor method
+					parent := field.Message.Desc.Parent()
+					_, fieldInfo.IsNestedType = parent.(protoreflect.MessageDescriptor)
+
 					// Check if this is a well-known type
 					if mapping, exists := tb.wellKnownMapper.GetMapping(fullTypeName); exists {
 						fieldInfo.TSType = mapping.TSType
 						// For well-known types, we typically don't set a default value
 						fieldInfo.DefaultValue = "undefined"
 					} else {
-						// For regular message types, use the simple name
-						fieldInfo.TSType = msgName
+						// For regular message types, determine the TypeScript type name
+						// For nested types, use flattened name (e.g., "ParentMessage_NestedType")
+						// For top-level types, use simple name (e.g., "HelperUtilType")
+						if fieldInfo.IsNestedType {
+							// Use flattened name for nested types
+							fieldInfo.TSType = tb.extractTypeNameFromFullyQualified(fullTypeName)
+						} else {
+							// Use simple name for top-level types
+							fieldInfo.TSType = string(field.Message.Desc.Name())
+						}
 						fieldInfo.DefaultValue = "undefined"
 					}
 				}
