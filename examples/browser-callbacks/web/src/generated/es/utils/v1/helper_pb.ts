@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file utils/v1/helper.proto.
  */
 export const file_utils_v1_helper: GenFile = /*@__PURE__*/
-  fileDesc("ChV1dGlscy92MS9oZWxwZXIucHJvdG8SCHV0aWxzLnYxIoEBCg5IZWxwZXJVdGlsVHlwZRIOCgZ2YWx1ZTEYASABKAUSLwoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQrcBCgxjb20udXRpbHMudjFCC0hlbHBlclByb3RvUAFaWWdpdGh1Yi5jb20vcGFueWFtL3Byb3RvYy1nZW4tZ28td2FzbWpzL2V4YW1wbGVzL2Jyb3dzZXItY2FsbGJhY2tzL2dlbi9nby91dGlscy92MTt1dGlsc3YxogIDVVhYqgIIVXRpbHMuVjHKAghVdGlsc1xWMeICFFV0aWxzXFYxXEdQQk1ldGFkYXRh6gIJVXRpbHM6OlYxYgZwcm90bzM", [file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
+  fileDesc("ChV1dGlscy92MS9oZWxwZXIucHJvdG8SCHV0aWxzLnYxIoEBCg5IZWxwZXJVdGlsVHlwZRIOCgZ2YWx1ZTEYASABKAUSLwoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkIKDk5lc3RlZFV0aWxUeXBlEhcKD3RvcF9sZXZlbF9jb3VudBgBIAEoBRIXCg90b3BfbGV2ZWxfdmFsdWUYAiABKAkiowEKEVBhcmVudFV0aWxNZXNzYWdlEhQKDHBhcmVudF92YWx1ZRgBIAEoBRI6CgZuZXN0ZWQYAiABKAsyKi51dGlscy52MS5QYXJlbnRVdGlsTWVzc2FnZS5OZXN0ZWRVdGlsVHlwZRo8Cg5OZXN0ZWRVdGlsVHlwZRIUCgxuZXN0ZWRfdmFsdWUYASABKAkSFAoMbmVzdGVkX2NvdW50GAIgASgFQrcBCgxjb20udXRpbHMudjFCC0hlbHBlclByb3RvUAFaWWdpdGh1Yi5jb20vcGFueWFtL3Byb3RvYy1nZW4tZ28td2FzbWpzL2V4YW1wbGVzL2Jyb3dzZXItY2FsbGJhY2tzL2dlbi9nby91dGlscy92MTt1dGlsc3YxogIDVVhYqgIIVXRpbHMuVjHKAghVdGlsc1xWMeICFFV0aWxzXFYxXEdQQk1ldGFkYXRh6gIJVXRpbHM6OlYxYgZwcm90bzM", [file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message utils.v1.HelperUtilType
@@ -42,4 +42,76 @@ export type HelperUtilType = Message<"utils.v1.HelperUtilType"> & {
  */
 export const HelperUtilTypeSchema: GenMessage<HelperUtilType> = /*@__PURE__*/
   messageDesc(file_utils_v1_helper, 0);
+
+/**
+ * A top levle NestedUtilType
+ *
+ * @generated from message utils.v1.NestedUtilType
+ */
+export type NestedUtilType = Message<"utils.v1.NestedUtilType"> & {
+  /**
+   * @generated from field: int32 top_level_count = 1;
+   */
+  topLevelCount: number;
+
+  /**
+   * @generated from field: string top_level_value = 2;
+   */
+  topLevelValue: string;
+};
+
+/**
+ * Describes the message utils.v1.NestedUtilType.
+ * Use `create(NestedUtilTypeSchema)` to create a new message.
+ */
+export const NestedUtilTypeSchema: GenMessage<NestedUtilType> = /*@__PURE__*/
+  messageDesc(file_utils_v1_helper, 1);
+
+/**
+ * Parent message containing a nested type
+ *
+ * @generated from message utils.v1.ParentUtilMessage
+ */
+export type ParentUtilMessage = Message<"utils.v1.ParentUtilMessage"> & {
+  /**
+   * @generated from field: int32 parent_value = 1;
+   */
+  parentValue: number;
+
+  /**
+   * @generated from field: utils.v1.ParentUtilMessage.NestedUtilType nested = 2;
+   */
+  nested?: ParentUtilMessage_NestedUtilType;
+};
+
+/**
+ * Describes the message utils.v1.ParentUtilMessage.
+ * Use `create(ParentUtilMessageSchema)` to create a new message.
+ */
+export const ParentUtilMessageSchema: GenMessage<ParentUtilMessage> = /*@__PURE__*/
+  messageDesc(file_utils_v1_helper, 2);
+
+/**
+ * Nested type to test cross-package nested imports
+ *
+ * @generated from message utils.v1.ParentUtilMessage.NestedUtilType
+ */
+export type ParentUtilMessage_NestedUtilType = Message<"utils.v1.ParentUtilMessage.NestedUtilType"> & {
+  /**
+   * @generated from field: string nested_value = 1;
+   */
+  nestedValue: string;
+
+  /**
+   * @generated from field: int32 nested_count = 2;
+   */
+  nestedCount: number;
+};
+
+/**
+ * Describes the message utils.v1.ParentUtilMessage.NestedUtilType.
+ * Use `create(ParentUtilMessage_NestedUtilTypeSchema)` to create a new message.
+ */
+export const ParentUtilMessage_NestedUtilTypeSchema: GenMessage<ParentUtilMessage_NestedUtilType> = /*@__PURE__*/
+  messageDesc(file_utils_v1_helper, 2, 0);
 

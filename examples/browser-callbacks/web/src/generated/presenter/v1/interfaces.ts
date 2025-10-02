@@ -1,7 +1,7 @@
 // Generated TypeScript interfaces from proto file
 // DO NOT EDIT - This file is auto-generated
 
-import { HelperUtilType } from "../../utils/v1/interfaces";
+import { HelperUtilType, ParentUtilMessage_NestedUtilType } from "../../utils/v1/interfaces";
 import { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
 
 
@@ -49,6 +49,7 @@ export interface UIUpdate {
 
 export interface TestRecord {
   helperRecord?: HelperUtilType;
+  nestedHelper?: ParentUtilMessage_NestedUtilType;
 }
 
 
