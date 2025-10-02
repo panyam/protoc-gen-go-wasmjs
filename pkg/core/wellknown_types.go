@@ -62,7 +62,7 @@ func (m *WellKnownTypesMapper) initializeDefaults() {
 	m.addMapping("google.protobuf.NullValue", "NullValue", "@bufbuild/protobuf")
 
 	// Field mask for partial updates
-	m.addMapping("google.protobuf.FieldMask", "FieldMask", "@bufbuild/protobuf")
+	m.addMapping("google.protobuf.FieldMask", "FieldMask", "@bufbuild/protobuf/wkt")
 
 	// Type definitions (less commonly used in application code)
 	m.addMapping("google.protobuf.Type", "Type", "@bufbuild/protobuf")

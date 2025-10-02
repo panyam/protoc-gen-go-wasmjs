@@ -3,9 +3,11 @@ syntax = "proto3";
 package presenter.v1;
 
 import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "wasmjs/v1/annotations.proto";
+import "utils/v1/helper.proto";
 
 option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1;presenterv1";
 
@@ -54,6 +56,7 @@ message LoadUserDataResponse {
 message StateUpdateRequest {
     string action = 1;
     map<string, string> params = 2;
+    google.protobuf.FieldMask update_mask = 3;
 }
 
 // UI update message (streamed)
@@ -61,6 +64,10 @@ message UIUpdate {
     string component = 1;
     string action = 2;
     map<string, string> data = 3;
+}
+
+message TestRecord {
+    utils.v1.HelperUtilType helper_record = 1;
 }
 
 // Request to save preferences

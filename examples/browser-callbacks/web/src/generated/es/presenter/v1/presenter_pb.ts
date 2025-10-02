@@ -5,17 +5,19 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_google_api_annotations } from "../../google/api/annotations_pb";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_field_mask, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_protoc_gen_openapiv2_options_annotations } from "../../protoc-gen-openapiv2/options/annotations_pb";
 import { file_wasmjs_v1_annotations } from "../../wasmjs/v1/annotations_pb";
+import type { HelperUtilType } from "../../utils/v1/helper_pb";
+import { file_utils_v1_helper } from "../../utils/v1/helper_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file presenter/v1/presenter.proto.
  */
 export const file_presenter_v1_presenter: GenFile = /*@__PURE__*/
-  fileDesc("ChxwcmVzZW50ZXIvdjEvcHJlc2VudGVyLnByb3RvEgxwcmVzZW50ZXIudjEiQgoTTG9hZFVzZXJEYXRhUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJOhqSQRcKFSoTTG9hZFVzZXJEYXRhUmVxdWVzdCKQAQoUTG9hZFVzZXJEYXRhUmVzcG9uc2USEAoIdXNlcm5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEwoLcGVybWlzc2lvbnMYAyADKAkSEgoKZnJvbV9jYWNoZRgEIAEoCBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKRAQoSU3RhdGVVcGRhdGVSZXF1ZXN0Eg4KBmFjdGlvbhgBIAEoCRI8CgZwYXJhbXMYAiADKAsyLC5wcmVzZW50ZXIudjEuU3RhdGVVcGRhdGVSZXF1ZXN0LlBhcmFtc0VudHJ5Gi0KC1BhcmFtc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiigEKCFVJVXBkYXRlEhEKCWNvbXBvbmVudBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSLgoEZGF0YRgDIAMoCzIgLnByZXNlbnRlci52MS5VSVVwZGF0ZS5EYXRhRW50cnkaKwoJRGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEikAEKElByZWZlcmVuY2VzUmVxdWVzdBJGCgtwcmVmZXJlbmNlcxgBIAMoCzIxLnByZXNlbnRlci52MS5QcmVmZXJlbmNlc1JlcXVlc3QuUHJlZmVyZW5jZXNFbnRyeRoyChBQcmVmZXJlbmNlc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiOQoTUHJlZmVyZW5jZXNSZXNwb25zZRINCgVzYXZlZBgBIAEoCBITCgtpdGVtc19zYXZlZBgCIAEoBSIoChNDYWxsYmFja0RlbW9SZXF1ZXN0EhEKCWRlbW9fbmFtZRgBIAEoCSJDChRDYWxsYmFja0RlbW9SZXNwb25zZRIYChBjb2xsZWN0ZWRfaW5wdXRzGAEgAygJEhEKCWNvbXBsZXRlZBgCIAEoCDKNAwoQUHJlc2VudGVyU2VydmljZRJyCgxMb2FkVXNlckRhdGESIS5wcmVzZW50ZXIudjEuTG9hZFVzZXJEYXRhUmVxdWVzdBoiLnByZXNlbnRlci52MS5Mb2FkVXNlckRhdGFSZXNwb25zZSIbgtPkkwIVOgEqIhAvdjEvTG9hZFVzZXJEYXRhEksKDVVwZGF0ZVVJU3RhdGUSIC5wcmVzZW50ZXIudjEuU3RhdGVVcGRhdGVSZXF1ZXN0GhYucHJlc2VudGVyLnYxLlVJVXBkYXRlMAESVgoPU2F2ZVByZWZlcmVuY2VzEiAucHJlc2VudGVyLnYxLlByZWZlcmVuY2VzUmVxdWVzdBohLnByZXNlbnRlci52MS5QcmVmZXJlbmNlc1Jlc3BvbnNlEmAKD1J1bkNhbGxiYWNrRGVtbxIhLnByZXNlbnRlci52MS5DYWxsYmFja0RlbW9SZXF1ZXN0GiIucHJlc2VudGVyLnYxLkNhbGxiYWNrRGVtb1Jlc3BvbnNlIga6tRgCCAFC1gEKEGNvbS5wcmVzZW50ZXIudjFCDlByZXNlbnRlclByb3RvUAFaYWdpdGh1Yi5jb20vcGFueWFtL3Byb3RvYy1nZW4tZ28td2FzbWpzL2V4YW1wbGVzL2Jyb3dzZXItY2FsbGJhY2tzL2dlbi9nby9wcmVzZW50ZXIvdjE7cHJlc2VudGVydjGiAgNQWFiqAgxQcmVzZW50ZXIuVjHKAgxQcmVzZW50ZXJcVjHiAhhQcmVzZW50ZXJcVjFcR1BCTWV0YWRhdGHqAg1QcmVzZW50ZXI6OlYxYgZwcm90bzM", [file_google_api_annotations, file_google_protobuf_timestamp, file_protoc_gen_openapiv2_options_annotations, file_wasmjs_v1_annotations]);
+  fileDesc("ChxwcmVzZW50ZXIvdjEvcHJlc2VudGVyLnByb3RvEgxwcmVzZW50ZXIudjEiQgoTTG9hZFVzZXJEYXRhUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJOhqSQRcKFSoTTG9hZFVzZXJEYXRhUmVxdWVzdCKQAQoUTG9hZFVzZXJEYXRhUmVzcG9uc2USEAoIdXNlcm5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEwoLcGVybWlzc2lvbnMYAyADKAkSEgoKZnJvbV9jYWNoZRgEIAEoCBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLCAQoSU3RhdGVVcGRhdGVSZXF1ZXN0Eg4KBmFjdGlvbhgBIAEoCRI8CgZwYXJhbXMYAiADKAsyLC5wcmVzZW50ZXIudjEuU3RhdGVVcGRhdGVSZXF1ZXN0LlBhcmFtc0VudHJ5Ei8KC3VwZGF0ZV9tYXNrGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFzaxotCgtQYXJhbXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIooBCghVSVVwZGF0ZRIRCgljb21wb25lbnQYASABKAkSDgoGYWN0aW9uGAIgASgJEi4KBGRhdGEYAyADKAsyIC5wcmVzZW50ZXIudjEuVUlVcGRhdGUuRGF0YUVudHJ5GisKCURhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIj0KClRlc3RSZWNvcmQSLwoNaGVscGVyX3JlY29yZBgBIAEoCzIYLnV0aWxzLnYxLkhlbHBlclV0aWxUeXBlIpABChJQcmVmZXJlbmNlc1JlcXVlc3QSRgoLcHJlZmVyZW5jZXMYASADKAsyMS5wcmVzZW50ZXIudjEuUHJlZmVyZW5jZXNSZXF1ZXN0LlByZWZlcmVuY2VzRW50cnkaMgoQUHJlZmVyZW5jZXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjkKE1ByZWZlcmVuY2VzUmVzcG9uc2USDQoFc2F2ZWQYASABKAgSEwoLaXRlbXNfc2F2ZWQYAiABKAUiKAoTQ2FsbGJhY2tEZW1vUmVxdWVzdBIRCglkZW1vX25hbWUYASABKAkiQwoUQ2FsbGJhY2tEZW1vUmVzcG9uc2USGAoQY29sbGVjdGVkX2lucHV0cxgBIAMoCRIRCgljb21wbGV0ZWQYAiABKAgyjQMKEFByZXNlbnRlclNlcnZpY2UScgoMTG9hZFVzZXJEYXRhEiEucHJlc2VudGVyLnYxLkxvYWRVc2VyRGF0YVJlcXVlc3QaIi5wcmVzZW50ZXIudjEuTG9hZFVzZXJEYXRhUmVzcG9uc2UiG4LT5JMCFToBKiIQL3YxL0xvYWRVc2VyRGF0YRJLCg1VcGRhdGVVSVN0YXRlEiAucHJlc2VudGVyLnYxLlN0YXRlVXBkYXRlUmVxdWVzdBoWLnByZXNlbnRlci52MS5VSVVwZGF0ZTABElYKD1NhdmVQcmVmZXJlbmNlcxIgLnByZXNlbnRlci52MS5QcmVmZXJlbmNlc1JlcXVlc3QaIS5wcmVzZW50ZXIudjEuUHJlZmVyZW5jZXNSZXNwb25zZRJgCg9SdW5DYWxsYmFja0RlbW8SIS5wcmVzZW50ZXIudjEuQ2FsbGJhY2tEZW1vUmVxdWVzdBoiLnByZXNlbnRlci52MS5DYWxsYmFja0RlbW9SZXNwb25zZSIGurUYAggBQtYBChBjb20ucHJlc2VudGVyLnYxQg5QcmVzZW50ZXJQcm90b1ABWmFnaXRodWIuY29tL3BhbnlhbS9wcm90b2MtZ2VuLWdvLXdhc21qcy9leGFtcGxlcy9icm93c2VyLWNhbGxiYWNrcy9nZW4vZ28vcHJlc2VudGVyL3YxO3ByZXNlbnRlcnYxogIDUFhYqgIMUHJlc2VudGVyLlYxygIMUHJlc2VudGVyXFYx4gIYUHJlc2VudGVyXFYxXEdQQk1ldGFkYXRh6gINUHJlc2VudGVyOjpWMWIGcHJvdG8z", [file_google_api_annotations, file_google_protobuf_field_mask, file_google_protobuf_timestamp, file_protoc_gen_openapiv2_options_annotations, file_wasmjs_v1_annotations, file_utils_v1_helper]);
 
 /**
  * Request to load user data
@@ -90,6 +92,11 @@ export type StateUpdateRequest = Message<"presenter.v1.StateUpdateRequest"> & {
    * @generated from field: map<string, string> params = 2;
    */
   params: { [key: string]: string };
+
+  /**
+   * @generated from field: google.protobuf.FieldMask update_mask = 3;
+   */
+  updateMask?: FieldMask;
 };
 
 /**
@@ -129,6 +136,23 @@ export const UIUpdateSchema: GenMessage<UIUpdate> = /*@__PURE__*/
   messageDesc(file_presenter_v1_presenter, 3);
 
 /**
+ * @generated from message presenter.v1.TestRecord
+ */
+export type TestRecord = Message<"presenter.v1.TestRecord"> & {
+  /**
+   * @generated from field: utils.v1.HelperUtilType helper_record = 1;
+   */
+  helperRecord?: HelperUtilType;
+};
+
+/**
+ * Describes the message presenter.v1.TestRecord.
+ * Use `create(TestRecordSchema)` to create a new message.
+ */
+export const TestRecordSchema: GenMessage<TestRecord> = /*@__PURE__*/
+  messageDesc(file_presenter_v1_presenter, 4);
+
+/**
  * Request to save preferences
  *
  * @generated from message presenter.v1.PreferencesRequest
@@ -145,7 +169,7 @@ export type PreferencesRequest = Message<"presenter.v1.PreferencesRequest"> & {
  * Use `create(PreferencesRequestSchema)` to create a new message.
  */
 export const PreferencesRequestSchema: GenMessage<PreferencesRequest> = /*@__PURE__*/
-  messageDesc(file_presenter_v1_presenter, 4);
+  messageDesc(file_presenter_v1_presenter, 5);
 
 /**
  * Response from preferences save
@@ -169,7 +193,7 @@ export type PreferencesResponse = Message<"presenter.v1.PreferencesResponse"> & 
  * Use `create(PreferencesResponseSchema)` to create a new message.
  */
 export const PreferencesResponseSchema: GenMessage<PreferencesResponse> = /*@__PURE__*/
-  messageDesc(file_presenter_v1_presenter, 5);
+  messageDesc(file_presenter_v1_presenter, 6);
 
 /**
  * Request to run callback demo
@@ -188,7 +212,7 @@ export type CallbackDemoRequest = Message<"presenter.v1.CallbackDemoRequest"> & 
  * Use `create(CallbackDemoRequestSchema)` to create a new message.
  */
 export const CallbackDemoRequestSchema: GenMessage<CallbackDemoRequest> = /*@__PURE__*/
-  messageDesc(file_presenter_v1_presenter, 6);
+  messageDesc(file_presenter_v1_presenter, 7);
 
 /**
  * Response from callback demo
@@ -212,7 +236,7 @@ export type CallbackDemoResponse = Message<"presenter.v1.CallbackDemoResponse"> 
  * Use `create(CallbackDemoResponseSchema)` to create a new message.
  */
 export const CallbackDemoResponseSchema: GenMessage<CallbackDemoResponse> = /*@__PURE__*/
-  messageDesc(file_presenter_v1_presenter, 7);
+  messageDesc(file_presenter_v1_presenter, 8);
 
 /**
  * PresenterService runs in WASM and drives UI logic

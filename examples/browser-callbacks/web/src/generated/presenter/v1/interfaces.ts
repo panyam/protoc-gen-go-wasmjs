@@ -1,7 +1,7 @@
 // Generated TypeScript interfaces from proto file
 // DO NOT EDIT - This file is auto-generated
 
-import { Timestamp } from "@bufbuild/protobuf/wkt";
+import { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
 
 
 
@@ -31,6 +31,7 @@ export interface LoadUserDataResponse {
 export interface StateUpdateRequest {
   action: string;
   params: Record<string, string>;
+  updateMask?: FieldMask;
 }
 
 
@@ -41,6 +42,12 @@ export interface UIUpdate {
   component: string;
   action: string;
   data: Record<string, string>;
+}
+
+
+
+export interface TestRecord {
+  helperRecord?: HelperUtilType;
 }
 
 
