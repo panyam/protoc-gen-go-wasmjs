@@ -69,6 +69,27 @@
 - **✅ Tests added**: Comprehensive unit tests for package extraction and type name flattening
 - **✅ Example verification**: `browser-callbacks` example now correctly imports `HelperUtilType` and `ParentUtilMessage_NestedUtilType`
 
+### ✅ **7. Factory/Deserializer/Models Generation (ARCHITECTURAL) - COMPLETED** (October 2025)
+- **✅ Issue**: TODO at line 179 in `ts_generator.go` - factory/models/schemas/deserializer files not being generated
+- **✅ Root cause**: New catalog-based `planFilesFromCatalog()` method incomplete - had TODO comment instead of implementation
+- **✅ Fix implemented**:
+  - Completed file planning for models, factory, schemas, and deserializer in `planFilesFromCatalog()`
+  - Added rendering logic in `renderFilesFromCatalog()` for all type artifact files
+  - Factory generation respects `generate_factories=true` configuration flag
+  - Added package deduplication to avoid generating same files multiple times
+  - Implemented caching of `TSTemplateData` to avoid rebuilding for each file type
+- **✅ Generated files per package**:
+  - `interfaces.ts` - Pure TypeScript interfaces (always generated)
+  - `models.ts` - Concrete class implementations with defaults (always generated)
+  - `factory.ts` - Object construction with context awareness (when `generate_factories=true`)
+  - `schemas.ts` - Field metadata for runtime introspection (always generated)
+  - `deserializer.ts` - Schema-driven data population (always generated)
+- **✅ Architecture benefits**:
+  - Clean separation: interfaces for types, models for implementations
+  - Factory system handles proper default values and recursive construction
+  - Deserializer uses schema metadata for type-safe field resolution
+  - All existing tests pass with new generation logic
+
 ## 🚀 **NEXT PHASE: Enhanced Developer Experience**
 
 ### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**

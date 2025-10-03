@@ -61,24 +61,30 @@ Complex multi-package examples showing:
 
 ```
 ├── cmd/protoc-gen-go-wasmjs/     # Plugin entry point
-├── pkg/generator/                # Core generation logic
-│   ├── templates/                # Embedded templates
-│   │   ├── wasm.go.tmpl         # Go WASM wrapper
-│   │   ├── client_simple.ts.tmpl # Simplified TypeScript client
-│   │   ├── interfaces.ts.tmpl   # TypeScript interfaces
-│   │   ├── models.ts.tmpl       # TypeScript model classes
-│   │   ├── factory.ts.tmpl      # Enhanced TypeScript factories
-│   │   ├── schemas.ts.tmpl      # Schema definitions for type-safe deserialization
-│   │   ├── deserializer.ts.tmpl # Schema-aware deserializers
-│   │   └── build.sh.tmpl        # Build script
-│   ├── config.go                # Configuration parsing
-│   ├── generator.go             # Main generation logic
-│   ├── tsgenerator.go          # TypeScript-specific generation
-│   └── types.go                 # Template data structures
+├── pkg/
+│   ├── generators/               # Core generation logic
+│   │   ├── base_generator.go   # Artifact collection & catalog
+│   │   ├── ts_generator.go     # TypeScript-specific generation
+│   │   └── go_generator.go     # Go WASM-specific generation
+│   ├── renderers/
+│   │   └── templates/           # Embedded templates
+│   │       ├── wasm.go.tmpl         # Go WASM wrapper
+│   │       ├── client_simple.ts.tmpl # TypeScript service clients
+│   │       ├── bundle.ts.tmpl       # Bundle base class
+│   │       ├── interfaces.ts.tmpl   # TypeScript interfaces
+│   │       ├── models.ts.tmpl       # Concrete implementations
+│   │       ├── factory.ts.tmpl      # Object factories
+│   │       ├── schemas.ts.tmpl      # Field metadata
+│   │       ├── deserializer.ts.tmpl # Data deserialization
+│   │       └── build.sh.tmpl        # Build script
+│   ├── builders/                # Template data building
+│   ├── filters/                 # Service/method filtering
+│   └── collectors/              # Message/enum collection
 ├── proto/wasmjs/v1/             # WASM annotations
+├── runtime/                     # @protoc-gen-go-wasmjs/runtime package
 ├── examples/
 │   ├── connect4/                # Working multiplayer Connect4 demo
-│   └── library/                 # Library management examples
+│   └── browser-callbacks/       # Browser communication example
 └── PROTO_CONVERSION.md          # Conversion documentation
 ```
 
@@ -101,32 +107,36 @@ Using Go's `embed` package for templates provides:
 
 ### 3. **Enhanced TypeScript Generation System**
 Generates complete TypeScript ecosystem with advanced features:
-```typescript
-// Generated per proto package
-export interface Book { id: string; title: string; base?: BaseMessage; }
-export class Book implements BookInterface { /* ... */ }
 
-// Enhanced factories with context-aware construction
+**Generated Files Per Package:**
+```typescript
+// interfaces.ts - Pure TypeScript interfaces for type safety
+export interface Book {
+  id: string;
+  title: string;
+  base?: BaseMessage;
+}
+
+// models.ts - Concrete implementations with default values
+export class Book implements BookInterface {
+  id: string = "";
+  title: string = "";
+  base?: BaseMessage;
+}
+
+// factory.ts - Context-aware object construction (when generate_factories=true)
 export class LibraryV2Factory {
   private commonFactory = new LibraryCommonFactory(); // Cross-package dependency
-  
+
   newBook = (parent?: any, attributeName?: string, attributeKey?: string | number, data?: any): FactoryResult<Book> => {
     const instance = new ConcreteBook();
     return { instance, fullyLoaded: false }; // Delegates to deserializer
   }
-  
+
   getFactoryMethod(messageType: string) { /* Cross-package delegation */ }
 }
 
-// Schema-aware deserializer with factory composition
-export class LibraryV2Deserializer {
-  constructor(private schemaRegistry: Record<string, MessageSchema>, private factory: FactoryInterface) {}
-  
-  deserialize<T>(instance: T, data: any, messageType: string): T { /* Schema-based field processing */ }
-  createAndDeserialize<T>(messageType: string, data: any): T | null { /* Factory integration */ }
-}
-
-// Generated schemas with field metadata
+// schemas.ts - Field metadata for runtime processing
 export const BookSchema: MessageSchema = {
   name: "Book",
   fields: [
@@ -135,7 +145,22 @@ export const BookSchema: MessageSchema = {
     // ... other fields with proto field IDs and types
   ]
 };
+
+// deserializer.ts - Schema-driven deserialization
+export class LibraryV2Deserializer {
+  constructor(private schemaRegistry: Record<string, MessageSchema>, private factory: FactoryInterface) {}
+
+  deserialize<T>(instance: T, data: any, messageType: string): T { /* Schema-based field processing */ }
+  static from<T>(messageType: string, data: any): T { /* Static convenience method */ }
+}
 ```
+
+**Clean Architecture Benefits:**
+- **Interfaces** provide type safety without implementation overhead
+- **Models** offer concrete classes when needed
+- **Factories** handle object construction with proper defaults
+- **Schemas** enable runtime type introspection
+- **Deserializers** populate objects with schema awareness
 
 ### 4. **Flexible API Structures**
 Supports multiple JavaScript API patterns:
@@ -190,11 +215,12 @@ The project has completed a comprehensive refactoring and achieved **production-
 
 ### Recent Quality & TypeScript Improvements (Latest)
 - ✅ **Native Map Type Support**: Fixed proto `map<K,V>` fields to generate TypeScript `Map<K,V>` instead of synthetic interfaces
-- ✅ **Framework Schema Separation**: Separated framework types (`FieldType`, `FieldSchema`) into `deserializer_schemas.ts` for cleaner architecture  
+- ✅ **Framework Schema Separation**: Separated framework types (`FieldType`, `FieldSchema`) into `deserializer_schemas.ts` for cleaner architecture
 - ✅ **Package-Based Generation**: Transitioned from file-based to package-based TypeScript generation eliminating import issues
 - ✅ **TypeScript Type Safety**: Fixed factory method subscripting and interface compatibility issues for full type safety
 - ✅ **External Type Mapping System**: Comprehensive support for external protobuf types with configurable mappings, factory integration, and proper import handling
 - ✅ **Developer Experience Enhancements**: Ergonomic API improvements with MESSAGE_TYPE constants, static deserializer methods, and performance-optimized shared instances
+- ✅ **Factory/Deserializer Generation**: Completed wiring for models, factory, schemas, and deserializer file generation in new catalog-based architecture (October 2025)
 
 ### Latest Bug Fixes & Enum Support (January 2025)
 - **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages - they are now correctly excluded from generation while remaining visible for proto compilation

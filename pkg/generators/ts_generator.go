@@ -158,9 +158,18 @@ func (tg *TSGenerator) planFilesFromCatalog(catalog *ArtifactCatalog, config *bu
 	})
 
 	// Plan type files per package
+	// Track which packages we've already planned to avoid duplicates
+	processedPackages := make(map[string]bool)
+
 	for _, msgArtifact := range catalog.Messages {
 		packageInfo := msgArtifact.Package
-		
+
+		// Skip if we've already processed this package
+		if processedPackages[packageInfo.Name] {
+			continue
+		}
+		processedPackages[packageInfo.Name] = true
+
 		// Interfaces file
 		interfacesFilename := tg.calculateInterfacesFilename(packageInfo, config)
 		specs = append(specs, builders.FileSpec{
@@ -176,8 +185,67 @@ func (tg *TSGenerator) planFilesFromCatalog(catalog *ArtifactCatalog, config *bu
 			},
 		})
 
-		// Models, factory, schemas, deserializer files
-		// ... (add other type files as needed)
+		// Models file
+		modelsFilename := tg.calculateModelsFilename(packageInfo, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     fmt.Sprintf("models_%s", packageInfo.Name),
+			Filename: modelsFilename,
+			Type:     "models",
+			Required: false,
+			ContentHints: builders.ContentHints{
+				HasMessages: true,
+			},
+			Metadata: map[string]interface{}{
+				"packageInfo": packageInfo,
+			},
+		})
+
+		// Factory file (optional based on config)
+		if config.GenerateFactories {
+			factoryFilename := tg.calculateFactoryFilename(packageInfo, config)
+			specs = append(specs, builders.FileSpec{
+				Name:     fmt.Sprintf("factory_%s", packageInfo.Name),
+				Filename: factoryFilename,
+				Type:     "factory",
+				Required: false,
+				ContentHints: builders.ContentHints{
+					HasMessages: true,
+				},
+				Metadata: map[string]interface{}{
+					"packageInfo": packageInfo,
+				},
+			})
+		}
+
+		// Schemas file
+		schemasFilename := tg.calculateSchemasFilename(packageInfo, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     fmt.Sprintf("schemas_%s", packageInfo.Name),
+			Filename: schemasFilename,
+			Type:     "schemas",
+			Required: false,
+			ContentHints: builders.ContentHints{
+				HasMessages: true,
+			},
+			Metadata: map[string]interface{}{
+				"packageInfo": packageInfo,
+			},
+		})
+
+		// Deserializer file
+		deserializerFilename := tg.calculateDeserializerFilename(packageInfo, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     fmt.Sprintf("deserializer_%s", packageInfo.Name),
+			Filename: deserializerFilename,
+			Type:     "deserializer",
+			Required: false,
+			ContentHints: builders.ContentHints{
+				HasMessages: true,
+			},
+			Metadata: map[string]interface{}{
+				"packageInfo": packageInfo,
+			},
+		})
 	}
 
 	return &builders.FilePlan{
@@ -231,21 +299,130 @@ func (tg *TSGenerator) renderFilesFromCatalog(
 	}
 
 	// Render type files
+	// Track which packages we've already rendered type files for to avoid duplicates
+	renderedPackages := make(map[string]*builders.TSTemplateData)
+
 	interfaceFiles := fileSet.GetFilesByType("interfaces")
 	for fileName, interfaceFile := range interfaceFiles {
 		spec := fileSet.GetFileSpec(fileName)
 		if spec != nil && spec.Metadata != nil {
 			packageInfo := spec.Metadata["packageInfo"].(*builders.PackageInfo)
 
-			// Build type data for this package
+			// Build type data for this package (cache it for reuse)
 			typeData, err := tg.dataBuilder.BuildTypeData(packageInfo, criteria, config)
 			if err != nil {
 				return fmt.Errorf("failed to build type data for %s: %w", packageInfo.Name, err)
 			}
 
 			if typeData != nil {
+				renderedPackages[packageInfo.Name] = typeData
+
 				if err := tg.renderer.RenderInterfaces(interfaceFile, typeData); err != nil {
 					return fmt.Errorf("failed to render interfaces for %s: %w", packageInfo.Name, err)
+				}
+			}
+		}
+	}
+
+	// Render models files
+	modelsFiles := fileSet.GetFilesByType("models")
+	for fileName, modelsFile := range modelsFiles {
+		spec := fileSet.GetFileSpec(fileName)
+		if spec != nil && spec.Metadata != nil {
+			packageInfo := spec.Metadata["packageInfo"].(*builders.PackageInfo)
+
+			// Reuse type data if we already built it
+			typeData := renderedPackages[packageInfo.Name]
+			if typeData == nil {
+				var err error
+				typeData, err = tg.dataBuilder.BuildTypeData(packageInfo, criteria, config)
+				if err != nil {
+					return fmt.Errorf("failed to build type data for %s: %w", packageInfo.Name, err)
+				}
+				renderedPackages[packageInfo.Name] = typeData
+			}
+
+			if typeData != nil {
+				if err := tg.renderer.RenderModels(modelsFile, typeData); err != nil {
+					return fmt.Errorf("failed to render models for %s: %w", packageInfo.Name, err)
+				}
+			}
+		}
+	}
+
+	// Render factory files
+	factoryFiles := fileSet.GetFilesByType("factory")
+	for fileName, factoryFile := range factoryFiles {
+		spec := fileSet.GetFileSpec(fileName)
+		if spec != nil && spec.Metadata != nil {
+			packageInfo := spec.Metadata["packageInfo"].(*builders.PackageInfo)
+
+			// Reuse type data if we already built it
+			typeData := renderedPackages[packageInfo.Name]
+			if typeData == nil {
+				var err error
+				typeData, err = tg.dataBuilder.BuildTypeData(packageInfo, criteria, config)
+				if err != nil {
+					return fmt.Errorf("failed to build type data for %s: %w", packageInfo.Name, err)
+				}
+				renderedPackages[packageInfo.Name] = typeData
+			}
+
+			if typeData != nil {
+				if err := tg.renderer.RenderFactory(factoryFile, typeData); err != nil {
+					return fmt.Errorf("failed to render factory for %s: %w", packageInfo.Name, err)
+				}
+			}
+		}
+	}
+
+	// Render schemas files
+	schemasFiles := fileSet.GetFilesByType("schemas")
+	for fileName, schemasFile := range schemasFiles {
+		spec := fileSet.GetFileSpec(fileName)
+		if spec != nil && spec.Metadata != nil {
+			packageInfo := spec.Metadata["packageInfo"].(*builders.PackageInfo)
+
+			// Reuse type data if we already built it
+			typeData := renderedPackages[packageInfo.Name]
+			if typeData == nil {
+				var err error
+				typeData, err = tg.dataBuilder.BuildTypeData(packageInfo, criteria, config)
+				if err != nil {
+					return fmt.Errorf("failed to build type data for %s: %w", packageInfo.Name, err)
+				}
+				renderedPackages[packageInfo.Name] = typeData
+			}
+
+			if typeData != nil {
+				if err := tg.renderer.RenderSchemas(schemasFile, typeData); err != nil {
+					return fmt.Errorf("failed to render schemas for %s: %w", packageInfo.Name, err)
+				}
+			}
+		}
+	}
+
+	// Render deserializer files
+	deserializerFiles := fileSet.GetFilesByType("deserializer")
+	for fileName, deserializerFile := range deserializerFiles {
+		spec := fileSet.GetFileSpec(fileName)
+		if spec != nil && spec.Metadata != nil {
+			packageInfo := spec.Metadata["packageInfo"].(*builders.PackageInfo)
+
+			// Reuse type data if we already built it
+			typeData := renderedPackages[packageInfo.Name]
+			if typeData == nil {
+				var err error
+				typeData, err = tg.dataBuilder.BuildTypeData(packageInfo, criteria, config)
+				if err != nil {
+					return fmt.Errorf("failed to build type data for %s: %w", packageInfo.Name, err)
+				}
+				renderedPackages[packageInfo.Name] = typeData
+			}
+
+			if typeData != nil {
+				if err := tg.renderer.RenderDeserializer(deserializerFile, typeData); err != nil {
+					return fmt.Errorf("failed to render deserializer for %s: %w", packageInfo.Name, err)
 				}
 			}
 		}

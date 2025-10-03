@@ -63,13 +63,18 @@ type ArtifactCatalog struct {
 }
 ```
 
-### 2. TSGenerator (`pkg/generators/ts_generator.go`) 
+### 2. TSGenerator (`pkg/generators/ts_generator.go`)
 TypeScript-specific generator that embeds BaseGenerator:
 - Collects all artifacts using BaseGenerator.CollectAllArtifacts()
 - Maps artifacts to files with TypeScript-specific logic
 - Generates service clients at package level (presenter/v1/presenterServiceClient.ts)
 - Generates simple base bundle at module level (index.ts)
-- Renders TypeScript interfaces, types, and clients
+- Renders complete TypeScript artifact set per package:
+  - `interfaces.ts` - Type definitions (always generated)
+  - `models.ts` - Concrete implementations (always generated)
+  - `factory.ts` - Object factories (when `generate_factories=true`)
+  - `schemas.ts` - Field metadata (always generated)
+  - `deserializer.ts` - Data population (always generated)
 
 ### 3. GoGenerator (`pkg/generators/go_generator.go`)
 Go WASM-specific generator that embeds BaseGenerator:
@@ -110,18 +115,28 @@ Embedded templates using Go's `embed` package with inheritance-based architectur
 
 **Go Templates:**
 - `wasm.go.tmpl` - Go WASM wrapper generation
-- `main.go.tmpl` - Example usage generation  
+- `main.go.tmpl` - Example usage generation
 - `build.sh.tmpl` - Build script generation
 
 **TypeScript Templates:**
 - `client_simple.ts.tmpl` - Service client generation (cleaned of bundle code)
 - `bundle.ts.tmpl` - Simple base bundle class extending WASMBundle
 - `browser_service.ts.tmpl` - Browser service interfaces
-- `interfaces.ts.tmpl` - TypeScript interface generation
-- `models.ts.tmpl` - TypeScript model class generation
-- `factory.ts.tmpl` - TypeScript factory generation
-- `schemas.ts.tmpl` - Schema definitions
-- `deserializer.ts.tmpl` - Schema-aware deserializers
+- `interfaces.ts.tmpl` - TypeScript interface generation (type definitions only)
+- `models.ts.tmpl` - TypeScript model class generation (concrete implementations)
+- `factory.ts.tmpl` - TypeScript factory generation (object construction)
+- `schemas.ts.tmpl` - Schema definitions (field metadata)
+- `deserializer.ts.tmpl` - Schema-aware deserializers (data population)
+
+**TypeScript Generation Model:**
+The generator follows a clean separation between interfaces and implementations:
+- **`interfaces.ts`**: Pure TypeScript interfaces for type safety and flexibility
+- **`models.ts`**: Concrete classes implementing the interfaces with default values
+- **`factory.ts`**: Factory methods for object construction with context awareness
+- **`schemas.ts`**: Field metadata and protobuf schema information
+- **`deserializer.ts`**: Schema-driven deserialization with factory integration
+
+This model allows users to work with interfaces for type definitions while having concrete implementations available when needed. The factory/deserializer system handles proper default values and recursive object construction.
 
 ### 5. Simplified Bundle Architecture
 The bundle architecture uses composition and inheritance patterns for maximum flexibility:

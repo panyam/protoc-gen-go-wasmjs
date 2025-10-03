@@ -308,6 +308,103 @@ export class PresenterServiceServiceClient extends ServiceClient implements Pres
 }
 ```
 
+## TypeScript Generation Model
+
+The TypeScript generator creates a complete set of files per proto package, following a clean separation between interfaces and implementations:
+
+### Generated Files Per Package
+
+For each proto package (e.g., `utils.v1`), the generator creates:
+
+**`interfaces.ts`** - Pure TypeScript interfaces for type safety:
+```typescript
+export interface NestedUtilType {
+  topLevelCount: number;
+  topLevelValue: string;
+}
+```
+
+**`models.ts`** - Concrete implementations with default values:
+```typescript
+export class NestedUtilType implements NestedUtilTypeInterface {
+  topLevelCount: number = 0;
+  topLevelValue: string = "";
+}
+```
+
+**`factory.ts`** - Object construction (when `generate_factories=true`):
+```typescript
+export class UtilsV1Factory {
+  newNestedUtilType = (parent?: any, attributeName?: string, attributeKey?: string | number, data?: any): FactoryResult<NestedUtilTypeInterface> => {
+    const instance = new ConcreteNestedUtilType();
+    return { instance, fullyLoaded: false };
+  }
+}
+```
+
+**`schemas.ts`** - Field metadata for runtime processing:
+```typescript
+export const NestedUtilTypeSchema: MessageSchema = {
+  name: "NestedUtilType",
+  fields: [
+    { name: "topLevelCount", type: FieldType.INT32, id: 1 },
+    { name: "topLevelValue", type: FieldType.STRING, id: 2 },
+  ]
+};
+```
+
+**`deserializer.ts`** - Schema-driven deserialization:
+```typescript
+export class UtilsV1Deserializer extends BaseDeserializer {
+  static from<T>(messageType: string, data: any): T {
+    const deserializer = new UtilsV1Deserializer();
+    return deserializer.createAndDeserialize<T>(messageType, data);
+  }
+}
+```
+
+### Usage Patterns
+
+**Working with Interfaces (Type-safe but flexible):**
+```typescript
+import { NestedUtilType } from './utils/v1/interfaces';
+
+const data: NestedUtilType = {
+  topLevelCount: 1,
+  topLevelValue: 'hello'
+};
+```
+
+**Using Deserializer for Proper Defaults:**
+```typescript
+import { UtilsV1Deserializer } from './utils/v1/deserializer';
+
+// Creates object with proper defaults for missing fields
+const obj = UtilsV1Deserializer.from<NestedUtilType>(
+  "utils.v1.NestedUtilType",
+  { topLevelCount: 1 }  // topLevelValue will be "" (default)
+);
+```
+
+**Using Model Classes:**
+```typescript
+import { NestedUtilType as ConcreteNestedUtilType } from './utils/v1/models';
+
+const obj = new ConcreteNestedUtilType();
+// obj.topLevelCount is 0 (default)
+// obj.topLevelValue is "" (default)
+```
+
+### Architecture Benefits
+
+- **Interfaces** - Lightweight type definitions, zero runtime cost
+- **Models** - Concrete classes when you need instantiation
+- **Factories** - Handles complex object graphs with proper defaults
+- **Schemas** - Runtime type introspection for advanced use cases
+- **Deserializers** - Schema-aware data population with type safety
+
+This model eliminates the need for manual default handling and provides proper protobuf semantics in TypeScript.
+
 ## Proto to JSON Conversion
 
 The plugin includes a flexible proto to JSON conversion system to handle differences between Go's protojson and TypeScript protobuf libraries. See [PROTO_CONVERSION.md](PROTO_CONVERSION.md) for detailed documentation.
