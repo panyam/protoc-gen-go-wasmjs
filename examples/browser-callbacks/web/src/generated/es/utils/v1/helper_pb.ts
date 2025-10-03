@@ -12,7 +12,29 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file utils/v1/helper.proto.
  */
 export const file_utils_v1_helper: GenFile = /*@__PURE__*/
-  fileDesc("ChV1dGlscy92MS9oZWxwZXIucHJvdG8SCHV0aWxzLnYxIoEBCg5IZWxwZXJVdGlsVHlwZRIOCgZ2YWx1ZTEYASABKAUSLwoLdXBkYXRlX21hc2sYAiABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkIKDk5lc3RlZFV0aWxUeXBlEhcKD3RvcF9sZXZlbF9jb3VudBgBIAEoBRIXCg90b3BfbGV2ZWxfdmFsdWUYAiABKAkiowEKEVBhcmVudFV0aWxNZXNzYWdlEhQKDHBhcmVudF92YWx1ZRgBIAEoBRI6CgZuZXN0ZWQYAiABKAsyKi51dGlscy52MS5QYXJlbnRVdGlsTWVzc2FnZS5OZXN0ZWRVdGlsVHlwZRo8Cg5OZXN0ZWRVdGlsVHlwZRIUCgxuZXN0ZWRfdmFsdWUYASABKAkSFAoMbmVzdGVkX2NvdW50GAIgASgFQrcBCgxjb20udXRpbHMudjFCC0hlbHBlclByb3RvUAFaWWdpdGh1Yi5jb20vcGFueWFtL3Byb3RvYy1nZW4tZ28td2FzbWpzL2V4YW1wbGVzL2Jyb3dzZXItY2FsbGJhY2tzL2dlbi9nby91dGlscy92MTt1dGlsc3YxogIDVVhYqgIIVXRpbHMuVjHKAghVdGlsc1xWMeICFFV0aWxzXFYxXEdQQk1ldGFkYXRh6gIJVXRpbHM6OlYxYgZwcm90bzM", [file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
+  fileDesc("ChV1dGlscy92MS9oZWxwZXIucHJvdG8SCHV0aWxzLnYxImYKHE1vZGVsV2l0aE9wdGlvbmFsQW5kRGVmYXVsdHMSFAoMbmVlZGVkX3ZhbHVlGAEgASgFEhwKD29wdGlvbmFsX3N0cmluZxgCIAEoCUgAiAEBQhIKEF9vcHRpb25hbF9zdHJpbmcigQEKDkhlbHBlclV0aWxUeXBlEg4KBnZhbHVlMRgBIAEoBRIvCgt1cGRhdGVfbWFzaxgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE1hc2sSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiQgoOTmVzdGVkVXRpbFR5cGUSFwoPdG9wX2xldmVsX2NvdW50GAEgASgFEhcKD3RvcF9sZXZlbF92YWx1ZRgCIAEoCSKjAQoRUGFyZW50VXRpbE1lc3NhZ2USFAoMcGFyZW50X3ZhbHVlGAEgASgFEjoKBm5lc3RlZBgCIAEoCzIqLnV0aWxzLnYxLlBhcmVudFV0aWxNZXNzYWdlLk5lc3RlZFV0aWxUeXBlGjwKDk5lc3RlZFV0aWxUeXBlEhQKDG5lc3RlZF92YWx1ZRgBIAEoCRIUCgxuZXN0ZWRfY291bnQYAiABKAVCtwEKDGNvbS51dGlscy52MUILSGVscGVyUHJvdG9QAVpZZ2l0aHViLmNvbS9wYW55YW0vcHJvdG9jLWdlbi1nby13YXNtanMvZXhhbXBsZXMvYnJvd3Nlci1jYWxsYmFja3MvZ2VuL2dvL3V0aWxzL3YxO3V0aWxzdjGiAgNVWFiqAghVdGlscy5WMcoCCFV0aWxzXFYx4gIUVXRpbHNcVjFcR1BCTWV0YWRhdGHqAglVdGlsczo6VjFiBnByb3RvMw", [file_google_protobuf_field_mask, file_google_protobuf_timestamp]);
+
+/**
+ * @generated from message utils.v1.ModelWithOptionalAndDefaults
+ */
+export type ModelWithOptionalAndDefaults = Message<"utils.v1.ModelWithOptionalAndDefaults"> & {
+  /**
+   * @generated from field: int32 needed_value = 1;
+   */
+  neededValue: number;
+
+  /**
+   * @generated from field: optional string optional_string = 2;
+   */
+  optionalString?: string;
+};
+
+/**
+ * Describes the message utils.v1.ModelWithOptionalAndDefaults.
+ * Use `create(ModelWithOptionalAndDefaultsSchema)` to create a new message.
+ */
+export const ModelWithOptionalAndDefaultsSchema: GenMessage<ModelWithOptionalAndDefaults> = /*@__PURE__*/
+  messageDesc(file_utils_v1_helper, 0);
 
 /**
  * @generated from message utils.v1.HelperUtilType
@@ -41,7 +63,7 @@ export type HelperUtilType = Message<"utils.v1.HelperUtilType"> & {
  * Use `create(HelperUtilTypeSchema)` to create a new message.
  */
 export const HelperUtilTypeSchema: GenMessage<HelperUtilType> = /*@__PURE__*/
-  messageDesc(file_utils_v1_helper, 0);
+  messageDesc(file_utils_v1_helper, 1);
 
 /**
  * A top levle NestedUtilType
@@ -65,7 +87,7 @@ export type NestedUtilType = Message<"utils.v1.NestedUtilType"> & {
  * Use `create(NestedUtilTypeSchema)` to create a new message.
  */
 export const NestedUtilTypeSchema: GenMessage<NestedUtilType> = /*@__PURE__*/
-  messageDesc(file_utils_v1_helper, 1);
+  messageDesc(file_utils_v1_helper, 2);
 
 /**
  * Parent message containing a nested type
@@ -89,7 +111,7 @@ export type ParentUtilMessage = Message<"utils.v1.ParentUtilMessage"> & {
  * Use `create(ParentUtilMessageSchema)` to create a new message.
  */
 export const ParentUtilMessageSchema: GenMessage<ParentUtilMessage> = /*@__PURE__*/
-  messageDesc(file_utils_v1_helper, 2);
+  messageDesc(file_utils_v1_helper, 3);
 
 /**
  * Nested type to test cross-package nested imports
@@ -113,5 +135,5 @@ export type ParentUtilMessage_NestedUtilType = Message<"utils.v1.ParentUtilMessa
  * Use `create(ParentUtilMessage_NestedUtilTypeSchema)` to create a new message.
  */
 export const ParentUtilMessage_NestedUtilTypeSchema: GenMessage<ParentUtilMessage_NestedUtilType> = /*@__PURE__*/
-  messageDesc(file_utils_v1_helper, 2, 0);
+  messageDesc(file_utils_v1_helper, 3, 0);
 

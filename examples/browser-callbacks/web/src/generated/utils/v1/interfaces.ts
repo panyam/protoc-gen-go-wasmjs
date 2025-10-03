@@ -6,6 +6,13 @@ import { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
 
 
 
+export interface ModelWithOptionalAndDefaults {
+  neededValue: number;
+  optionalString?: string | undefined;
+}
+
+
+
 export interface HelperUtilType {
   /** Just a test me */
   value1: number;
