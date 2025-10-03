@@ -1,6 +1,6 @@
 {
   "name": "@protoc-gen-go-wasmjs/runtime",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "Runtime utilities for protoc-gen-go-wasmjs generated code",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
