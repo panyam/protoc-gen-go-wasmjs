@@ -12,9 +12,266 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// protoc-gen-go-wasmjs-go generates Go WASM wrappers for gRPC services.
-// This is a focused generator that only produces Go WASM artifacts,
-// using the new layered architecture for better maintainability and testing.
+/*
+protoc-gen-go-wasmjs-go is a Protocol Buffers compiler plugin that generates Go WASM wrappers for gRPC services.
+
+# Overview
+
+This generator is part of the protoc-gen-go-wasmjs split architecture. It focuses exclusively
+on generating Go WASM wrapper code, while the TypeScript generator (protoc-gen-go-wasmjs-ts)
+handles client generation.
+
+# Installation
+
+	go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-go@latest
+
+Verify installation:
+
+	which protoc-gen-go-wasmjs-go
+	# Should output: /path/to/go/bin/protoc-gen-go-wasmjs-go
+
+# Usage with buf
+
+Add to your buf.gen.yaml:
+
+	version: v2
+	plugins:
+	  # Generate standard Go protobuf types
+	  - remote: buf.build/protocolbuffers/go
+	    out: ./gen/go
+	    opt: paths=source_relative
+
+	  # Generate gRPC service interfaces
+	  - remote: buf.build/grpc/go
+	    out: ./gen/go
+	    opt: paths=source_relative
+
+	  # Generate Go WASM wrappers
+	  - local: protoc-gen-go-wasmjs-go
+	    out: ./gen/wasm/go
+	    opt:
+	      - js_structure=namespaced
+	      - js_namespace=myApp
+	      - module_name=my_services
+	      - generate_build_script=true
+
+Generate code:
+
+	buf generate
+
+# Generated Files
+
+The generator produces the following files per proto package:
+
+  - {module_name}.wasm.go: WASM wrapper with exports struct and RegisterAPI
+  - main.go.example: Example usage showing dependency injection pattern
+  - build.sh: Build script for WASM compilation (if generate_build_script=true)
+
+Example generated structure:
+
+	gen/wasm/go/
+	├── library/v1/
+	│   ├── library_v1.wasm.go       # WASM wrapper
+	│   ├── main.go.example          # Usage example
+	│   └── build.sh                 # Build script
+	└── user/v1/
+	    ├── user_v1.wasm.go
+	    ├── main.go.example
+	    └── build.sh
+
+# Configuration Options
+
+Core Generation:
+
+  - wasm_export_path: Path where WASM wrapper should be generated (default: ".")
+  - module_name: WASM module name (default: package_services)
+
+JavaScript API Structure:
+
+  - js_structure: API structure - namespaced|flat|service_based (default: "namespaced")
+  - js_namespace: Global JavaScript namespace (default: lowercase package name)
+
+Service & Method Selection:
+
+  - services: Comma-separated list of services to generate (default: all)
+  - method_include: Comma-separated glob patterns for methods to include
+  - method_exclude: Comma-separated glob patterns for methods to exclude
+  - method_rename: Comma-separated method renames (e.g., "OldName:NewName")
+
+Build Integration:
+
+  - wasm_package_suffix: Package suffix for WASM wrapper (default: "wasm")
+  - generate_build_script: Generate build.sh script (default: true)
+
+# Usage Example
+
+Define your service:
+
+	syntax = "proto3";
+	package library.v1;
+
+	service LibraryService {
+	  rpc FindBooks(FindBooksRequest) returns (FindBooksResponse);
+	  rpc CreateBook(CreateBookRequest) returns (CreateBookResponse);
+	}
+
+Generate WASM wrapper:
+
+	buf generate
+
+Implement your service with dependency injection:
+
+	package main
+
+	import (
+	    "your-project/gen/wasm/library_v1"
+	    libraryv1 "your-project/gen/go/library/v1"
+	)
+
+	type LibraryServiceImpl struct {
+	    db    *sql.DB
+	    cache *redis.Client
+	}
+
+	func (s *LibraryServiceImpl) FindBooks(ctx context.Context, req *libraryv1.FindBooksRequest) (*libraryv1.FindBooksResponse, error) {
+	    // Your implementation
+	    return &libraryv1.FindBooksResponse{Books: books}, nil
+	}
+
+	func main() {
+	    // Initialize with dependency injection
+	    exports := &library_v1.Library_v1_servicesServicesExports{
+	        LibraryService: &LibraryServiceImpl{
+	            db:    database,
+	            cache: redisClient,
+	        },
+	    }
+
+	    // Register JavaScript API
+	    exports.RegisterAPI()
+
+	    // Keep WASM running
+	    select {}
+	}
+
+Build the WASM binary:
+
+	cd gen/wasm/library/v1
+	GOOS=js GOARCH=wasm go build -o library.wasm
+
+	# Or use the generated build script
+	./build.sh
+
+# JavaScript API Structures
+
+The generator supports three different API structures:
+
+Namespaced (Recommended):
+
+	# buf.gen.yaml
+	opt:
+	  - js_structure=namespaced
+	  - js_namespace=myApp
+
+	# JavaScript:
+	window.myApp.libraryService.findBooks(request)
+
+Flat:
+
+	# buf.gen.yaml
+	opt:
+	  - js_structure=flat
+	  - js_namespace=MyApp
+
+	# JavaScript:
+	window.MyAppLibraryServiceFindBooks(request)
+
+Service-Based:
+
+	# buf.gen.yaml
+	opt:
+	  - js_structure=service_based
+
+	# JavaScript:
+	window.services.library.findBooks(request)
+
+# Architecture
+
+The generator uses a layered architecture:
+
+  1. GoGenerator (pkg/generators/go_generator.go): Top-level orchestrator
+  2. BaseGenerator: Artifact collection and classification
+  3. GoDataBuilder: Template data construction
+  4. GoRenderer: Template rendering
+  5. Filters: Service/method filtering
+
+This separation enables:
+
+  - Clear separation of concerns
+  - Comprehensive unit testing
+  - Easy customization through configuration
+
+# Browser Service Support
+
+For services that need to call browser APIs:
+
+	service BrowserAPI {
+	    option (wasmjs.v1.browser_provided) = true;
+
+	    rpc GetLocalStorage(StorageKeyRequest) returns (StorageValueResponse);
+	}
+
+The generator automatically:
+
+  - Detects browser-provided services
+  - Generates client stubs that call JavaScript
+  - Handles async communication to prevent deadlocks
+
+# Advanced Features
+
+Method Filtering:
+
+	# Include only specific methods
+	opt:
+	  - method_include=Find*,Get*,Create*
+
+	# Exclude internal methods
+	opt:
+	  - method_exclude=*Internal,*Debug
+
+Service Selection:
+
+	# Generate only specific services
+	opt:
+	  - services=LibraryService,UserService
+
+Method Renaming:
+
+	# Rename methods in generated code
+	opt:
+	  - method_rename=FindBooks:searchBooks,GetUser:fetchUser
+
+# Error Handling
+
+The generator validates configuration and provides detailed error messages:
+
+  - Invalid configuration: Reports specific issues
+  - Missing dependencies: Checks for required proto definitions
+  - Template errors: Shows template execution failures
+
+# Links
+
+Related Tools:
+
+  - protoc-gen-go-wasmjs-ts: TypeScript client generator
+  - protoc: Protocol Buffers compiler
+  - buf: Modern protobuf tooling
+
+Documentation:
+
+  - GitHub: https://github.com/panyam/protoc-gen-go-wasmjs
+  - Examples: https://github.com/panyam/protoc-gen-go-wasmjs/tree/main/examples
+*/
 package main
 
 import (

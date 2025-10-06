@@ -221,6 +221,7 @@ The project has completed a comprehensive refactoring and achieved **production-
 - ✅ **External Type Mapping System**: Comprehensive support for external protobuf types with configurable mappings, factory integration, and proper import handling
 - ✅ **Developer Experience Enhancements**: Ergonomic API improvements with MESSAGE_TYPE constants, static deserializer methods, and performance-optimized shared instances
 - ✅ **Factory/Deserializer Generation**: Completed wiring for models, factory, schemas, and deserializer file generation in new catalog-based architecture (October 2025)
+- ✅ **pkg.go.dev Documentation**: Comprehensive godoc documentation added to all packages with examples, architecture diagrams, and complete API reference (October 2025)
 
 ### Latest Bug Fixes & Enum Support (January 2025)
 - **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages - they are now correctly excluded from generation while remaining visible for proto compilation

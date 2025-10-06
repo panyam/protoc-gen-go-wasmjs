@@ -30,47 +30,165 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// BrowserCall represents a call from WASM to a browser-provided service
+// BrowserCall represents a call from WASM to a browser-provided service.
+// It encapsulates all the information needed to execute a remote procedure call
+// from WebAssembly to JavaScript-implemented browser services.
+//
+// BrowserCalls are created by generated WASM code and sent through the BrowserServiceChannel
+// for execution. The channel manages queuing, timeout handling, and response delivery.
+//
+// Example:
+//
+//	call := &wasm.BrowserCall{
+//	    ID:         "call_123",
+//	    Service:    "BrowserAPI",
+//	    Method:     "GetLocalStorage",
+//	    Request:    serializedProtoRequest,
+//	    ResponseCh: make(chan *wasm.CallResponse, 1),
+//	    Timeout:    5 * time.Second,
+//	    StartTime:  time.Now(),
+//	    IsAsync:    false,
+//	}
 type BrowserCall struct {
-	ID         string
-	Service    string // Service name (e.g., "BrowserAPI")
-	Method     string // Method name (e.g., "Fetch")
-	Request    []byte // Serialized proto request
+	// ID is a unique identifier for this call, used to correlate responses.
+	// Generated automatically by BrowserServiceChannel.
+	ID string
+
+	// Service is the name of the browser-provided service to call.
+	// Must match a service registered in JavaScript (e.g., "BrowserAPI").
+	Service string
+
+	// Method is the name of the method to call on the service.
+	// Uses the proto method name (e.g., "GetLocalStorage", "Fetch").
+	Method string
+
+	// Request contains the serialized protobuf request data.
+	// This is sent to JavaScript as a JSON string after deserialization.
+	Request []byte
+
+	// ResponseCh is the channel where the response will be delivered.
+	// Buffered channel with capacity 1 to prevent blocking.
 	ResponseCh chan *CallResponse
-	Timeout    time.Duration
-	StartTime  time.Time
-	IsAsync    bool // Whether this is an async browser method
+
+	// Timeout is the maximum duration to wait for a response.
+	// If the timeout expires, the call is canceled and an error is returned.
+	Timeout time.Duration
+
+	// StartTime records when this call was initiated.
+	// Used for timeout calculation and debugging.
+	StartTime time.Time
+
+	// IsAsync indicates if this is an asynchronous browser method.
+	// Async methods use callbacks to prevent main thread deadlocks.
+	// Set to true for methods with (wasmjs.v1.async_method) = { is_async: true }.
+	IsAsync bool
 }
 
-// CallResponse represents the response from a browser service call
+// CallResponse represents the response from a browser service call.
+// It contains either response data or an error, but not both.
+//
+// The response is delivered through BrowserCall.ResponseCh after the JavaScript
+// implementation completes the call.
 type CallResponse struct {
-	Data  []byte
+	// Data contains the serialized protobuf response data.
+	// This is the JSON-encoded proto message returned by JavaScript.
+	// Will be nil if Error is set.
+	Data []byte
+
+	// Error contains any error that occurred during the call.
+	// This includes JavaScript errors, timeouts, and serialization errors.
+	// Will be nil if Data is set.
 	Error error
 }
 
-// BrowserServiceChannel manages all browser service calls with FIFO ordering
+// BrowserServiceChannel manages all browser service calls with FIFO ordering.
+// It provides the communication bridge between WASM and JavaScript, handling
+// call queuing, timeout management, and response delivery.
+//
+// The channel is implemented as a singleton and initialized automatically on first use.
+// It registers global JavaScript functions that JavaScript code polls to receive calls
+// and deliver responses.
+//
+// Thread Safety:
+//
+//	All methods are thread-safe and can be called from multiple goroutines.
+//	Uses sync.RWMutex for pending calls map and atomic operations for call IDs.
+//
+// JavaScript Integration:
+//
+//	The channel exposes these global functions:
+//	  - __wasmGetNextBrowserCall(): Returns next pending call or null
+//	  - __wasmDeliverBrowserResponse(id, data, error): Delivers response or error
+//
+// Usage Example:
+//
+//	// Get singleton instance
+//	channel := wasm.GetBrowserChannel()
+//
+//	// Create and execute call
+//	call := &wasm.BrowserCall{
+//	    Service:    "BrowserAPI",
+//	    Method:     "GetLocalStorage",
+//	    Request:    requestData,
+//	    ResponseCh: make(chan *wasm.CallResponse, 1),
+//	    Timeout:    5 * time.Second,
+//	}
+//	response, err := channel.CallBrowserService(ctx, call)
 type BrowserServiceChannel struct {
-	callQueue    chan *BrowserCall
+	// callQueue buffers pending calls waiting to be picked up by JavaScript.
+	// Buffered channel with capacity 100 to handle bursts of calls.
+	callQueue chan *BrowserCall
+
+	// pendingCalls tracks calls that have been sent to JavaScript but not yet responded.
+	// Maps call ID to PendingCall struct for timeout management.
 	pendingCalls map[string]*PendingCall
-	mu           sync.RWMutex
-	nextCallID   uint64
-	initialized  bool
+
+	// mu protects concurrent access to pendingCalls map.
+	mu sync.RWMutex
+
+	// nextCallID is atomically incremented to generate unique call IDs.
+	nextCallID uint64
+
+	// initialized indicates if Initialize() has been called.
+	// Prevents double initialization of JavaScript callbacks.
+	initialized bool
 }
 
-// PendingCall tracks an in-flight browser service call
+// PendingCall tracks an in-flight browser service call.
+// It combines the call information with timeout management.
+//
+// The RefCount field enables safe cleanup when multiple goroutines
+// might be accessing the same pending call.
 type PendingCall struct {
-	Call     *BrowserCall
-	Timer    *time.Timer
+	// Call is the original browser call being tracked.
+	Call *BrowserCall
+
+	// Timer is the timeout timer for this call.
+	// Fires if the JavaScript implementation doesn't respond in time.
+	Timer *time.Timer
+
+	// RefCount tracks how many goroutines are referencing this call.
+	// Used for safe cleanup with atomic operations.
 	RefCount int32
 }
 
-// Global singleton browser channel instance
+// Global singleton browser channel instance.
+// Initialized lazily on first call to GetBrowserChannel().
 var (
 	browserChannel     *BrowserServiceChannel
 	browserChannelOnce sync.Once
 )
 
-// GetBrowserChannel returns the singleton browser channel instance
+// GetBrowserChannel returns the singleton BrowserServiceChannel instance.
+// The channel is initialized automatically on first call using sync.Once,
+// ensuring thread-safe singleton initialization.
+//
+// The returned channel is ready to use and has registered all JavaScript callbacks.
+//
+// Example:
+//
+//	channel := wasm.GetBrowserChannel()
+//	// channel is ready to accept browser service calls
 func GetBrowserChannel() *BrowserServiceChannel {
 	browserChannelOnce.Do(func() {
 		browserChannel = &BrowserServiceChannel{
