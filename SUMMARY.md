@@ -68,7 +68,9 @@ Complex multi-package examples showing:
 │   │   └── go_generator.go     # Go WASM-specific generation
 │   ├── renderers/
 │   │   └── templates/           # Embedded templates
-│   │       ├── wasm.go.tmpl         # Go WASM wrapper
+│   │       ├── wasm_converters.go.tmpl     # JS/Go type converters & stream wrappers
+│   │       ├── wasm_exports.go.tmpl        # Exports struct & RegisterAPI
+│   │       ├── wasm_browser_clients.go.tmpl # Browser service clients
 │   │       ├── client_simple.ts.tmpl # TypeScript service clients
 │   │       ├── bundle.ts.tmpl       # Bundle base class
 │   │       ├── interfaces.ts.tmpl   # TypeScript interfaces
@@ -223,7 +225,18 @@ The project has completed a comprehensive refactoring and achieved **production-
 - ✅ **Factory/Deserializer Generation**: Completed wiring for models, factory, schemas, and deserializer file generation in new catalog-based architecture (October 2025)
 - ✅ **pkg.go.dev Documentation**: Comprehensive godoc documentation added to all packages with examples, architecture diagrams, and complete API reference (October 2025)
 
-### Latest Bug Fixes & Enum Support (January 2025)
+### Latest Updates (January 2025)
+
+#### Go WASM File Splitting (January 2025)
+- **Modular Go Generation**: Split monolithic WASM file into 3 focused files
+  - `<package>_converters.wasm.go` - JS/Go type converters (`createJSResponse`) and stream wrappers
+  - `<package>_exports.wasm.go` - Exports struct, `RegisterAPI()`, and service method wrappers
+  - `<package>_browser_clients.wasm.go` - Browser service client implementations
+- **Better Organization**: Clear separation of concerns for maintainability
+- **Selective Generation**: Converters only when services exist, browser clients only when needed
+- **All files**: Still use `//go:build js && wasm` build tags
+
+#### Bug Fixes & Enum Support
 - **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages - they are now correctly excluded from generation while remaining visible for proto compilation
 - **Comprehensive Enum Support**: Implemented complete enum collection, generation, and import system for TypeScript
   - Enums are generated in interfaces.ts with proper TypeScript enum syntax

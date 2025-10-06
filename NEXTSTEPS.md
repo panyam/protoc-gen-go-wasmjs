@@ -113,6 +113,32 @@
   - Usage patterns and best practices
   - Error handling documentation
 
+## ✅ **Recent Improvements** (January 2025)
+
+### **Go WASM File Splitting - COMPLETED**
+Split monolithic Go WASM generation into 3 modular files:
+
+**Generated Files:**
+1. `<package>_converters.wasm.go` - JS/Go type converters and stream wrappers
+   - `createJSResponse()` helper used by all service methods
+   - Server stream wrapper implementations
+   - Generated whenever services exist
+
+2. `<package>_exports.wasm.go` - Service exports and registration
+   - Exports struct for dependency injection
+   - `RegisterAPI()` method for JS namespace registration
+   - Service method wrappers
+
+3. `<package>_browser_clients.wasm.go` - Browser service clients
+   - Browser service client implementations
+   - Only generated when browser-provided services exist
+
+**Benefits:**
+- **Better organization** - Clear separation of concerns
+- **Easier maintenance** - Each file has focused responsibility
+- **Selective generation** - Only generate what's needed
+- **Foundation for future improvements** - Easier to add non-wasm utilities later
+
 ## 🚀 **NEXT PHASE: Enhanced Developer Experience**
 
 ### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**
@@ -123,7 +149,7 @@ runCallbackDemo(request: any, callback: (response: any, error?: string) => void)
 
 // Target:
 runCallbackDemo(
-  request: CallbackDemoRequest, 
+  request: CallbackDemoRequest,
   callback: (response: CallbackDemoResponse, error?: string) => void
 ): Promise<void>
 ```

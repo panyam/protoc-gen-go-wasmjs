@@ -146,21 +146,37 @@ func (gg *GoGenerator) generatePackageFiles(data *builders.GoTemplateData, confi
 func (gg *GoGenerator) renderFilesDirectly(filePlan *builders.FilePlan, data *builders.GoTemplateData, config *builders.GenerationConfig) error {
 	for _, spec := range filePlan.Specs {
 		log.Printf("Creating and rendering file on-demand: %s", spec.Filename)
-		
+
 		// Create GeneratedFile immediately before rendering (like old generator)
 		generatedFile := gg.plugin.NewGeneratedFile(spec.Filename, "")
 		log.Printf("Created GeneratedFile: %s -> %p", spec.Filename, generatedFile)
-		
+
 		// Render based on file type
 		switch spec.Type {
-		case "wasm":
-			log.Printf("WASM: Attempting to render WASM wrapper...")
-			if err := gg.renderer.RenderWasmWrapperDirect(generatedFile, data); err != nil {
-				log.Printf("WASM: ERROR rendering WASM wrapper: %v", err)
-				return fmt.Errorf("failed to render WASM file %s: %w", spec.Filename, err)
+		case "converters":
+			log.Printf("CONVERTERS: Attempting to render converters...")
+			if err := gg.renderer.RenderConvertersDirect(generatedFile, data); err != nil {
+				log.Printf("CONVERTERS: ERROR rendering converters: %v", err)
+				return fmt.Errorf("failed to render converters file %s: %w", spec.Filename, err)
 			}
-			log.Printf("WASM: WASM wrapper rendered successfully")
-			
+			log.Printf("CONVERTERS: Converters rendered successfully")
+
+		case "exports":
+			log.Printf("EXPORTS: Attempting to render exports...")
+			if err := gg.renderer.RenderExportsDirect(generatedFile, data); err != nil {
+				log.Printf("EXPORTS: ERROR rendering exports: %v", err)
+				return fmt.Errorf("failed to render exports file %s: %w", spec.Filename, err)
+			}
+			log.Printf("EXPORTS: Exports rendered successfully")
+
+		case "browser_clients":
+			log.Printf("BROWSER_CLIENTS: Attempting to render browser clients...")
+			if err := gg.renderer.RenderBrowserClientsDirect(generatedFile, data); err != nil {
+				log.Printf("BROWSER_CLIENTS: ERROR rendering browser clients: %v", err)
+				return fmt.Errorf("failed to render browser clients file %s: %w", spec.Filename, err)
+			}
+			log.Printf("BROWSER_CLIENTS: Browser clients rendered successfully")
+
 		case "example":
 			log.Printf("MAIN: Attempting to render main file...")
 			if err := gg.renderer.RenderMainExampleDirect(generatedFile, data); err != nil {
@@ -168,7 +184,7 @@ func (gg *GoGenerator) renderFilesDirectly(filePlan *builders.FilePlan, data *bu
 				return fmt.Errorf("failed to render main file %s: %w", spec.Filename, err)
 			}
 			log.Printf("MAIN: Main file rendered successfully")
-			
+
 		case "script":
 			log.Printf("BUILD: Attempting to render build script...")
 			if err := gg.renderer.RenderBuildScriptDirect(generatedFile, data); err != nil {
@@ -176,12 +192,12 @@ func (gg *GoGenerator) renderFilesDirectly(filePlan *builders.FilePlan, data *bu
 				return fmt.Errorf("failed to render build script %s: %w", spec.Filename, err)
 			}
 			log.Printf("BUILD: Build script rendered successfully")
-			
+
 		default:
 			log.Printf("Unknown file type %s for %s", spec.Type, spec.Filename)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -190,19 +206,58 @@ func (gg *GoGenerator) renderFilesDirectly(filePlan *builders.FilePlan, data *bu
 func (gg *GoGenerator) planGoFiles(data *builders.GoTemplateData, config *builders.GenerationConfig) *builders.FilePlan {
 	var specs []builders.FileSpec
 
-	// Always generate WASM wrapper (this is the main artifact)
-	wasmFilename := gg.calculateWasmFilename(data.PackageName, config)
-	log.Printf("Planning WASM file: %s", wasmFilename)
+	// Split WASM generation into 3 files for better modularity:
+	// 1. Converters - syscall/js converters (createJSResponse) and stream wrappers
+	// 2. Exports - Exports struct, RegisterAPI, method wrappers
+	// 3. Browser clients - Browser service client implementations
+
+	packagePath := gg.pathCalc.BuildPackagePath(data.PackageName)
+	baseName := strings.ReplaceAll(data.PackageName, ".", "_")
+
+	// Generate converters file (needed whenever we have services)
+	// This contains createJSResponse() which is used by all service method wrappers
+	if len(data.Services) > 0 {
+		convertersFilename := filepath.Join(packagePath, baseName+"_converters.wasm.go")
+		log.Printf("Planning converters file: %s", convertersFilename)
+		specs = append(specs, builders.FileSpec{
+			Name:     "converters",
+			Filename: convertersFilename,
+			Type:     "converters",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				HasServices: true,
+			},
+		})
+	}
+
+	// Generate exports file (main WASM wrapper)
+	exportsFilename := filepath.Join(packagePath, baseName+"_exports.wasm.go")
+	log.Printf("Planning exports file: %s", exportsFilename)
 	specs = append(specs, builders.FileSpec{
-		Name:     "wasm",
-		Filename: wasmFilename,
-		Type:     "wasm",
+		Name:     "exports",
+		Filename: exportsFilename,
+		Type:     "exports",
 		Required: true,
 		ContentHints: builders.ContentHints{
 			HasServices:        len(data.Services) > 0,
 			HasBrowserServices: data.HasBrowserClients,
 		},
 	})
+
+	// Generate browser clients file (only if we have browser clients)
+	if data.HasBrowserClients {
+		browserClientsFilename := filepath.Join(packagePath, baseName+"_browser_clients.wasm.go")
+		log.Printf("Planning browser clients file: %s", browserClientsFilename)
+		specs = append(specs, builders.FileSpec{
+			Name:     "browser_clients",
+			Filename: browserClientsFilename,
+			Type:     "browser_clients",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				HasBrowserServices: true,
+			},
+		})
+	}
 
 	// Always generate main example (helps users understand integration)
 	mainFilename := gg.calculateMainFilename(data.PackageName, config)
@@ -237,41 +292,6 @@ func (gg *GoGenerator) planGoFiles(data *builders.GoTemplateData, config *builde
 	}
 }
 
-// renderFilesFromPlan executes the file plan by rendering all planned files.
-func (gg *GoGenerator) renderFilesFromPlan(fileSet *builders.GeneratedFileSet, data *builders.GoTemplateData, config *builders.GenerationConfig) error {
-	// Render WASM wrapper using direct approach like old generator
-	if wasmFile := fileSet.GetFile("wasm"); wasmFile != nil {
-		log.Printf("Rendering WASM wrapper directly to file...")
-		if err := gg.renderer.RenderWasmWrapperDirect(wasmFile, data); err != nil {
-			return fmt.Errorf("failed to render WASM wrapper: %w", err)
-		}
-		log.Printf("WASM wrapper rendered directly to file successfully")
-	}
-
-	// Render main example
-	if mainFile := fileSet.GetFile("main"); mainFile != nil {
-		content, err := gg.renderer.RenderMainExample(data)
-		if err != nil {
-			return fmt.Errorf("failed to render main example: %w", err)
-		}
-		if content != "" {
-			mainFile.P(content)
-		}
-	}
-
-	// Render build script if planned
-	if buildFile := fileSet.GetFile("build"); buildFile != nil {
-		content, err := gg.renderer.RenderBuildScript(data)
-		if err != nil {
-			return fmt.Errorf("failed to render build script: %w", err)
-		}
-		if content != "" {
-			buildFile.P(content)
-		}
-	}
-
-	return nil
-}
 
 // calculateWasmFilename determines the output filename for the WASM wrapper.
 func (gg *GoGenerator) calculateWasmFilename(packageName string, config *builders.GenerationConfig) string {

@@ -67,9 +67,8 @@ func (gr *GoRenderer) RenderWasmWrapper(data *builders.GoTemplateData) (string, 
 	return gr.RenderToString(GoWasmTemplate, data)
 }
 
-// RenderWasmWrapperDirect renders WASM wrapper directly to GeneratedFile using old generator pattern.
-// This matches exactly how the old generator works.
-func (gr *GoRenderer) RenderWasmWrapperDirect(file *protogen.GeneratedFile, data *builders.GoTemplateData) error {
+// RenderConvertersDirect renders converters directly to GeneratedFile using old generator pattern.
+func (gr *GoRenderer) RenderConvertersDirect(file *protogen.GeneratedFile, data *builders.GoTemplateData) error {
 	if file == nil {
 		return fmt.Errorf("GeneratedFile cannot be nil")
 	}
@@ -79,18 +78,61 @@ func (gr *GoRenderer) RenderWasmWrapperDirect(file *protogen.GeneratedFile, data
 
 	// Validate Go template data before rendering
 	if err := gr.ValidateGoTemplateData(data); err != nil {
-		return fmt.Errorf("invalid WASM wrapper data: %w", err)
+		return fmt.Errorf("invalid converters data: %w", err)
 	}
 
 	// Execute template and fail early on any errors
-	if err := ExecuteTemplateToFile("wasm", GoWasmTemplate, data, file); err != nil {
-		return fmt.Errorf("template execution failed: %w", err)
+	if err := ExecuteTemplateToFile("converters", GoConvertersTemplate, data, file); err != nil {
+		return fmt.Errorf("converters template execution failed: %w", err)
 	}
 
-	// Note: We cannot call file.Content() here as it might interfere with protogen's
-	// internal state. The protogen framework will handle the content properly.
-	// The fact that ExecuteTemplateToFile succeeded means content was written.
-	log.Printf("WASM: Template rendered successfully")
+	log.Printf("CONVERTERS: Template rendered successfully")
+	return nil
+}
+
+// RenderExportsDirect renders exports directly to GeneratedFile using old generator pattern.
+func (gr *GoRenderer) RenderExportsDirect(file *protogen.GeneratedFile, data *builders.GoTemplateData) error {
+	if file == nil {
+		return fmt.Errorf("GeneratedFile cannot be nil")
+	}
+	if data == nil {
+		return nil // No data to render
+	}
+
+	// Validate Go template data before rendering
+	if err := gr.ValidateGoTemplateData(data); err != nil {
+		return fmt.Errorf("invalid exports data: %w", err)
+	}
+
+	// Execute template and fail early on any errors
+	if err := ExecuteTemplateToFile("exports", GoExportsTemplate, data, file); err != nil {
+		return fmt.Errorf("exports template execution failed: %w", err)
+	}
+
+	log.Printf("EXPORTS: Template rendered successfully")
+	return nil
+}
+
+// RenderBrowserClientsDirect renders browser clients directly to GeneratedFile using old generator pattern.
+func (gr *GoRenderer) RenderBrowserClientsDirect(file *protogen.GeneratedFile, data *builders.GoTemplateData) error {
+	if file == nil {
+		return fmt.Errorf("GeneratedFile cannot be nil")
+	}
+	if data == nil {
+		return nil // No data to render
+	}
+
+	// Validate Go template data before rendering
+	if err := gr.ValidateGoTemplateData(data); err != nil {
+		return fmt.Errorf("invalid browser clients data: %w", err)
+	}
+
+	// Execute template and fail early on any errors
+	if err := ExecuteTemplateToFile("browser_clients", GoBrowserClientsTemplate, data, file); err != nil {
+		return fmt.Errorf("browser clients template execution failed: %w", err)
+	}
+
+	log.Printf("BROWSER_CLIENTS: Template rendered successfully")
 	return nil
 }
 
