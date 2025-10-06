@@ -23,23 +23,25 @@ It generates flexible WASM exports and TypeScript clients from your protobuf ser
 
 ### Installation
 
-**Option 1: Local Installation**
-```bash
-go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@latest
-```
+The plugin consists of two focused generators that can be used together or independently:
 
-**Option 2: Use from buf.build (Recommended)**
-No installation required - use the remote plugin directly in your `buf.gen.yaml`.
-
-**Option 3: Split Generators (Recommended)**
-Install language-specific generators for focused generation:
+**Install Generators:**
 ```bash
 # Install Go generator for WASM wrapper generation
 go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-go@latest
 
-# Install TypeScript generator for client generation  
+# Install TypeScript generator for client generation
 go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-ts@latest
 ```
+
+**Verify Installation:**
+```bash
+which protoc-gen-go-wasmjs-go
+which protoc-gen-go-wasmjs-ts
+```
+
+**Alternative: Use from buf.build**
+No installation required - use the remote plugin directly in your `buf.gen.yaml` (when published).
 
 ### Runtime Package Installation
 
@@ -55,9 +57,9 @@ yarn add @protoc-gen-go-wasmjs/runtime
 
 ## Architecture Patterns
 
-### Bundle-Based Client Generation (Production Ready)
+### Modern Split-Generator Architecture
 
-Generate TypeScript bundle clients that group services sharing the same WASM module:
+The plugin uses a split architecture with dedicated generators for each target language:
 
 ```yaml
 plugins:
@@ -424,16 +426,17 @@ const client = new MyServicesClient({
 
 ## Configuration Options
 
-### Core Integration
+### Core Generation
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `ts_generator` | TypeScript generator used | `protoc-gen-es` |
-| `ts_import_path` | Path to generated TS types (relative to out dir) | `./gen/ts` |
-| `ts_import_extension` | Extension for TS imports (`js`, `ts`, `none`, or empty for auto-detect) | auto-detect |
-| `wasm_export_path` | Where to generate WASM wrapper | `.` |
-| `generate_wasm` | Generate WASM wrapper | `true` |
-| `generate_typescript` | Generate TypeScript client | `true` |
+| `wasm_export_path` | Where to generate WASM wrapper (Go generator) | `.` |
+| `ts_export_path` | Where to generate TypeScript files (TS generator) | `.` |
+| `module_name` | WASM module name | `{package}_services` |
+| `generate_build_script` | Generate build.sh script (Go generator) | `true` |
+| `generate_clients` | Generate TypeScript clients (TS generator) | `true` |
+| `generate_types` | Generate TypeScript interfaces/models (TS generator) | `true` |
+| `generate_factories` | Generate TypeScript factories (TS generator) | `true` |
 
 ### Service & Method Selection
 
@@ -454,14 +457,12 @@ const client = new MyServicesClient({
 | `js_namespace` | Global namespace name | Custom namespace |
 | `module_name` | WASM module name | Custom module name |
 
-### Advanced Customization
+### Build Integration
 
-| Option | Description |
-|--------|-------------|
-| `template_dir` | Override default templates |
-| `wasm_template` | Custom WASM template file |
-| `ts_template` | Custom TypeScript template file |
-| `generate_build_script` | Generate build.sh script |
+| Option | Description | Applies To |
+|--------|-------------|------------|
+| `wasm_package_suffix` | Package suffix for WASM wrapper | Go generator |
+| `generate_build_script` | Generate build.sh script | Go generator |
 
 ## WASM Annotations
 
@@ -624,126 +625,72 @@ Integration in web applications:
 </script>
 ```
 
-## TypeScript Generator Compatibility
+## Self-Contained TypeScript Generation
 
-Works with popular TypeScript protobuf generators and automatically detects optimal import settings:
+The TypeScript generator produces complete, self-contained TypeScript code without requiring external TypeScript protobuf generators:
 
-**protoc-gen-es** (Recommended):
-```yaml
-# buf.gen.yaml - TypeScript generation
-- remote: buf.build/bufbuild/es
-  out: ./gen/ts
-  opt: target=ts  # Generates .ts files
+**What Gets Generated:**
 
-# WASM client generation
-- local: protoc-gen-go-wasmjs
-  out: ./web/frontend/src/clients
-  opt:
-    - ts_generator=protoc-gen-es
-    - ts_import_path=../../../gen/ts
-    # ts_import_extension auto-detected as "none" for .ts files
-```
+For each proto package, the generator creates:
+- **interfaces.ts** - Pure TypeScript type definitions
+- **models.ts** - Concrete class implementations with defaults
+- **schemas.ts** - Field metadata for runtime introspection
+- **deserializer.ts** - Schema-driven data population
+- **factory.ts** - Object construction (when `generate_factories=true`)
+- **{service}Client.ts** - Per-service typed clients
 
-```typescript
-// Generated client with smart imports:
-import { CreateGameRequest, CreateGameResponse } from './games_pb';
-import { CreateUserRequest, CreateUserResponse } from './users_pb';
-
-// Auto-detects .toJson() and .fromJson() methods
-const response = await client.gamesService.createGame(request);
-```
-
-**protoc-gen-ts**:
-```typescript  
-// Auto-detects .toJSON() and fromJSON() functions
-const response = await client.method(request);
-```
-
-**Manual Extension Control**:
-```yaml
-# Force specific extension behavior
-- local: protoc-gen-go-wasmjs
-  opt:
-    - ts_import_extension=js    # Force .js imports
-    - ts_import_extension=ts    # Force .ts imports  
-    - ts_import_extension=none  # No extension (TypeScript default)
-```
-
-## Smart Import Detection
-
-The plugin automatically analyzes your proto files to generate accurate TypeScript imports:
-
-**Before (Hardcoded)**:
-```typescript
-// Everything imported from models_pb regardless of actual source
-import { CreateGameRequest, CreateUserRequest, CreateWorldRequest } from './models_pb';
-```
-
-**After (Smart Detection)**:
-```typescript  
-// Types imported from their actual proto file sources
-import { CreateGameRequest, UpdateGameRequest } from './games_pb';
-import { CreateUserRequest, UpdateUserRequest } from './users_pb';
-import { CreateWorldRequest, UpdateWorldRequest } from './worlds_pb';
-```
-
-**How it works:**
-1. **Proto File Analysis**: For each gRPC method, analyzes `method.Input.Desc.ParentFile().Path()` to determine which `.proto` file defines each type
-2. **Automatic Grouping**: Groups types by source proto file for clean, organized imports
-3. **Extension Detection**: Automatically detects whether protoc-gen-es generated `.ts` or `.js` files and adjusts import paths accordingly
-4. **Zero Configuration**: Works out of the box with any proto file structure - no manual configuration needed
+**Benefits:**
+- **No external dependencies** - Self-contained generation
+- **Perfect Go protojson compatibility** - Direct JSON serialization
+- **Full type safety** - Complete TypeScript types with IntelliSense
+- **Cross-package imports** - Automatic import resolution
+- **Well-known types** - Built-in support for google.protobuf.*
 
 ## Installation & Usage Notes
 
-### Using the Local Plugin
+### Using the Local Generators
 
-1. **Install the plugin:**
+The plugin uses dedicated generators for Go and TypeScript:
+
+1. **Install both generators:**
    ```bash
-   go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs@latest
+   go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-go@latest
+   go install github.com/panyam/protoc-gen-go-wasmjs/cmd/protoc-gen-go-wasmjs-ts@latest
    ```
 
-2. **Ensure the plugin is in your PATH:**
+2. **Verify installation:**
    ```bash
-   which protoc-gen-go-wasmjs
-   # Should output: /path/to/go/bin/protoc-gen-go-wasmjs
+   which protoc-gen-go-wasmjs-go
+   which protoc-gen-go-wasmjs-ts
+   # Both should be in your PATH
    ```
 
 3. **Use `local:` in your buf.gen.yaml:**
    ```yaml
-   - local: protoc-gen-go-wasmjs
+   plugins:
+     - local: protoc-gen-go-wasmjs-go
+       out: ./gen/wasm/go
+     - local: protoc-gen-go-wasmjs-ts
+       out: ./web/src/generated
    ```
 
-### Using the Remote Plugin (buf.build)
+### Using Remote Plugins (buf.build)
 
-1. **No installation required** - buf automatically downloads and runs the plugin
+When published to buf.build, you can use the generators without local installation:
 
-2. **Use `remote:` in your buf.gen.yaml:**
-   ```yaml
-   - remote: buf.build/panyam/protoc-gen-go-wasmjs
-   ```
+```yaml
+plugins:
+  - remote: buf.build/panyam/protoc-gen-go-wasmjs-go
+    out: ./gen/wasm/go
+  - remote: buf.build/panyam/protoc-gen-go-wasmjs-ts
+    out: ./web/src/generated
+```
 
-3. **Benefits of remote plugins:**
-   - No local installation required
-   - Always uses the latest version
-   - Consistent across team members
-   - Works in CI/CD without additional setup
-
-### Publishing to buf.build
-
-To publish this plugin to buf.build (for maintainers):
-
-1. **Create a buf.plugin.yaml:**
-   ```yaml
-   version: v1
-   name: buf.build/panyam/protoc-gen-go-wasmjs
-   plugin_version: v1.0.0
-   description: Generate WASM bindings and TypeScript clients for gRPC services
-   ```
-
-2. **Push to buf.build:**
-   ```bash
-   buf plugin push
-   ```
+**Benefits of remote plugins:**
+- No local installation required
+- Always uses the latest version
+- Consistent across team members
+- Works in CI/CD without additional setup
 
 ## Project Structure
 
