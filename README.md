@@ -726,8 +726,8 @@ For detailed development instructions, testing guidelines, and contribution work
 # Run the test suite
 ./test.sh
 
-# Build the split generators  
-make split
+# Build the generators  
+make
 
 # Test with examples
 cd examples/browser-callbacks && make buf && make wasm
