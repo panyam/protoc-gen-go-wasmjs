@@ -303,8 +303,11 @@ func (bc *BrowserServiceChannel) queueCallInternal(ctx context.Context, service,
 	// Queue the call
 	select {
 	case bc.callQueue <- call:
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	// case <-ctx.Done():
+	// I dont think we should be checking for Done as themoment the wasm call (from browser) returns,
+	// this ctx returns, where as we are meant to be running in the background
+	// fmt.Println("Found Error in call queueing: ", ctx.Err())
+	// return nil, ctx.Err()
 	case <-time.After(timeout):
 		return nil, fmt.Errorf("timeout queuing browser call")
 	}
@@ -316,9 +319,10 @@ func (bc *BrowserServiceChannel) queueCallInternal(ctx context.Context, service,
 			return nil, resp.Error
 		}
 		return resp.Data, nil
-	case <-ctx.Done():
-		bc.cleanupCall(callID)
-		return nil, ctx.Err()
+	// case <-ctx.Done():
+	// fmt.Println("Resp was 'done'  How - may be because the brower call returned but we should keep oging?")
+	// bc.cleanupCall(callID)
+	// return nil, ctx.Err()
 	case <-time.After(timeout):
 		bc.cleanupCall(callID)
 		return nil, fmt.Errorf("browser call timeout after %v", timeout)
@@ -420,16 +424,16 @@ func (bc *BrowserServiceChannel) GetPendingCallCount() int {
 // CallBrowserService is a generic helper for calling synchronous browser services
 // The browser method should return a value directly (not a Promise)
 func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx context.Context, serviceName, methodName string, req TReq) (TResp, error) {
-var resp TResp
+	var resp TResp
 
-// If TResp is a pointer type, we need to create a new instance
-// This is necessary for protobuf message types which are pointers
-respType := reflect.TypeOf(resp)
-fmt.Printf("DEBUG: CallBrowserService - Initial resp type=%T, kind=%v\n", resp, respType.Kind())
-if respType.Kind() == reflect.Ptr {
-// Create a new instance of the underlying type
-respValue := reflect.New(respType.Elem())
- resp = respValue.Interface().(TResp)
+	// If TResp is a pointer type, we need to create a new instance
+	// This is necessary for protobuf message types which are pointers
+	respType := reflect.TypeOf(resp)
+	fmt.Printf("DEBUG: CallBrowserService - Initial resp type=%T, kind=%v\n", resp, respType.Kind())
+	if respType.Kind() == reflect.Ptr {
+		// Create a new instance of the underlying type
+		respValue := reflect.New(respType.Elem())
+		resp = respValue.Interface().(TResp)
 		fmt.Printf("DEBUG: CallBrowserService - Created new instance, resp type=%T\n", resp)
 	}
 
@@ -452,10 +456,10 @@ respValue := reflect.New(respType.Elem())
 	}
 
 	// Call browser service through the channel
-	fmt.Printf("DEBUG: About to queue browser call: %s.%s\n", serviceName, methodName)
+	fmt.Println("DEBUG: ABOUT TO QUEUE BROWSER CALL: ", serviceName, methodName, time.Now())
 	responseData, err := channel.QueueCall(ctx, serviceName, methodName, requestData, 30*time.Second)
 	if err != nil {
-		fmt.Printf("DEBUG: QueueCall failed: %v\n", err)
+		fmt.Println("DEBUG: QueueCall FAILED: ", err, time.Now())
 		return resp, err
 	}
 	fmt.Printf("DEBUG: QueueCall succeeded, got response data (len=%d): %s\n", len(responseData), string(responseData))
@@ -465,13 +469,13 @@ respValue := reflect.New(respType.Elem())
 	// or if we need to take its address (if it's a value type)
 	var respMsg proto.Message
 	var isProtoMsg bool
-	
+
 	// Try resp directly first (for pointer types like *PromptResponse)
 	if respMsg, isProtoMsg = any(resp).(proto.Message); !isProtoMsg {
 		// Try &resp (for value types)
 		respMsg, isProtoMsg = any(&resp).(proto.Message)
 	}
-	
+
 	if !isProtoMsg {
 		fmt.Printf("DEBUG: respType=%T, resp=%+v\n", resp, resp)
 		fmt.Printf("DEBUG: responseData=%s\n", string(responseData))
