@@ -28,7 +28,7 @@ export interface PresenterServiceMethods {
  * PresenterService service client implementation
  * Lightweight facade that uses shared WASM bundle
  */
-export class PresenterServiceServiceClient extends ServiceClient implements PresenterServiceMethods {
+export class PresenterServiceClient extends ServiceClient implements PresenterServiceMethods {
     async loadUserData(request: LoadUserDataRequest): Promise<LoadUserDataResponse> {
         return this.callMethod('presenterService.loadUserData', request);
     }

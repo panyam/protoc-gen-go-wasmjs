@@ -5,20 +5,20 @@ import { ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 
 // Import TypeScript types for method signatures
 import {
-    FetchResponse,
-    StorageKeyRequest,
+    AlertRequest,
+    PromptRequest,
+    LogRequest,
     StorageValueResponse,
     StorageSetRequest,
     StorageSetResponse,
-    CookieResponse,
     AlertResponse,
-    LogRequest,
-    FetchRequest,
-    CookieRequest,
-    AlertRequest,
-    PromptRequest,
     PromptResponse,
     LogResponse,
+    FetchRequest,
+    FetchResponse,
+    StorageKeyRequest,
+    CookieRequest,
+    CookieResponse,
 } from './interfaces';
 /**
  * BrowserAPI service client interface
@@ -37,7 +37,7 @@ export interface BrowserAPIMethods {
  * BrowserAPI service client implementation
  * Lightweight facade that uses shared WASM bundle
  */
-export class BrowserAPIServiceClient extends ServiceClient implements BrowserAPIMethods {
+export class BrowserAPIClient extends ServiceClient implements BrowserAPIMethods {
     async fetch(request: FetchRequest): Promise<FetchResponse> {
         return this.callMethod('browserAPI.fetch', request);
     }

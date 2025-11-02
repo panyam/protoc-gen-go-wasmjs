@@ -1,7 +1,7 @@
 // Import the generated base bundle and service clients
 import { Browser_callbacksBundle } from './generated';
-import { PresenterServiceServiceClient } from './generated/presenter/v1/presenterServiceClient';
-import { BrowserAPIServiceClient } from './generated/browser/v1/browserAPIClient';
+import { PresenterServiceClient } from './generated/presenter/v1/presenterServiceClient';
+import { BrowserAPIClient } from './generated/browser/v1/browserAPIClient';
 
 // Import TypeScript types for better type safety
 import type { 
@@ -181,7 +181,7 @@ async function init() {
     const wasmBundle = new Browser_callbacksBundle();
 
     // Create service clients using composition
-    const presenterService = new PresenterServiceServiceClient(wasmBundle);
+    const presenterService = new PresenterServiceClient(wasmBundle);
     const browserAPI = new BrowserAPIServiceClient(wasmBundle);
 
     // Register browser API implementation
@@ -209,7 +209,7 @@ async function init() {
   }
 }
 
-function setupEventHandlers(presenterService: PresenterServiceServiceClient) {
+function setupEventHandlers(presenterService: PresenterServiceClient) {
   // Load User Data button
   const loadUserBtn = document.getElementById('loadUserBtn');
   loadUserBtn?.addEventListener('click', async () => {

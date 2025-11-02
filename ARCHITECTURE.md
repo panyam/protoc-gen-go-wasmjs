@@ -159,15 +159,15 @@ export class Browser_callbacksBundle extends WASMBundle {
 ```typescript
 // User creates their own bundle with needed services
 const wasmBundle = new Browser_callbacksBundle();
-const presenterService = new PresenterServiceServiceClient(wasmBundle);
+const presenterService = new PresenterServiceClient(wasmBundle);
 const browserAPI = new BrowserAPIServiceClient(wasmBundle);
 
 // Users can also extend for convenience
 class MyAppBundle extends Browser_callbacksBundle {
-    public readonly presenter: PresenterServiceServiceClient;
+    public readonly presenter: PresenterServiceClient;
     constructor() {
         super();
-        this.presenter = new PresenterServiceServiceClient(this);
+        this.presenter = new PresenterServiceClient(this);
     }
 }
 ```
@@ -424,7 +424,7 @@ import { WASMBundle, WASMBundleConfig, ServiceClient } from '@protoc-gen-go-wasm
 
 export class My_servicesBundle {
   private wasmBundle: WASMBundle;
-  public readonly myService: MyServiceServiceClient;
+  public readonly myService: MyServiceClient;
   
   constructor() {
     const config: WASMBundleConfig = {
@@ -433,7 +433,7 @@ export class My_servicesBundle {
       jsNamespace: 'myApp'
     };
     this.wasmBundle = new WASMBundle(config);
-    this.myService = new MyServiceServiceClient(this.wasmBundle);
+    this.myService = new MyServiceClient(this.wasmBundle);
   }
   
   // Only template-specific methods (WASM loading, service registration)

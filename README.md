@@ -115,14 +115,14 @@ service BrowserAPI {
 ```typescript
 // New composition-based architecture
 import { Browser_callbacksBundle } from './generated';
-import { PresenterServiceServiceClient } from './generated/presenter/v1/presenterServiceClient';
+import { PresenterServiceClient } from './generated/presenter/v1/presenterServiceClient';
 import { BrowserAPIServiceClient } from './generated/browser/v1/browserAPIClient';
 
 // Create base bundle with module configuration
 const wasmBundle = new Browser_callbacksBundle();
 
 // Create service clients using composition
-const presenterService = new PresenterServiceServiceClient(wasmBundle);
+const presenterService = new PresenterServiceClient(wasmBundle);
 const browserAPI = new BrowserAPIServiceClient(wasmBundle);
 
 // Register browser service implementations
@@ -271,7 +271,7 @@ import {
 
 export class Browser_callbacksBundle {
   private wasmBundle: WASMBundle;
-  public readonly presenterService: PresenterServiceServiceClient;
+  public readonly presenterService: PresenterServiceClient;
   
   constructor() {
     const config: WASMBundleConfig = {
@@ -280,13 +280,13 @@ export class Browser_callbacksBundle {
       jsNamespace: 'browserCallbacks'
     };
     this.wasmBundle = new WASMBundle(config);
-    this.presenterService = new PresenterServiceServiceClient(this.wasmBundle);
+    this.presenterService = new PresenterServiceClient(this.wasmBundle);
   }
   
   async loadWasm(wasmPath: string): Promise<void> { /* ... */ }
 }
 
-export class PresenterServiceServiceClient extends ServiceClient implements PresenterServiceMethods {
+export class PresenterServiceClient extends ServiceClient implements PresenterServiceMethods {
   // Fully typed sync method
   async loadUserData(request: LoadUserRequest): Promise<LoadUserResponse> {
     return this.callMethod('presenterService.loadUserData', request);
