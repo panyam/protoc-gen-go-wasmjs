@@ -60,7 +60,7 @@ export interface {{ .Name }}Server {
  * {{ .Name }} service client implementation
  * Lightweight facade that uses shared WASM bundle
  */
-export class {{ .Name }}ServiceClient extends ServiceClient implements {{ .Name }}Methods {
+export class {{ .Name }}Client extends ServiceClient implements {{ .Name }}Methods {
 	{{- range .Methods }}
 		{{- if .ShouldGenerate }}
 			{{- if .IsServerStreaming }}

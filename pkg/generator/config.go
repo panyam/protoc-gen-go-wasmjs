@@ -56,6 +56,9 @@ type Config struct {
 	WasmPackageSuffix   string // Package suffix for WASM wrapper
 	GenerateBuildScript bool   // Generate build script for WASM compilation
 
+	// gRPC compatibility
+	UseGRPCInterfaces bool // Use gRPC Server/Client interfaces (default: true)
+
 	// External type mappings (e.g., "google.protobuf.Timestamp:<native>:Date")
 	ExternalTypes string // Comma-separated external type mappings
 

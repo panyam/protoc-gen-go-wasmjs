@@ -36,7 +36,7 @@ func New{{ $service.Name }}Client() *{{ $service.Name }}Client {
 {{- range .Methods }}
 
 // {{ .Name }} calls the browser-provided {{ .Name }} method
-func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}, opts ...grpc.CallOption) (*{{ .ResponseType }}, error) {
+func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) (*{{ .ResponseType }}, error) {
 {{- if .IsAsync }}
 	// This is an async browser method (returns a Promise in JavaScript)
 	return wasm.CallBrowserServiceAsync[*{{ .RequestType }}, *{{ .ResponseType }}](
