@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"syscall/js"
 
+	// "github.com/panyam/protoc-gen-go-wasmjs/pkg/wasm"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/encoding/protojson"
 {{- end }}
 {{- range .Imports }}
 	{{ .Alias }} {{ .Path | printf "%q" }}
@@ -48,12 +48,12 @@ type serverStreamWrapper{{ .Name }} struct {
 
 func (s *serverStreamWrapper{{ .Name }}) Send(resp *{{ .ResponseType }}) error {
 	// Marshal response
-	marshalOpts := protojson.MarshalOptions{
+	marshaller := wasm.GetGlobalMarshaller()
+	responseJSON, err := marshaller.Marshal(resp, wasm.MarshalOptions{
 		UseProtoNames:   false,
 		EmitUnpopulated: false,
 		UseEnumNumbers:  false,
-	}
-	responseJSON, err := marshalOpts.Marshal(resp)
+	})
 	if err != nil {
 		s.callback.Invoke(js.Null(), fmt.Sprintf("Failed to marshal response: %v", err), true)
 		return err

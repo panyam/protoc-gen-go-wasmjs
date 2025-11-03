@@ -153,6 +153,14 @@ func (gg *GoGenerator) renderFilesDirectly(filePlan *builders.FilePlan, data *bu
 
 		// Render based on file type
 		switch spec.Type {
+		case "service_interfaces":
+			log.Printf("SERVICE_INTERFACES: Attempting to render service interfaces...")
+			if err := gg.renderer.RenderServiceInterfacesDirect(generatedFile, data); err != nil {
+				log.Printf("SERVICE_INTERFACES: ERROR rendering service interfaces: %v", err)
+				return fmt.Errorf("failed to render service interfaces file %s: %w", spec.Filename, err)
+			}
+			log.Printf("SERVICE_INTERFACES: Service interfaces rendered successfully")
+
 		case "converters":
 			log.Printf("CONVERTERS: Attempting to render converters...")
 			if err := gg.renderer.RenderConvertersDirect(generatedFile, data); err != nil {
@@ -206,15 +214,32 @@ func (gg *GoGenerator) renderFilesDirectly(filePlan *builders.FilePlan, data *bu
 func (gg *GoGenerator) planGoFiles(data *builders.GoTemplateData, config *builders.GenerationConfig) *builders.FilePlan {
 	var specs []builders.FileSpec
 
-	// Split WASM generation into 3 files for better modularity:
-	// 1. Converters - syscall/js converters (createJSResponse) and stream wrappers
-	// 2. Exports - Exports struct, RegisterAPI, method wrappers
-	// 3. Browser clients - Browser service client implementations
+	// Split WASM generation into 4 files for better modularity:
+	// 1. Service Interfaces - Clean interfaces without gRPC dependencies
+	// 2. Converters - syscall/js converters (createJSResponse) and stream wrappers
+	// 3. Exports - Exports struct, RegisterAPI, method wrappers
+	// 4. Browser clients - Browser service client implementations
 
 	// Use GoPackage to determine output path to avoid collisions when multiple files
 	// have the same proto package but different go_package options
 	packagePath := gg.calculateOutputPath(data)
 	baseName := gg.calculateBaseName(data)
+
+	// Generate service interfaces file (needed whenever we have services)
+	// This provides clean interfaces without gRPC embedding requirements
+	if len(data.Services) > 0 {
+		interfacesFilename := filepath.Join(packagePath, baseName+"_service_interfaces.go")
+		log.Printf("Planning service interfaces file: %s", interfacesFilename)
+		specs = append(specs, builders.FileSpec{
+			Name:     "service_interfaces",
+			Filename: interfacesFilename,
+			Type:     "service_interfaces",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				HasServices: true,
+			},
+		})
+	}
 
 	// Generate converters file (needed whenever we have services)
 	// This contains createJSResponse() which is used by all service method wrappers

@@ -18,17 +18,25 @@ import (
 {{- if .HasServices }}
 	"time"
 
-	"google.golang.org/protobuf/encoding/protojson"
 {{- end }}
 {{- range .Imports }}
+{{- $importPath := .Path }}
+{{- $isServicePackage := false }}
+{{- range $.Services }}
+{{- if eq $importPath .PackagePath }}
+{{- $isServicePackage = true }}
+{{- end }}
+{{- end }}
+{{- if not $isServicePackage }}
 	{{ .Alias }} {{ .Path | printf "%q" }}
+{{- end }}
 {{- end }}
 )
 
 // {{ .PackageName | replaceAll "." "_" | title }}ServicesExports provides WASM exports for dependency injection
 type {{ .PackageName | replaceAll "." "_" | title }}ServicesExports struct {
 {{- range .Services }}
-	{{ .Name }} {{ .GoType }}
+	{{ .Name }} {{ .Name }}Server
 {{- end }}
 {{- if .HasBrowserClients }}
 
@@ -129,11 +137,11 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 
 	// Parse request
 	req := &{{ .RequestType }}{}
-	opts := protojson.UnmarshalOptions{
+	marshaller := wasm.GetGlobalMarshaller()
+	if err := marshaller.Unmarshal([]byte(requestJSON), req, wasm.UnmarshalOptions{
 		DiscardUnknown: true,
 		AllowPartial:   true,
-	}
-	if err := opts.Unmarshal([]byte(requestJSON), req); err != nil {
+	}); err != nil {
 		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
 
@@ -180,11 +188,11 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 
 	// Parse request
 	req := &{{ .RequestType }}{}
-	opts := protojson.UnmarshalOptions{
+	marshaller := wasm.GetGlobalMarshaller()
+	if err := marshaller.Unmarshal([]byte(requestJSON), req, wasm.UnmarshalOptions{
 		DiscardUnknown: true,
 		AllowPartial:   true,
-	}
-	if err := opts.Unmarshal([]byte(requestJSON), req); err != nil {
+	}); err != nil {
 		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
 
@@ -203,12 +211,11 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 		}
 
 		// Marshal response
-		marshalOpts := protojson.MarshalOptions{
+		responseJSON, err := marshaller.Marshal(resp, wasm.MarshalOptions{
 			UseProtoNames:   false,
 			EmitUnpopulated: true,  // Emit zero values to avoid undefined in JavaScript
 			UseEnumNumbers:  false,
-		}
-		responseJSON, err := marshalOpts.Marshal(resp)
+		})
 		if err != nil {
 			callback.Invoke(js.Null(), fmt.Sprintf("Failed to marshal response: %v", err))
 			return
@@ -238,11 +245,11 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 
 	// Parse request
 	req := &{{ .RequestType }}{}
-	opts := protojson.UnmarshalOptions{
+	marshaller := wasm.GetGlobalMarshaller()
+	if err := marshaller.Unmarshal([]byte(requestJSON), req, wasm.UnmarshalOptions{
 		DiscardUnknown: true,
 		AllowPartial:   true, // Allow partial messages for better compatibility
-	}
-	if err := opts.Unmarshal([]byte(requestJSON), req); err != nil {
+	}); err != nil {
 		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
 
@@ -257,12 +264,11 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 	}
 
 	// Marshal response with options for better TypeScript compatibility
-	marshalOpts := protojson.MarshalOptions{
+	responseJSON, err := marshaller.Marshal(resp, wasm.MarshalOptions{
 		UseProtoNames:   false, // Use JSON names (camelCase) instead of proto names
 		EmitUnpopulated: true,  // Emit zero values to avoid undefined in JavaScript
 		UseEnumNumbers:  false, // Use enum string values
-	}
-	responseJSON, err := marshalOpts.Marshal(resp)
+	})
 	if err != nil {
 		return createJSResponse(false, fmt.Sprintf("Failed to marshal response: %v", err), nil)
 	}

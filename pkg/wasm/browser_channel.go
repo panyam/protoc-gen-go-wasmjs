@@ -26,7 +26,6 @@ import (
 	"syscall/js"
 	"time"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -437,12 +436,8 @@ func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx
 		fmt.Printf("DEBUG: CallBrowserService - Created new instance, resp type=%T\n", resp)
 	}
 
-	// Marshal the request using protojson
-	opts := protojson.MarshalOptions{
-		UseProtoNames:   false,
-		EmitUnpopulated: true,
-		UseEnumNumbers:  false,
-	}
+	// Marshal the request using the global marshaller
+	marshaller := GetGlobalMarshaller()
 
 	// Use reflection to get the proto message interface
 	reqMsg, ok := any(req).(proto.Message)
@@ -450,7 +445,11 @@ func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx
 		return resp, fmt.Errorf("request is not a proto message")
 	}
 
-	requestData, err := opts.Marshal(reqMsg)
+	requestData, err := marshaller.Marshal(reqMsg, MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: true,
+		UseEnumNumbers:  false,
+	})
 	if err != nil {
 		return resp, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -482,11 +481,10 @@ func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx
 		return resp, fmt.Errorf("response is not a proto message (type: %T)", resp)
 	}
 
-	unmarshalOpts := protojson.UnmarshalOptions{
+	if err := marshaller.Unmarshal(responseData, respMsg, UnmarshalOptions{
 		DiscardUnknown: true,
 		AllowPartial:   true,
-	}
-	if err := unmarshalOpts.Unmarshal(responseData, respMsg); err != nil {
+	}); err != nil {
 		return resp, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
@@ -511,19 +509,19 @@ func CallBrowserServiceAsync[TReq any, TResp any](channel *BrowserServiceChannel
 	// For async methods, we need to tell the browser side to handle it as a Promise
 	// We'll add a special flag in the call to indicate async handling
 
-	// Marshal the request using protojson
-	opts := protojson.MarshalOptions{
-		UseProtoNames:   false,
-		EmitUnpopulated: true,
-		UseEnumNumbers:  false,
-	}
+	// Marshal the request using the global marshaller
+	marshaller := GetGlobalMarshaller()
 
 	reqMsg, ok := any(req).(proto.Message)
 	if !ok {
 		return resp, fmt.Errorf("request is not a proto message")
 	}
 
-	requestData, err := opts.Marshal(reqMsg)
+	requestData, err := marshaller.Marshal(reqMsg, MarshalOptions{
+		UseProtoNames:   false,
+		EmitUnpopulated: true,
+		UseEnumNumbers:  false,
+	})
 	if err != nil {
 		return resp, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -540,11 +538,10 @@ func CallBrowserServiceAsync[TReq any, TResp any](channel *BrowserServiceChannel
 		return resp, fmt.Errorf("response is not a proto message")
 	}
 
-	unmarshalOpts := protojson.UnmarshalOptions{
+	if err := marshaller.Unmarshal(responseData, respMsg, UnmarshalOptions{
 		DiscardUnknown: true,
 		AllowPartial:   true,
-	}
-	if err := unmarshalOpts.Unmarshal(responseData, respMsg); err != nil {
+	}); err != nil {
 		return resp, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 

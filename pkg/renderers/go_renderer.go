@@ -136,6 +136,29 @@ func (gr *GoRenderer) RenderBrowserClientsDirect(file *protogen.GeneratedFile, d
 	return nil
 }
 
+// RenderServiceInterfacesDirect renders service interfaces directly to GeneratedFile using old generator pattern.
+func (gr *GoRenderer) RenderServiceInterfacesDirect(file *protogen.GeneratedFile, data *builders.GoTemplateData) error {
+	if file == nil {
+		return fmt.Errorf("GeneratedFile cannot be nil")
+	}
+	if data == nil {
+		return nil // No data to render
+	}
+
+	// Validate Go template data before rendering
+	if err := gr.ValidateGoTemplateData(data); err != nil {
+		return fmt.Errorf("invalid service interfaces data: %w", err)
+	}
+
+	// Execute template and fail early on any errors
+	if err := ExecuteTemplateToFile("service_interfaces", GoServiceInterfacesTemplate, data, file); err != nil {
+		return fmt.Errorf("service interfaces template execution failed: %w", err)
+	}
+
+	log.Printf("SERVICE_INTERFACES: Template rendered successfully")
+	return nil
+}
+
 // RenderMainExampleDirect renders main example directly to GeneratedFile using old generator pattern.
 func (gr *GoRenderer) RenderMainExampleDirect(file *protogen.GeneratedFile, data *builders.GoTemplateData) error {
 	if file == nil {

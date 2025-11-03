@@ -29,6 +29,9 @@ var GoExportsTemplate string
 //go:embed templates/wasm_browser_clients.go.tmpl
 var GoBrowserClientsTemplate string
 
+//go:embed templates/wasm_service_interfaces.go.tmpl
+var GoServiceInterfacesTemplate string
+
 //go:embed templates/wasm.go.tmpl
 var GoWasmTemplate string
 
