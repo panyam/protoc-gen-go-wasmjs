@@ -10,7 +10,9 @@
       "Bash(for:*)",
       "Bash(do)",
       "Bash(echo \"Updated: $file\")",
-      "Bash(done)"
+      "Bash(done)",
+      "WebSearch",
+      "WebFetch(domain:protobuf.dev)"
     ],
     "deny": []
   }
