@@ -8,7 +8,6 @@ package {{ .ModuleName }}
 
 import (
 	"context"
-  grpc "google.golang.org/grpc"
 
 {{- range .Imports }}
 	{{ .Alias }} {{ .Path | printf "%q" }}
