@@ -139,6 +139,23 @@ Split monolithic Go WASM generation into 3 modular files:
 - **Selective generation** - Only generate what's needed
 - **Foundation for future improvements** - Easier to add non-wasm utilities later
 
+### ✅ **9. go_package Output Path Collision (CRITICAL) - RESOLVED** (November 2025)
+- **✅ Issue**: When multiple proto files had same proto package but different `go_package` options, generator was invoked multiple times and files collided/overwrote each other
+- **✅ Root cause**: Output path calculation only used proto package name, ignoring `go_package` differences
+- **✅ Fix implemented**:
+  - Added `calculateOutputPath()` method that extracts path from `go_package` option
+  - Added `calculateBaseName()` method that incorporates go_package suffix for uniqueness
+  - Updated `planGoFiles()` to use go_package-aware path calculation
+- **✅ Test cases added**:
+  - `test_one_package/` - Same proto package, different go_package (models vs services)
+  - `test_multi_packages/` - Different proto packages (test_multi_packages.v1.models vs test_multi_packages.v1.services)
+  - `test_broken/` - Original failing case now working
+- **✅ Benefits**:
+  - Supports standard Go pattern: separate models and services packages to avoid gRPC dependencies
+  - Proper file organization: `.../v1/models/...exports.wasm.go` and `.../v1/services/...exports.wasm.go`
+  - No more file collisions when using multiple go_package options
+  - Works with both same and different proto package patterns
+
 ## 🚀 **NEXT PHASE: Enhanced Developer Experience**
 
 ### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**

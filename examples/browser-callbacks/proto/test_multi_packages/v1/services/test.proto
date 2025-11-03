@@ -1,0 +1,18 @@
+
+syntax = "proto3";
+
+package test_multi_packages.v1.services;
+
+import "test_multi_packages/v1/models/test_service.proto";
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/test_multi_packages/v1/services";
+
+// A test service with model and services divided in different packages
+service TestService {
+  /**
+   * Create a new game
+   */
+  rpc Sample(test_multi_packages.v1.models.SampleRequest) returns (test_multi_packages.v1.models.SampleResponse) {
+  }
+}
+

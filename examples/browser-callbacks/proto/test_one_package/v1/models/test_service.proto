@@ -1,0 +1,16 @@
+
+syntax = "proto3";
+
+package test_one_package.v1;
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/test_one_package/v1/models";
+
+// Request messages
+message SampleRequest {
+  int32 a = 1;
+  string b = 2;
+}
+
+message SampleResponse {
+  double x = 1;
+}

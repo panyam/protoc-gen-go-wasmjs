@@ -211,8 +211,10 @@ func (gg *GoGenerator) planGoFiles(data *builders.GoTemplateData, config *builde
 	// 2. Exports - Exports struct, RegisterAPI, method wrappers
 	// 3. Browser clients - Browser service client implementations
 
-	packagePath := gg.pathCalc.BuildPackagePath(data.PackageName)
-	baseName := strings.ReplaceAll(data.PackageName, ".", "_")
+	// Use GoPackage to determine output path to avoid collisions when multiple files
+	// have the same proto package but different go_package options
+	packagePath := gg.calculateOutputPath(data)
+	baseName := gg.calculateBaseName(data)
 
 	// Generate converters file (needed whenever we have services)
 	// This contains createJSResponse() which is used by all service method wrappers
@@ -309,6 +311,62 @@ func (gg *GoGenerator) calculateMainFilename(packageName string, config *builder
 // calculateBuildScriptFilename determines the output filename for the build script.
 func (gg *GoGenerator) calculateBuildScriptFilename(config *builders.GenerationConfig) string {
 	return filepath.Join(config.WasmExportPath, "build.sh")
+}
+
+// calculateOutputPath determines the output directory path for generated files.
+// It uses the go_package path (if available) to avoid collisions when multiple proto files
+// have the same proto package but different go_package options.
+func (gg *GoGenerator) calculateOutputPath(data *builders.GoTemplateData) string {
+	if data.GoPackage != "" {
+		// Extract the relative path from go_package
+		// e.g., "github.com/.../gen/go/test/v1/models" -> "test/v1/models"
+		parts := strings.Split(data.GoPackage, "/")
+
+		// Find "gen/go" or similar marker and take everything after it
+		for i, part := range parts {
+			if part == "go" && i > 0 && (parts[i-1] == "gen" || parts[i-1] == "pb") {
+				if i+1 < len(parts) {
+					remainingPath := strings.Join(parts[i+1:], "/")
+					return remainingPath
+				}
+			}
+		}
+
+		// Fallback: use last 2-3 components if no marker found
+		if len(parts) >= 2 {
+			return strings.Join(parts[len(parts)-2:], "/")
+		}
+	}
+
+	// Fallback to proto package name
+	return gg.pathCalc.BuildPackagePath(data.PackageName)
+}
+
+// calculateBaseName determines the base filename for generated files.
+// It combines the proto package name with the go_package suffix to ensure uniqueness.
+func (gg *GoGenerator) calculateBaseName(data *builders.GoTemplateData) string {
+	baseName := strings.ReplaceAll(data.PackageName, ".", "_")
+
+	// If go_package ends with a different suffix than proto package, include it
+	if data.GoPackage != "" {
+		parts := strings.Split(data.GoPackage, "/")
+		if len(parts) > 0 {
+			lastPart := parts[len(parts)-1]
+			// If the last part is different from the package version, append it
+			packageParts := strings.Split(data.PackageName, ".")
+			if len(packageParts) > 0 {
+				lastPackagePart := packageParts[len(packageParts)-1]
+				if lastPart != lastPackagePart && lastPart != "" {
+					// Avoid duplication - only append if not already in baseName
+					if !strings.HasSuffix(baseName, "_"+lastPart) {
+						baseName = baseName + "_" + lastPart
+					}
+				}
+			}
+		}
+	}
+
+	return baseName
 }
 
 // ValidateConfig validates the configuration for Go generation.

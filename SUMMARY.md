@@ -236,6 +236,16 @@ The project has completed a comprehensive refactoring and achieved **production-
 - **Selective Generation**: Converters only when services exist, browser clients only when needed
 - **All files**: Still use `//go:build js && wasm` build tags
 
+#### go_package Output Path Collision Fix (November 2025)
+- **Issue Resolved**: Multiple proto files with same proto package but different `go_package` options no longer collide
+- **Root Cause**: Output path calculation only used proto package name, causing file overwrites
+- **Solution Implemented**:
+  - `calculateOutputPath()` method extracts path from `go_package` option (e.g., `.../v1/models` → `test/v1/models`)
+  - `calculateBaseName()` method incorporates go_package suffix for unique filenames
+  - Files now correctly segregated: `.../v1/models/...exports.wasm.go` and `.../v1/services/...exports.wasm.go`
+- **Standard Pattern Support**: Enables separating models and services into different Go packages to avoid gRPC dependencies
+- **Test Cases**: Added `test_one_package/`, `test_multi_packages/`, and `test_broken/` examples validating all patterns work correctly
+
 #### Bug Fixes & Enum Support
 - **wasmjs.v1 Package Filtering**: Fixed artifact generation for wasmjs annotation packages - they are now correctly excluded from generation while remaining visible for proto compilation
 - **Comprehensive Enum Support**: Implemented complete enum collection, generation, and import system for TypeScript
