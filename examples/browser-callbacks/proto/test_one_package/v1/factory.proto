@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package test_one_package.v1;
+
+// Import messages we want in the factory
+import "test_one_package/v1/models/test_service.proto";
+import "test_one_package/v1/models2/second_models.proto";
+
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/test_one_package/v1";
+
+// Import wasmjs annotations
+import "wasmjs/v1/annotations.proto";
+
+// Mark this file as a TypeScript factory definition
+option (wasmjs.v1.ts_factory) = true;

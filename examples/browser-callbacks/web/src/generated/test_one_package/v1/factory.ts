@@ -1,28 +1,25 @@
 // Generated TypeScript factory + deserializer (annotation-based)
 // DO NOT EDIT - This file is auto-generated
 
-{{/* Import runtime dependencies for deserializer */}}
+
 import { BaseDeserializer, FactoryInterface } from "@protoc-gen-go-wasmjs/runtime";
 
-{{/* Import schema registry from local aggregated schemas file */}}
-import { {{.SchemaRegistryName}} } from "./schemas";
 
-{{/* Import interfaces and models using ImportGroups with correct relative paths */}}
-{{/* ImportGroups contains both interface and model imports */}}
-{{range .ImportGroups}}
-import {
-    {{- $importPath := .ImportPath -}}
-    {{- range $i, $type := .Types -}}
-      {{- if $i -}}, {{- end -}}
-      {{- if hasSuffix "/interfaces" $importPath -}}{{$type}} as {{$type}}Interface
-      {{- else if hasSuffix "/models" $importPath -}}{{$type}} as Concrete{{$type}}{{else}}{{$type}}
-      {{- end -}}
-    {{- end -}}
-} from "{{.ImportPath}}";
-{{end}}
-{{/* Import dependency factories */}}
-{{range .Dependencies}}import { {{.FactoryName}} } from "{{.ImportPath}}";
-{{end}}
+import { test_one_package_v1SchemaRegistry } from "./schemas";
+
+
+
+
+import {SampleRequest as SampleRequestInterface,SampleResponse as SampleResponseInterface} from "./models/interfaces";
+
+import {SecondRequest as SecondRequestInterface,SecondResponse as SecondResponseInterface} from "./models2/interfaces";
+
+import {SampleRequest as ConcreteSampleRequest,SampleResponse as ConcreteSampleResponse} from "./models/models";
+
+import {SecondRequest as ConcreteSecondRequest,SecondResponse as ConcreteSecondResponse} from "./models2/models";
+
+
+
 
 /**
  * Factory result interface for enhanced factory methods
@@ -35,32 +32,90 @@ export interface FactoryResult<T> {
 /**
  * Enhanced factory with context-aware object construction
  */
-export class {{.FactoryName}} {
-{{range .Dependencies}}  // Dependency factory for {{.PackageName}} package
-  private {{.InstanceName}} = new {{.FactoryName}}();
-{{end}}
+export class Test_one_package_v1Factory {
 
-{{range .Messages}}  /**
-   * Enhanced factory method for {{.TSName}}
+
+  /**
+   * Enhanced factory method for SampleRequest
    * @param parent Parent object containing this field
    * @param attributeName Field name in parent object
    * @param attributeKey Array index, map key, or union tag (for containers)
    * @param data Raw data to potentially populate from
    * @returns Factory result with instance and population status
    */
-  {{.MethodName}} = (
+  newSampleRequest = (
     parent?: any,
     attributeName?: string,
     attributeKey?: string | number,
     data?: any
-  ): FactoryResult<{{.TSName}}Interface> => {
-    const out = new Concrete{{.TSName}}();
+  ): FactoryResult<SampleRequestInterface> => {
+    const out = new ConcreteSampleRequest();
     
     // Factory does not populate by default - let deserializer handle it
     return { instance: out, fullyLoaded: false };
   }
 
-{{end}}
+  /**
+   * Enhanced factory method for SampleResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newSampleResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<SampleResponseInterface> => {
+    const out = new ConcreteSampleResponse();
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+  /**
+   * Enhanced factory method for SecondRequest
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newSecondRequest = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<SecondRequestInterface> => {
+    const out = new ConcreteSecondRequest();
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+  /**
+   * Enhanced factory method for SecondResponse
+   * @param parent Parent object containing this field
+   * @param attributeName Field name in parent object
+   * @param attributeKey Array index, map key, or union tag (for containers)
+   * @param data Raw data to potentially populate from
+   * @returns Factory result with instance and population status
+   */
+  newSecondResponse = (
+    parent?: any,
+    attributeName?: string,
+    attributeKey?: string | number,
+    data?: any
+  ): FactoryResult<SecondResponseInterface> => {
+    const out = new ConcreteSecondResponse();
+    
+    // Factory does not populate by default - let deserializer handle it
+    return { instance: out, fullyLoaded: false };
+  }
+
+
 
   /**
    * Get factory method for a fully qualified message type
@@ -78,7 +133,7 @@ export class {{.FactoryName}} {
     const methodName = 'new' + typeName;
     
     // Check if this is our own package first
-    const currentPackage = "{{range .Messages}}{{.PackageName}}{{break}}{{end}}";
+    const currentPackage = "test_one_package.v1";
     if (packageName === currentPackage) {
       return (this as any)[methodName];
     }
@@ -90,10 +145,7 @@ export class {{.FactoryName}} {
     }
     
     // Delegate to appropriate dependency factory
-{{range .Dependencies}}    if (packageName === "{{.PackageName}}") {
-      return (this.{{.InstanceName}} as any)[methodName];
-    }
-{{end}}
+
     
     return undefined;
   }
@@ -211,15 +263,15 @@ export class {{.FactoryName}} {
 }
 
 // Shared factory instance to avoid creating new instances on every deserializer construction
-const DEFAULT_FACTORY = new {{.FactoryName}}();
+const DEFAULT_FACTORY = new Test_one_package_v1Factory();
 
 /**
- * Schema-aware deserializer for {{.PackageName}} package
+ * Schema-aware deserializer for test_one_package.v1 package
  * Extends BaseDeserializer with package-specific configuration
  */
-export class {{.DeserializerName}} extends BaseDeserializer {
+export class Test_one_package_v1Deserializer extends BaseDeserializer {
   constructor(
-    schemaRegistry = {{.SchemaRegistryName}},
+    schemaRegistry = test_one_package_v1SchemaRegistry,
     factory: FactoryInterface = DEFAULT_FACTORY
   ) {
     super(schemaRegistry, factory);
@@ -232,7 +284,7 @@ export class {{.DeserializerName}} extends BaseDeserializer {
    * @returns Deserialized instance or null if creation failed
    */
   static from<T>(messageType: string, data: any) {
-    const deserializer = new {{.DeserializerName}}(); // Uses default factory and schema registry
+    const deserializer = new Test_one_package_v1Deserializer(); // Uses default factory and schema registry
     return deserializer.createAndDeserialize<T>(messageType, data);
   }
 }

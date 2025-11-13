@@ -175,3 +175,26 @@ message AsyncMethodOptions {
 extend google.protobuf.ServiceOptions {
   bool browser_provided = 50008;
 }
+
+// ts_factory marks a proto file as a TypeScript factory definition file.
+// When enabled, generates a TypeScript factory and deserializer for all messages
+// imported from the same package. The factory file is generated in the same
+// directory as the proto file.
+//
+// Example usage:
+//   // x/y/z/factory.proto
+//   syntax = "proto3";
+//   package our.package.name;
+//
+//   import "x/y/z/models/messages.proto";   // included (same package)
+//   import "x/y/z/models2/more.proto";      // included (same package)
+//   import "other/package/stuff.proto";     // excluded (different package)
+//
+//   option (wasmjs.v1.ts_factory) = true;
+//
+// Generated output:
+//   - x/y/z/factory.ts - Combined factory + deserializer
+//   - x/y/z/schemas.ts - Consolidated schemas from imported messages
+extend google.protobuf.FileOptions {
+  bool ts_factory = 50009;
+}

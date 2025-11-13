@@ -156,6 +156,31 @@ Split monolithic Go WASM generation into 3 modular files:
   - No more file collisions when using multiple go_package options
   - Works with both same and different proto package patterns
 
+### ✅ **10. Annotation-Based Factory Generation (ARCHITECTURAL) - COMPLETED** (November 2025)
+- **✅ Issue**: Automatic package-level factory generation was too complex with multiple buf invocations and caused duplicate schema files
+- **✅ Root cause**: Trying to aggregate across multiple protoc invocations with automatic detection
+- **✅ New approach - Explicit annotation-based generation**:
+  - Added `(wasmjs.v1.ts_factory) = true` file-level annotation in `annotations.proto`
+  - User creates dedicated `factory.proto` file with imports of desired messages
+  - Factory file location determines output location (e.g., `x/y/z/factory.proto` → `x/y/z/factory.ts`)
+  - Only imports from same package are included (different packages filtered out)
+- **✅ Fix implemented**:
+  - Added `IsTypeScriptFactoryFile()` detection in `ProtoAnalyzer`
+  - Implemented `collectFactoryArtifacts()` and `collectImportedMessages()` in `TSGenerator`
+  - Created `BuildFactoryData()` in `TSDataBuilder` with correct relative import paths
+  - Fixed Generate flag checks to prevent external dependencies (google/api) from being generated
+- **✅ Generated output**:
+  - **factory.ts** - Combined factory + deserializer in single file
+  - **schemas.ts** - Aggregated schemas from all imported message directories
+  - Proper import aliasing: interfaces as `TypeInterface`, models as `ConcreteType`
+  - Relative imports correctly calculated from factory location to message directories
+- **✅ Benefits**:
+  - **Simple and predictable**: User explicitly controls what goes in factory
+  - **Works across buf invocations**: No dependency on invocation boundaries
+  - **Clean imports**: Automatically calculates correct relative paths
+  - **Schema consolidation**: Aggregates directory-level schemas with unique aliases
+  - **Single file**: Combined factory + deserializer reduces import complexity
+
 ## 🚀 **NEXT PHASE: Enhanced Developer Experience**
 
 ### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**

@@ -135,6 +135,16 @@ func (tr *TSRenderer) RenderSchemas(file *protogen.GeneratedFile, data *builders
 	return tr.RenderToFile(file, TSSchemaTemplate, data)
 }
 
+// RenderPackageSchemas generates package-level consolidated schema registry using the provided GeneratedFile.
+// This consolidates all directory-level schema registries into a single package-level registry.
+func (tr *TSRenderer) RenderPackageSchemas(file *protogen.GeneratedFile, data *builders.TSTemplateData) error {
+	if data == nil {
+		return nil
+	}
+
+	return tr.RenderToFile(file, TSPackageSchemaTemplate, data)
+}
+
 // RenderDeserializer generates TypeScript deserializer classes using the provided GeneratedFile.
 // This is a convenience method that uses the embedded deserializer template.
 func (tr *TSRenderer) RenderDeserializer(file *protogen.GeneratedFile, data *builders.TSTemplateData) error {

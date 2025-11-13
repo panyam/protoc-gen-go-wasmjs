@@ -152,6 +152,20 @@ func (pa *ProtoAnalyzer) IsBrowserProvidedService(service *protogen.Service) boo
 	return false
 }
 
+// IsTypeScriptFactoryFile checks if a proto file is marked as a TypeScript factory definition file.
+// Factory files generate combined factory + deserializer TypeScript code for all messages
+// imported from the same package.
+func (pa *ProtoAnalyzer) IsTypeScriptFactoryFile(file *protogen.File) bool {
+	if file.Desc.Options() != nil {
+		if factoryOpt := proto.GetExtension(file.Desc.Options(), wasmjsv1.E_TsFactory); factoryOpt != nil {
+			if isFactory, ok := factoryOpt.(bool); ok {
+				return isFactory
+			}
+		}
+	}
+	return false
+}
+
 // GetCustomMethodName retrieves the custom JavaScript method name from wasmjs annotations.
 // Returns empty string if no custom name is specified.
 // This allows proto methods to have different names in the generated JavaScript API.

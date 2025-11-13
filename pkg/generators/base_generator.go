@@ -16,6 +16,7 @@ package generators
 
 import (
 	"log"
+	"path/filepath"
 
 	"google.golang.org/protobuf/compiler/protogen"
 
@@ -233,16 +234,16 @@ func (bg *BaseGenerator) CollectAllArtifacts(config *builders.GenerationConfig, 
 
 	// Phase 1: Build complete package map from ALL files (ignore Generate flag for artifact collection)
 	allPackageFiles := make(map[string][]*protogen.File)
+
 	for _, file := range bg.plugin.Files {
-		// Include ALL files for artifact collection, not just those marked for generation
-		if !file.Generate {
-			continue
-		}
 		packageName := string(file.Desc.Package())
+
+		// Collect ALL files regardless of Generate flag
 		allPackageFiles[packageName] = append(allPackageFiles[packageName], file)
 	}
 
 	// Convert to PackageInfo and add to catalog
+	// Use ALL files for complete package visibility, but track which have Generate=true
 	for packageName, files := range allPackageFiles {
 		if len(files) > 0 {
 			packageInfo := &builders.PackageInfo{
@@ -267,6 +268,12 @@ func (bg *BaseGenerator) CollectAllArtifacts(config *builders.GenerationConfig, 
 		log.Printf("  Processing package: %s (%d files)", packageName, len(packageInfo.Files))
 
 		for _, file := range packageInfo.Files {
+			// IMPORTANT: Only collect services from files marked for generation
+			if !file.Generate {
+				log.Printf("    Skipping file %s (Generate=false)", file.Desc.Path())
+				continue
+			}
+
 			for _, service := range file.Services {
 				// Check if service should be included
 				serviceResult := bg.serviceFilter.ShouldIncludeService(service, criteria)
@@ -290,27 +297,54 @@ func (bg *BaseGenerator) CollectAllArtifacts(config *builders.GenerationConfig, 
 			}
 		}
 
-		// Collect messages if needed
+		// Collect messages and enums per directory (not per package)
+		// This ensures each directory gets its own interfaces/models/schemas files
 		if config.GenerateTypes {
-			messageResult := bg.msgCollector.CollectMessages(packageInfo.Files, criteria)
-			if len(messageResult.Items) > 0 {
-				catalog.Messages = append(catalog.Messages, MessageArtifact{
-					Messages: messageResult.Items,
-					Package:  packageInfo,
-				})
-				log.Printf("    Found %d messages in %s", len(messageResult.Items), packageName)
+			// Group files by directory - ONLY include files with Generate=true
+			filesByDir := make(map[string][]*protogen.File)
+			for _, file := range packageInfo.Files {
+				// IMPORTANT: Only collect types from files marked for generation
+				if !file.Generate {
+					continue
+				}
+				protoPath := string(file.Desc.Path())
+				dir := filepath.Dir(protoPath)
+				filesByDir[dir] = append(filesByDir[dir], file)
 			}
-		}
 
-		// Collect enums if needed
-		if config.GenerateTypes {
-			enumResult := bg.enumCollector.CollectEnums(packageInfo.Files, criteria)
-			if len(enumResult.Items) > 0 {
-				catalog.Enums = append(catalog.Enums, EnumArtifact{
-					Enums:   enumResult.Items,
-					Package: packageInfo,
-				})
-				log.Printf("    Found %d enums in %s", len(enumResult.Items), packageName)
+			// Create message/enum artifacts per directory
+			for dir, filesInDir := range filesByDir {
+				// Collect messages from files in this directory
+				messageResult := bg.msgCollector.CollectMessages(filesInDir, criteria)
+				if len(messageResult.Items) > 0 {
+					// Create a directory-specific PackageInfo
+					dirPackageInfo := &builders.PackageInfo{
+						Name:  packageInfo.Name,
+						Path:  packageInfo.Path,
+						Files: filesInDir,
+					}
+					catalog.Messages = append(catalog.Messages, MessageArtifact{
+						Messages: messageResult.Items,
+						Package:  dirPackageInfo,
+					})
+					log.Printf("    Found %d messages in %s (directory: %s)", len(messageResult.Items), packageName, dir)
+				}
+
+				// Collect enums from files in this directory
+				enumResult := bg.enumCollector.CollectEnums(filesInDir, criteria)
+				if len(enumResult.Items) > 0 {
+					// Create a directory-specific PackageInfo
+					dirPackageInfo := &builders.PackageInfo{
+						Name:  packageInfo.Name,
+						Path:  packageInfo.Path,
+						Files: filesInDir,
+					}
+					catalog.Enums = append(catalog.Enums, EnumArtifact{
+						Enums:   enumResult.Items,
+						Package: dirPackageInfo,
+					})
+					log.Printf("    Found %d enums in %s (directory: %s)", len(enumResult.Items), packageName, dir)
+				}
 			}
 		}
 	}

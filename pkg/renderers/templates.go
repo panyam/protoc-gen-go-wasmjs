@@ -60,6 +60,9 @@ var TSFactoryTemplate string
 //go:embed templates/schemas.ts.tmpl
 var TSSchemaTemplate string
 
+//go:embed templates/package_schemas.ts.tmpl
+var TSPackageSchemaTemplate string
+
 //go:embed templates/deserializer.ts.tmpl
 var TSDeserializerTemplate string
 

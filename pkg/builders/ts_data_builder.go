@@ -63,6 +63,7 @@ type TSTemplateData struct {
 	DeserializerName   string // Deserializer class name
 	FactoryName        string // Factory class name
 	SchemaRegistryName string // Schema registry name
+	SchemaImports      []SchemaImport // Schema registry imports for package-level consolidation
 
 	// Computed flags for template conditionals
 	HasBrowserServices bool // Whether any browser services exist
@@ -82,6 +83,14 @@ type FactoryDependency struct {
 	FactoryName  string // e.g., "LibraryCommonFactory"
 	ImportPath   string // e.g., "../common/factory"
 	InstanceName string // e.g., "commonFactory"
+}
+
+// SchemaImport represents an import of a directory-level schema registry
+// Used for package-level consolidated schemas that merge multiple directory-level registries
+type SchemaImport struct {
+	RegistryName string // Name of the schema registry in the source file (e.g., "test_one_package_v1SchemaRegistry")
+	Alias        string // Alias to use in the import to avoid naming conflicts (e.g., "modelsSchemas", "models2Schemas")
+	ImportPath   string // Relative import path (e.g., "./models/schemas", "./models2/schemas")
 }
 
 // TSMessageInfo extends basic message info with TypeScript-specific fields
@@ -480,6 +489,73 @@ func (tb *TSDataBuilder) BuildTypeData(
 		HasEnums:           len(tsEnums) > 0,
 		HasBrowserServices: false, // This is for type generation, no browser services here
 		HasBrowserClients:  false, // This is for type generation, no browser clients here
+	}, nil
+}
+
+// BuildPackageSchemaData builds template data for package-level consolidated schemas.
+// This collects all directory-level schema files from the package and generates imports
+// to merge them into a single package-level schema registry.
+func (tb *TSDataBuilder) BuildPackageSchemaData(
+	packageInfo *PackageInfo,
+	config *GenerationConfig,
+) (*TSTemplateData, error) {
+	// Find all unique directories that contain proto files in this package
+	dirMap := make(map[string]bool)
+	for _, file := range packageInfo.Files {
+		protoPath := string(file.Desc.Path())
+		dir := filepath.Dir(protoPath)
+		dirMap[dir] = true
+	}
+
+	// Build schema imports for each directory
+	var schemaImports []SchemaImport
+	packageRootDir := strings.ReplaceAll(packageInfo.Name, ".", "/")
+	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
+	schemaRegistryName := tb.nameConv.ToCamelCase(baseName) + "SchemaRegistry"
+
+	for dir := range dirMap {
+		// Calculate relative path from package root to directory
+		relativePath, err := filepath.Rel(packageRootDir, dir)
+		if err != nil {
+			log.Printf("Warning: Could not calculate relative path from %s to %s: %v", packageRootDir, dir, err)
+			continue
+		}
+
+		// Convert to forward slashes and ensure it starts with ./
+		relativePath = filepath.ToSlash(relativePath)
+		if relativePath == "." {
+			// Skip if this is the package root itself (no subdirectory)
+			continue
+		}
+		if !strings.HasPrefix(relativePath, "../") && !strings.HasPrefix(relativePath, "./") {
+			relativePath = "./" + relativePath
+		}
+
+		// Create import path to schemas file
+		importPath := relativePath + "/schemas"
+
+		// Create an alias based on the directory name to avoid conflicts
+		// e.g., "models" -> "modelsSchemas", "models2" -> "models2Schemas"
+		dirName := filepath.Base(dir)
+		alias := dirName + "Schemas"
+
+		schemaImports = append(schemaImports, SchemaImport{
+			RegistryName: schemaRegistryName,
+			Alias:        alias,
+			ImportPath:   importPath,
+		})
+	}
+
+	// Sort schema imports by import path for deterministic output
+	sort.Slice(schemaImports, func(i, j int) bool {
+		return schemaImports[i].ImportPath < schemaImports[j].ImportPath
+	})
+
+	return &TSTemplateData{
+		PackageName:        packageInfo.Name,
+		PackagePath:        packageInfo.Path,
+		SchemaRegistryName: schemaRegistryName,
+		SchemaImports:      schemaImports,
 	}, nil
 }
 
@@ -1055,4 +1131,198 @@ func (tb *TSDataBuilder) transformEnumValues(values []filters.EnumValueInfo) []T
 	}
 
 	return result
+}
+
+// BuildFactoryData creates TypeScript factory template data for a factory artifact.
+// This builds the data needed for generating a combined factory + deserializer file
+// with correct relative import paths to message interfaces and models.
+func (tb *TSDataBuilder) BuildFactoryData(
+	factoryFile *protogen.File,
+	packageInfo *PackageInfo,
+	importedMessages []filters.MessageInfo,
+	config *GenerationConfig,
+) (*TSTemplateData, error) {
+	// Transform imported messages to TypeScript structures
+	tsMessages := tb.transformMessages(importedMessages, packageInfo.Files)
+
+	// Get the factory file's output directory
+	factoryFilePath := string(factoryFile.Desc.Path())
+	factoryDir := filepath.Dir(factoryFilePath)
+
+	// Collect import groups for both interfaces and models
+	interfaceImportGroups := tb.collectFactoryTypeImports(tsMessages, factoryDir, "interfaces")
+	modelImportGroups := tb.collectFactoryTypeImports(tsMessages, factoryDir, "models")
+
+	// Combine both into a single import groups list
+	// We'll use a map to track which paths we've seen to avoid duplicates
+	allImportGroups := make([]TSImportGroup, 0)
+	importPathMap := make(map[string]*TSImportGroup)
+
+	// Add interface imports
+	for _, group := range interfaceImportGroups {
+		importPathMap[group.ImportPath] = &group
+		allImportGroups = append(allImportGroups, group)
+	}
+
+	// Add model imports (with different paths)
+	for _, group := range modelImportGroups {
+		if _, exists := importPathMap[group.ImportPath]; !exists {
+			importPathMap[group.ImportPath] = &group
+			allImportGroups = append(allImportGroups, group)
+		}
+	}
+
+	// Generate names for TypeScript artifacts
+	baseName := strings.ReplaceAll(packageInfo.Name, ".", "_")
+
+	// Build schema imports from each directory containing messages
+	// Group messages by their directory to create per-directory schema imports
+	schemaImports := tb.buildFactorySchemaImports(tsMessages, factoryFilePath, baseName)
+
+	return &TSTemplateData{
+		PackageName:        packageInfo.Name,
+		PackagePath:        packageInfo.Path,
+		SourcePath:         factoryFilePath,
+		Messages:           tsMessages,
+		ImportGroups:       allImportGroups,
+		BaseName:           baseName,
+		FactoryName:        tb.nameConv.ToPascalCase(baseName) + "Factory",
+		DeserializerName:   tb.nameConv.ToPascalCase(baseName) + "Deserializer",
+		SchemaRegistryName: tb.nameConv.ToCamelCase(baseName) + "SchemaRegistry",
+		HasMessages:        len(tsMessages) > 0,
+		SchemaImports:      schemaImports,
+	}, nil
+}
+
+// buildFactorySchemaImports builds schema import statements for factory's aggregated schemas file.
+// This creates imports from each directory's schemas file with unique aliases.
+func (tb *TSDataBuilder) buildFactorySchemaImports(
+	messages []TSMessageInfo,
+	factoryFilePath string,
+	baseName string,
+) []SchemaImport {
+	factoryDir := filepath.Dir(factoryFilePath)
+
+	// Group messages by directory
+	dirMap := make(map[string]bool)
+	for _, msg := range messages {
+		messageDir := filepath.Dir(msg.ProtoFile)
+		dirMap[messageDir] = true
+	}
+
+	// Build schema imports for each directory
+	var schemaImports []SchemaImport
+	for messageDir := range dirMap {
+		// Calculate relative path from factory to message directory
+		relativePath, err := filepath.Rel(factoryDir, messageDir)
+		if err != nil {
+			log.Printf("Warning: Could not calculate relative path from %s to %s: %v", factoryDir, messageDir, err)
+			continue
+		}
+
+		// Convert to forward slashes
+		relativePath = filepath.ToSlash(relativePath)
+		if !strings.HasPrefix(relativePath, "../") && !strings.HasPrefix(relativePath, "./") {
+			if relativePath == "." {
+				relativePath = "./schemas"
+			} else {
+				relativePath = "./" + relativePath + "/schemas"
+			}
+		} else {
+			relativePath = relativePath + "/schemas"
+		}
+
+		// Create unique alias based on directory name
+		// e.g., "models" -> "modelsSchemas", "models2" -> "models2Schemas"
+		dirName := filepath.Base(messageDir)
+		alias := tb.nameConv.ToCamelCase(dirName) + "Schemas"
+
+		schemaImports = append(schemaImports, SchemaImport{
+			RegistryName: tb.nameConv.ToCamelCase(baseName) + "SchemaRegistry",
+			Alias:        alias,
+			ImportPath:   relativePath,
+		})
+	}
+
+	// Sort for deterministic output
+	sort.Slice(schemaImports, func(i, j int) bool {
+		return schemaImports[i].ImportPath < schemaImports[j].ImportPath
+	})
+
+	return schemaImports
+}
+
+// collectFactoryTypeImports collects import groups for factory generation.
+// This is similar to collectServiceTypeImportGroups but handles messages defined across
+// multiple directories within the same package.
+func (tb *TSDataBuilder) collectFactoryTypeImports(
+	messages []TSMessageInfo,
+	factoryDir string,
+	importType string, // "interfaces" or "models"
+) []TSImportGroup {
+	// Map from import path to set of types
+	importMap := make(map[string]map[string]bool)
+
+	for _, msg := range messages {
+		// Get the file that defines this message
+		// We need to find the proto file from ProtoFile field
+		messageFilePath := msg.ProtoFile
+		messageDir := filepath.Dir(messageFilePath)
+
+		// Calculate relative path from factory directory to message directory
+		relativePath, err := filepath.Rel(factoryDir, messageDir)
+		if err != nil {
+			log.Printf("Warning: Could not calculate relative path from %s to %s: %v", factoryDir, messageDir, err)
+			relativePath = messageDir
+		}
+
+		// Convert to forward slashes and ensure it starts with ./
+		relativePath = filepath.ToSlash(relativePath)
+		if !strings.HasPrefix(relativePath, "../") && !strings.HasPrefix(relativePath, "./") {
+			if relativePath == "." {
+				relativePath = "./" + importType
+			} else {
+				relativePath = "./" + relativePath + "/" + importType
+			}
+		} else {
+			relativePath = relativePath + "/" + importType
+		}
+
+		// Add message type to import map
+		if importMap[relativePath] == nil {
+			importMap[relativePath] = make(map[string]bool)
+		}
+
+		// For models, we import the concrete class
+		// For interfaces, we import the interface type
+		if importType == "models" {
+			// Import concrete model class (e.g., "SampleRequest")
+			importMap[relativePath][msg.TSName] = true
+		} else {
+			// Import interface type with "as" alias (e.g., "SampleRequest as SampleRequestInterface")
+			importMap[relativePath][msg.TSName] = true
+		}
+	}
+
+	// Convert map to slice of TSImportGroup
+	var groups []TSImportGroup
+	for importPath, types := range importMap {
+		var typeList []string
+		for typeName := range types {
+			typeList = append(typeList, typeName)
+		}
+		// Sort for deterministic output
+		sort.Strings(typeList)
+		groups = append(groups, TSImportGroup{
+			ImportPath: importPath,
+			Types:      typeList,
+		})
+	}
+
+	// Sort groups by import path for deterministic output
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].ImportPath < groups[j].ImportPath
+	})
+
+	return groups
 }
