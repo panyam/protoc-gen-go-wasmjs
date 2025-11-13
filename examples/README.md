@@ -1,4 +1,4 @@
-# Browser Callbacks Example
+# Example
 
 This example demonstrates how WASM services can call back into browser-provided APIs using the `browser_provided` annotation.
 

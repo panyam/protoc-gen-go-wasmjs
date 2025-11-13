@@ -1,5 +1,5 @@
 // Import the generated base bundle and service clients
-import { Browser_callbacksBundle } from './generated';
+import { ExampleBundle } from './generated';
 import { PresenterServiceClient } from './generated/presenter/v1/presenterServiceClient';
 import { BrowserAPIClient } from './generated/browser/v1/browserAPIClient';
 
@@ -178,7 +178,7 @@ async function init() {
     setStatus('Loading WASM module...', 'loading');
 
     // Create base bundle with module configuration
-    const wasmBundle = new Browser_callbacksBundle();
+    const wasmBundle = new ExampleBundle();
 
     // Create service clients using composition
     const presenterService = new PresenterServiceClient(wasmBundle);

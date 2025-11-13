@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.9.0",
-    "@protoc-gen-go-wasmjs/runtime": "workspace:../../../runtime"
+    "@protoc-gen-go-wasmjs/runtime": "workspace:../../runtime"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

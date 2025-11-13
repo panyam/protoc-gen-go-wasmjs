@@ -83,7 +83,7 @@ func (s *PresenterServiceImpl) SavePreferences(ctx context.Context, req *present
 	}, nil
 }
 
-// RunCallbackDemo demonstrates browser callbacks by prompting user 3 times
+// RunCallbackDemo demonstrates by prompting user 3 times
 func (s *PresenterServiceImpl) RunCallbackDemo(ctx context.Context, req *presenterv1.CallbackDemoRequest) (*presenterv1.CallbackDemoResponse, error) {
 	fmt.Printf("RunCallbackDemo called with demo: %s\n", req.DemoName)
 
@@ -189,7 +189,7 @@ func main() {
 	}
 	presenterExports.RegisterAPI()
 
-	fmt.Println("Browser-callbacks example WASM module ready!")
+	fmt.Println("Example WASM module ready!")
 
 	// Keep the WASM module running
 	select {}

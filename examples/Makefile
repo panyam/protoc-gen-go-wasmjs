@@ -20,7 +20,7 @@ clean:
 	rm -f buf.lock
 
 parent:
-	cd ../../ && make default
+	cd ../ && make default
 
 setupdev: cleanall symlink-wasmjs
 	ln -s buf.gen.yaml.dev buf.gen.yaml
@@ -34,7 +34,7 @@ setupprod: cleanall remove-symlink
 symlink-wasmjs:
 	@if [ ! -L proto/wasmjs ]; then \
 		echo "Creating wasmjs symlink for development..."; \
-		ln -s ../../../proto/wasmjs proto/wasmjs; \
+		ln -s ../../proto/wasmjs proto/wasmjs; \
 	fi
 
 # Remove symlink (for switching back to production mode)

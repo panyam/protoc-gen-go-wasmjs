@@ -1,0 +1,88 @@
+
+// Generated TypeScript schemas from proto file
+// DO NOT EDIT - This file is auto-generated
+
+import { FieldType, FieldSchema, MessageSchema, BaseSchemaRegistry } from "@protoc-gen-go-wasmjs/runtime";
+
+
+/**
+ * Schema for SampleRequest message
+ */
+export const SampleRequestSchema: MessageSchema = {
+  name: "SampleRequest",
+  fields: [
+    {
+      name: "a",
+      type: FieldType.NUMBER,
+      id: 1,
+    },
+    {
+      name: "b",
+      type: FieldType.STRING,
+      id: 2,
+    },
+    {
+      name: "entityData",
+      type: FieldType.MESSAGE,
+      id: 3,
+      messageType: "google.protobuf.Any",
+    },
+    {
+      name: "updateMask",
+      type: FieldType.MESSAGE,
+      id: 4,
+      messageType: "google.protobuf.FieldMask",
+    },
+  ],
+};
+
+
+/**
+ * Schema for SampleResponse message
+ */
+export const SampleResponseSchema: MessageSchema = {
+  name: "SampleResponse",
+  fields: [
+    {
+      name: "x",
+      type: FieldType.NUMBER,
+      id: 1,
+    },
+    {
+      name: "createdAt",
+      type: FieldType.MESSAGE,
+      id: 2,
+      messageType: "google.protobuf.Timestamp",
+    },
+    {
+      name: "updatedAt",
+      type: FieldType.MESSAGE,
+      id: 3,
+      messageType: "google.protobuf.Timestamp",
+    },
+  ],
+};
+
+
+
+/**
+ * Package-scoped schema registry for test_one_package.v1
+ */
+export const test_one_package_v1SchemaRegistry: Record<string, MessageSchema> = {
+  "test_one_package.v1.SampleRequest": SampleRequestSchema,
+  "test_one_package.v1.SampleResponse": SampleResponseSchema,
+};
+
+/**
+ * Schema registry instance for test_one_package.v1 package with utility methods
+ * Extends BaseSchemaRegistry with package-specific schema data
+ */
+// Schema utility functions (now inherited from BaseSchemaRegistry in runtime package)
+// Creating instance with package-specific schema registry
+const registryInstance = new BaseSchemaRegistry(test_one_package_v1SchemaRegistry);
+
+export const getSchema = registryInstance.getSchema.bind(registryInstance);
+export const getFieldSchema = registryInstance.getFieldSchema.bind(registryInstance);
+export const getFieldSchemaById = registryInstance.getFieldSchemaById.bind(registryInstance);
+export const isOneofField = registryInstance.isOneofField.bind(registryInstance);
+export const getOneofFields = registryInstance.getOneofFields.bind(registryInstance);

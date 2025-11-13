@@ -31,7 +31,7 @@ plugins:
     opt: paths=source_relative
 
   # Generate Go WASM bindings with new Go generator
-  - local: ../../bin/protoc-gen-go-wasmjs-go
+  - local: ../bin/protoc-gen-go-wasmjs-go
     out: ./gen/wasm/go
     opt:
       - wasm_export_path=.
@@ -41,7 +41,7 @@ plugins:
       - generate_build_script=true
 
   # Generate TypeScript clients with new TS generator
-  - local: ../../bin/protoc-gen-go-wasmjs-ts
+  - local: ../bin/protoc-gen-go-wasmjs-ts
     out: ./web/src/generated
     opt:
       - ts_export_path=.
