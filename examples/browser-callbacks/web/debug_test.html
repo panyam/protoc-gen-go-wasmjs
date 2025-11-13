@@ -11,10 +11,10 @@
             const runtime = await import('@protoc-gen-go-wasmjs/runtime');
             console.log('Runtime import success:', Object.keys(runtime));
             
-            const { Browser_callbacksClient } = await import('./src/generated/browser_callbacksClient.js');
-            console.log('Client import success:', Browser_callbacksClient.name);
+            const { ExampleClient } = await import('./src/generated/exampleClient.js');
+            console.log('Client import success:', ExampleClient.name);
             
-            const client = new Browser_callbacksClient();
+            const client = new ExampleClient();
             console.log('Client created:', typeof client);
             console.log('Client has loadWasm:', 'loadWasm' in client);
             console.log('Client prototype:', Object.getPrototypeOf(client).constructor.name);

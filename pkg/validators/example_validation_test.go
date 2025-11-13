@@ -22,18 +22,18 @@ import (
 	"testing"
 )
 
-// TestExamples_BrowserCallbacks validates that the browser-callbacks example
+// TestExamples_Basic validates that the example
 // works correctly with our framework (without triggering build constraint issues)
-func TestExamples_BrowserCallbacks(t *testing.T) {
+func TestExamples_Basic(t *testing.T) {
 	// Get path to example (avoiding build constraint issues by not running go test there)
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
 
-	exampleDir := filepath.Join(wd, "../../examples/browser-callbacks")
+	exampleDir := filepath.Join(wd, "../../example")
 	if _, err := os.Stat(exampleDir); os.IsNotExist(err) {
-		t.Skip("browser-callbacks example not found")
+		t.Skip("example not found")
 		return
 	}
 
@@ -59,7 +59,7 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 		cmd := exec.Command("pnpm", "typecheck")
 		cmd.Dir = filepath.Join(exampleDir, "web")
 		output, err := cmd.CombinedOutput()
-		
+
 		if err != nil {
 			t.Errorf("Example TypeScript compilation failed: %v\nOutput: %s", err, string(output))
 		} else {
@@ -68,11 +68,11 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 	})
 
 	t.Run("WASMBuilds", func(t *testing.T) {
-		// Test WASM builds successfully  
+		// Test WASM builds successfully
 		cmd := exec.Command("make", "wasm")
 		cmd.Dir = exampleDir
 		output, err := cmd.CombinedOutput()
-		
+
 		if err != nil {
 			t.Errorf("Example WASM build failed: %v\nOutput: %s", err, string(output))
 		} else {
@@ -103,8 +103,8 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 		}
 
 		// Should use correct bundle class (new architecture)
-		if !strings.Contains(contentStr, "new Browser_callbacksBundle()") {
-			t.Error("main.ts should use Browser_callbacksBundle")
+		if !strings.Contains(contentStr, "new ExampleBundle()") {
+			t.Error("main.ts should use ExampleBundle")
 		}
 
 		// Should access service via composition pattern
@@ -133,14 +133,14 @@ func TestExamples_BrowserCallbacks(t *testing.T) {
 		clientPath := filepath.Join(exampleDir, "web/src/generated/presenter/v1/presenterServiceClient.ts")
 		if clientContent, err := os.ReadFile(clientPath); err == nil {
 			clientStr := string(clientContent)
-			
+
 			// Check for typed callback signature (updated for Phase 2)
 			if !strings.Contains(clientStr, "callback: (response: CallbackDemoResponse, error?: string) => void") {
 				t.Error("Generated client should have typed callback signature for async method")
 			} else {
 				t.Logf("✅ Example async method properly configured with typed callbacks")
 			}
-			
+
 			// Also check that it imports the response type
 			if !strings.Contains(clientStr, "CallbackDemoResponse,") {
 				t.Error("Generated client should import CallbackDemoResponse type")
@@ -182,7 +182,7 @@ func TestExamples_DirectoryStructures(t *testing.T) {
 		t.Run(exampleName, func(t *testing.T) {
 			examplePath := filepath.Join(examplesDir, exampleName)
 			generatedPath := filepath.Join(examplePath, "web/src/generated")
-			
+
 			// Skip if no web/src/generated directory (not all examples have web UIs)
 			if _, err := os.Stat(generatedPath); os.IsNotExist(err) {
 				t.Skipf("Example %s has no web UI", exampleName)

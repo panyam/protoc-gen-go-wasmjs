@@ -5,7 +5,7 @@ package utils.v1;
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/utils/v1;utilsv1";
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/utils/v1;utilsv1";
 
 message ModelWithOptionalAndDefaults {
   int32 needed_value = 1;

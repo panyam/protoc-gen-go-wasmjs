@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/field_mask.proto";
 
-option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/test_one_package/v1/models";
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/test_one_package/v1/models";
 
 // Request messages
 message SampleRequest {

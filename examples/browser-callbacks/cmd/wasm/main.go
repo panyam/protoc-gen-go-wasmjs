@@ -5,13 +5,13 @@ package main
 import (
 	"fmt"
 
-	v1 "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/wasm/go/browser/v1"
-	pv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/wasm/go/presenter/v1"
-	"github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/services"
+	v1 "github.com/panyam/protoc-gen-go-wasmjs/example/gen/wasm/go/browser/v1"
+	pv1 "github.com/panyam/protoc-gen-go-wasmjs/example/gen/wasm/go/presenter/v1"
+	"github.com/panyam/protoc-gen-go-wasmjs/example/services"
 )
 
 func main() {
-	fmt.Println("Browser Callbacks Example - Initializing WASM module...")
+	fmt.Println("Example - Initializing WASM module...")
 
 	// Create the browser API client (will be generated)
 	browserAPI := v1.NewBrowserAPIClient()
@@ -34,7 +34,7 @@ func main() {
 	presenterExports.RegisterAPI()
 	browserExports.RegisterAPI()
 
-	fmt.Println("Browser Callbacks Example - WASM module ready!")
+	fmt.Println("Example - WASM module ready!")
 
 	// Keep the program running
 	select {}

@@ -29,8 +29,8 @@ func TestTypedCallbacks_GeneratedImports(t *testing.T) {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
 
-	// Test with browser-callbacks example (has various method types)
-	exampleDir := filepath.Join(wd, "../../examples/browser-callbacks")
+	// Test with example (has various method types)
+	exampleDir := filepath.Join(wd, "../../example")
 	clientPath := filepath.Join(exampleDir, "web/src/generated/presenter/v1/presenterServiceClient.ts")
 
 	content, err := os.ReadFile(clientPath)
@@ -54,7 +54,7 @@ func TestTypedCallbacks_GeneratedImports(t *testing.T) {
 		// Should import specific types we expect
 		expectedImports := []string{
 			"LoadUserRequest",
-			"LoadUserResponse", 
+			"LoadUserResponse",
 			"CallbackDemoRequest",
 			"CallbackDemoResponse",
 			"StateUpdateRequest",
@@ -137,7 +137,3 @@ func TestTypedCallbacks_GeneratedImports(t *testing.T) {
 		t.Logf("✅ Service interface is fully typed")
 	})
 }
-
-
-
-

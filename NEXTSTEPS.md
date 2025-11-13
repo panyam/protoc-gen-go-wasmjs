@@ -41,7 +41,7 @@
 - **✅ Main thread blocking**: Fixed with `async_method` annotations preventing deadlocks
 - **✅ Protobuf deserialization**: Fixed pointer instantiation in `CallBrowserService`
 - **✅ JSON → JS object conversion**: Go now passes proper JavaScript objects to callbacks
-- **✅ End-to-end functionality**: Browser callbacks working with prompts, localStorage, etc.
+- **✅ End-to-end functionality**: Example callbacks working with prompts, localStorage, etc.
 
 ### ✅ **4. TypeScript Development Environment (HIGH) - WORKING**
 - **✅ Vite integration**: Modern TypeScript compilation and hot reload
@@ -52,8 +52,8 @@
 ### ✅ **5. Bundle Naming Issue (CRITICAL) - RESOLVED** (September 2025)
 - **✅ Root cause identified**: Line 223 in `TSDataBuilder.BuildServiceClientData` used package names instead of configured module_name
 - **✅ Fix implemented**: Updated to use `tb.getModuleName(packageInfo.Name, config)` method
-- **✅ Correct behavior**: Both `presenter.v1` and `browser.v1` packages now generate `Browser_callbacksBundle`
-- **✅ Configuration usage**: Proper usage of `module_name=browser_callbacks` parameter from buf.gen.yaml
+- **✅ Correct behavior**: Both `presenter.v1` and `browser.v1` packages now generate `exampleBundle`
+- **✅ Configuration usage**: Proper usage of `module_name=example` parameter from buf.gen.yaml
 - **✅ Tests updated**: Integration tests and examples updated to reflect correct naming
 - **✅ Regression prevention**: Added debug tests to prevent future occurrences
 
@@ -67,7 +67,7 @@
 - **✅ Nested type support**: Properly flattens nested types (e.g., `ParentMessage_NestedType`) to avoid name collisions
 - **✅ Relative imports**: Correctly calculates relative import paths (e.g., `../../utils/v1/interfaces`)
 - **✅ Tests added**: Comprehensive unit tests for package extraction and type name flattening
-- **✅ Example verification**: `browser-callbacks` example now correctly imports `HelperUtilType` and `ParentUtilMessage_NestedUtilType`
+- **✅ Example verification**: `example` example now correctly imports `HelperUtilType` and `ParentUtilMessage_NestedUtilType`
 
 ### ✅ **7. Factory/Deserializer/Models Generation (ARCHITECTURAL) - COMPLETED** (October 2025)
 - **✅ Issue**: TODO at line 179 in `ts_generator.go` - factory/models/schemas/deserializer files not being generated

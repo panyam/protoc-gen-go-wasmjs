@@ -44,7 +44,7 @@ func NewGoGenerator(plugin *protogen.Plugin) *GoGenerator {
 	// Create base generator with artifact collection capabilities
 	baseGenerator := NewBaseGenerator(plugin)
 
-	// Create Go-specific builder and renderer  
+	// Create Go-specific builder and renderer
 	dataBuilder := builders.NewGoDataBuilder(
 		baseGenerator.analyzer,
 		baseGenerator.pathCalc,
@@ -69,11 +69,11 @@ func (gg *GoGenerator) Generate(config *builders.GenerationConfig, filterCriteri
 	// Phase 1: Filter packages
 	log.Printf("Starting package filtering from %d input files", len(gg.plugin.Files))
 	for i, file := range gg.plugin.Files {
-		log.Printf("File %d: %s, Generate=%v, Package=%s, Services=%d", 
+		log.Printf("File %d: %s, Generate=%v, Package=%s, Services=%d",
 			i, file.Desc.Path(), file.Generate, file.Desc.Package(), len(file.Services))
 	}
 	packageFiles, stats := gg.packageFilter.FilterPackages(gg.plugin.Files, filterCriteria)
-	
+
 	log.Printf("Package filtering result: %d packages, stats: %s", len(packageFiles), stats.Summary())
 	if len(packageFiles) == 0 {
 		return nil // No packages to process
@@ -106,8 +106,8 @@ func (gg *GoGenerator) Generate(config *builders.GenerationConfig, filterCriteri
 			log.Printf("Skipping package %s: no services to generate", packageName)
 			continue
 		}
-		
-		log.Printf("Generated template data for package %s: %d services, %d browser clients", 
+
+		log.Printf("Generated template data for package %s: %d services, %d browser clients",
 			packageName, len(templateData.Services), len(templateData.BrowserClients))
 
 		// Validate template data
@@ -135,7 +135,7 @@ func (gg *GoGenerator) generatePackageFiles(data *builders.GoTemplateData, confi
 
 	// Use old generator pattern: create files on-demand when rendering
 	if err := gg.renderFilesDirectly(filePlan, data, config); err != nil {
-	 return fmt.Errorf("file rendering failed: %w", err)
+		return fmt.Errorf("file rendering failed: %w", err)
 	}
 
 	return nil
@@ -287,19 +287,21 @@ func (gg *GoGenerator) planGoFiles(data *builders.GoTemplateData, config *builde
 	}
 
 	// Always generate main example (helps users understand integration)
-	mainFilename := gg.calculateMainFilename(data.PackageName, config)
-	specs = append(specs, builders.FileSpec{
-		Name:     "main",
-		Filename: mainFilename,
-		Type:     "example",
-		Required: true,
-		ContentHints: builders.ContentHints{
-			IsExample: true,
-		},
-	})
+	if false {
+		mainFilename := gg.calculateMainFilename(data.PackageName, config)
+		specs = append(specs, builders.FileSpec{
+			Name:     "main",
+			Filename: mainFilename,
+			Type:     "example",
+			Required: true,
+			ContentHints: builders.ContentHints{
+				IsExample: true,
+			},
+		})
+	}
 
 	// Generate build script if enabled
-	if config.GenerateBuildScript {
+	if false && config.GenerateBuildScript {
 		buildFilename := gg.calculateBuildScriptFilename(config)
 		specs = append(specs, builders.FileSpec{
 			Name:     "build",
@@ -319,13 +321,14 @@ func (gg *GoGenerator) planGoFiles(data *builders.GoTemplateData, config *builde
 	}
 }
 
-
 // calculateWasmFilename determines the output filename for the WASM wrapper.
+/*
 func (gg *GoGenerator) calculateWasmFilename(packageName string, config *builders.GenerationConfig) string {
 	packagePath := gg.pathCalc.BuildPackagePath(packageName)
 	baseName := strings.ReplaceAll(packageName, ".", "_")
 	return filepath.Join(packagePath, baseName+".wasm.go")
 }
+*/
 
 // calculateMainFilename determines the output filename for the main example.
 func (gg *GoGenerator) calculateMainFilename(packageName string, config *builders.GenerationConfig) string {

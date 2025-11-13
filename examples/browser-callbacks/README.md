@@ -86,7 +86,7 @@ Then open http://localhost:8080 in your browser.
 ## Files Structure
 
 ```
-browser-callbacks/
+example/
 ├── proto/
 │   ├── browser/v1/
 │   │   └── browser.proto         # Browser API service (browser_provided)
@@ -124,10 +124,10 @@ browser-callbacks/
 The example uses the new bundle-based architecture:
 
 ```typescript
-import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
+import { ExampleBundle} from './generated/presenter/v1/presenterServiceClient';
 
 // Create bundle - manages WASM loading for all services
-const bundle = new Browser_callbacksBundle();
+const bundle = new ExampleBundle();
 
 // Register browser API implementation
 bundle.registerBrowserService('BrowserAPI', new BrowserAPIImpl());

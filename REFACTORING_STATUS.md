@@ -205,7 +205,7 @@ export class MyClient extends WASMServiceClient { /* only template-specific code
 
 **Issue Resolved:**
 - **Problem**: Generated bundles were incorrectly named after package names instead of configured module_name
-- **Examples**: `Presenter_v1Bundle` and `Browser_v1Bundle` instead of `Browser_callbacksBundle`
+- **Examples**: `Presenter_v1Bundle` and `Example_v1Bundle` instead of `ExampleBundle`
 - **Root Cause**: Line 223 in `TSDataBuilder.BuildServiceClientData` used `baseName` instead of `getModuleName()`
 
 **Fix Applied:**
@@ -214,8 +214,8 @@ export class MyClient extends WASMServiceClient { /* only template-specific code
 - **After**: `ModuleName: tb.getModuleName(packageInfo.Name, config)` (uses configured module_name)
 
 **Results:**
-- Both `presenter.v1` and `browser.v1` packages now correctly generate `Browser_callbacksBundle`
-- `moduleName: 'browser_callbacks'` in both generated files (was `'presenter_v1'` and `'browser_v1'`)
+- Both `presenter.v1` and `browser.v1` packages now correctly generate `ExampleBundle`
+- `moduleName: 'example'` in both generated files (was `'presenter_v1'` and `'browser_v1'`)
 - Proper usage of configured `module_name` parameter from buf.gen.yaml
 - Updated examples and tests to reflect correct bundle naming
 

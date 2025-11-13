@@ -1,5 +1,5 @@
 {
-  "name": "browser-callbacks-example",
+  "name": "example",
   "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
@@ -8,13 +8,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "serve": "vite dev --port 8080",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run typecheck",
+    "test:stability": "tsc --noEmit src/generation-stability-tests.ts src/smoke-test.ts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.9.0",
     "@protoc-gen-go-wasmjs/runtime": "workspace:../../../runtime"
   },
   "devDependencies": {
+    "@types/node": "^24.10.1",
     "typescript": "^5.0.0",
     "vite": "^5.0.0"
   }

@@ -1,4 +1,4 @@
-module github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks
+module github.com/panyam/protoc-gen-go-wasmjs/example
 
 go 1.23.5
 

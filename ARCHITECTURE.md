@@ -144,12 +144,12 @@ The bundle architecture uses composition and inheritance patterns for maximum fl
 **Generated Base Bundle:**
 ```typescript
 // generated/index.ts - Simple base class with module configuration
-export class Browser_callbacksBundle extends WASMBundle {
+export class ExampleBundle extends WASMBundle {
     constructor() {
         super({
-            moduleName: 'browser_callbacks',
+            moduleName: 'example',
             apiStructure: 'namespaced',
-            jsNamespace: 'browserCallbacks'
+            jsNamespace: 'example'
         });
     }
 }
@@ -158,12 +158,12 @@ export class Browser_callbacksBundle extends WASMBundle {
 **User Composition Pattern:**
 ```typescript
 // User creates their own bundle with needed services
-const wasmBundle = new Browser_callbacksBundle();
+const wasmBundle = new ExampleBundle();
 const presenterService = new PresenterServiceClient(wasmBundle);
 const browserAPI = new BrowserAPIServiceClient(wasmBundle);
 
 // Users can also extend for convenience
-class MyAppBundle extends Browser_callbacksBundle {
+class MyAppBundle extends ExampleBundle {
     public readonly presenter: PresenterServiceClient;
     constructor() {
         super();

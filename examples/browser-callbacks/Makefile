@@ -44,8 +44,8 @@ remove-symlink:
 		rm proto/wasmjs; \
 	fi
 
-test: buf
-	cd gen/wasm/gen/wasm && sh build.sh
+test: buf tsbuild
+	# cd gen/wasm/go && sh build.sh
 
 # Build WASM module and setup TypeScript project
 wasm:

@@ -84,9 +84,7 @@ Complex multi-package examples showing:
 │   └── collectors/              # Message/enum collection
 ├── proto/wasmjs/v1/             # WASM annotations
 ├── runtime/                     # @protoc-gen-go-wasmjs/runtime package
-├── examples/
-│   ├── connect4/                # Working multiplayer Connect4 demo
-│   └── browser-callbacks/       # Browser communication example
+├── example/
 └── PROTO_CONVERSION.md          # Conversion documentation
 ```
 
@@ -271,7 +269,7 @@ The project has completed a comprehensive refactoring and achieved **production-
 - ✅ **Phase 3: Template Inheritance**: Generated clients extend base classes from runtime package
 - ✅ **Phase 4: Per-Service Generation**: Each service generates to separate file following proto structure
 - ✅ **Phase 5: Browser Service Integration**: Full WASM ↔ browser communication with proper serialization
-- ✅ **Phase 6: Production Validation**: End-to-end testing with working browser-callbacks example
+- ✅ **Phase 6: Production Validation**: End-to-end testing with working example
 
 ### Server Streaming Support (August 2025)
 - ✅ **Phase 1: Server Streaming Implementation**: Complete server-side streaming from WASM to JavaScript

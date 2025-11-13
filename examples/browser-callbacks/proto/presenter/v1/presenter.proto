@@ -9,7 +9,7 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 import "wasmjs/v1/annotations.proto";
 import "utils/v1/helper.proto";
 
-option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1;presenterv1";
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/presenter/v1;presenterv1";
 
 // PresenterService runs in WASM and drives UI logic
 service PresenterService {

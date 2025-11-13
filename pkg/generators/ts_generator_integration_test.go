@@ -27,7 +27,7 @@ import (
 func TestTSGenerator_PerServiceGeneration_Integration(t *testing.T) {
 	// This test validates that our new per-service client generation works
 	// by actually running the plugin on test proto files
-	
+
 	// Create a temporary directory for test output
 	tempDir, err := os.MkdirTemp("", "ts_generator_test")
 	if err != nil {
@@ -99,7 +99,7 @@ func TestTSGenerator_PerServiceGeneration_Integration(t *testing.T) {
 			cmd := exec.Command("protoc", args...)
 			cmd.Dir = wd
 			output, err := cmd.CombinedOutput()
-			
+
 			if err != nil {
 				t.Logf("Protoc command failed (expected during development): %v", err)
 				t.Logf("Output: %s", string(output))
@@ -114,20 +114,20 @@ func TestTSGenerator_PerServiceGeneration_Integration(t *testing.T) {
 					t.Errorf("Expected file %s was not generated", expectedFile)
 				} else {
 					t.Logf("✅ Generated file: %s", expectedFile)
-					
+
 					// Read and validate file content
 					content, err := os.ReadFile(fullPath)
 					if err != nil {
 						t.Errorf("Failed to read generated file %s: %v", expectedFile, err)
 						continue
 					}
-					
+
 					// Basic validation that it's a TypeScript client
 					contentStr := string(content)
 					if !strings.Contains(contentStr, "extends WASMServiceClient") {
 						t.Errorf("Generated file %s doesn't extend WASMServiceClient", expectedFile)
 					}
-					
+
 					if !strings.Contains(contentStr, "loadWASMModule") {
 						t.Errorf("Generated file %s doesn't implement loadWASMModule", expectedFile)
 					}
@@ -137,21 +137,21 @@ func TestTSGenerator_PerServiceGeneration_Integration(t *testing.T) {
 	}
 }
 
-// TestTSGenerator_BrowserCallbacksExample_RealGeneration tests the actual browser-callbacks example
-func TestTSGenerator_BrowserCallbacksExample_RealGeneration(t *testing.T) {
-	// Test the real browser-callbacks example to validate our fix
-	
+// TestTSGenerator_Example_RealGeneration tests the actual example
+func TestTSGenerator_Example_RealGeneration(t *testing.T) {
+	// Test the real example to validate our fix
+
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
 
-	// Path to browser-callbacks example
-	exampleDir := filepath.Join(wd, "../../examples/browser-callbacks")
-	
+	// Path to example
+	exampleDir := filepath.Join(wd, "../../example")
+
 	// Check if example exists
 	if _, err := os.Stat(exampleDir); os.IsNotExist(err) {
-		t.Skip("browser-callbacks example not found")
+		t.Skip("example dir not found")
 		return
 	}
 
@@ -159,7 +159,7 @@ func TestTSGenerator_BrowserCallbacksExample_RealGeneration(t *testing.T) {
 	cmd := exec.Command("make", "buf")
 	cmd.Dir = exampleDir
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		t.Logf("make buf failed: %v", err)
 		t.Logf("Output: %s", string(output))
@@ -170,34 +170,34 @@ func TestTSGenerator_BrowserCallbacksExample_RealGeneration(t *testing.T) {
 	generatedClient := filepath.Join(exampleDir, "web/src/generated/presenter/v1/presenterServiceClient.ts")
 	if _, err := os.Stat(generatedClient); err == nil {
 		t.Logf("✅ Per-service client generated successfully: presenter/v1/presenterServiceClient.ts")
-		
+
 		// Read and validate content
 		content, err := os.ReadFile(generatedClient)
 		if err != nil {
 			t.Errorf("Failed to read generated client: %v", err)
 			return
 		}
-		
+
 		contentStr := string(content)
 		if strings.Contains(contentStr, "presenterService") {
 			t.Logf("✅ Generated client contains presenterService property")
 		} else {
 			t.Errorf("Generated client missing presenterService property")
 		}
-		
+
 		if strings.Contains(contentStr, "extends ServiceClient") {
 			t.Logf("✅ Generated client properly extends ServiceClient base class")
 		} else {
 			t.Errorf("Generated client doesn't extend ServiceClient")
 		}
-		
+
 	} else {
 		// Check if old single-file client exists (which would indicate our change didn't work)
-		oldClient := filepath.Join(exampleDir, "web/src/generated/browser_callbacksClient.ts")
+		oldClient := filepath.Join(exampleDir, "web/src/generated/exampleClient.ts")
 		if _, err := os.Stat(oldClient); err == nil {
 			content, _ := os.ReadFile(oldClient)
 			contentStr := string(content)
-			
+
 			if strings.Contains(contentStr, "presenterService") {
 				t.Logf("Old single-file client still has presenterService - this works but not optimal")
 			} else {

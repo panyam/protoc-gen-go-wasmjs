@@ -25,12 +25,12 @@ func TestBundleNamingDebug(t *testing.T) {
 	t.Run("ConfigurationPassthrough", func(t *testing.T) {
 		// Test 1: Verify GenerationConfig correctly holds module_name
 		config := &GenerationConfig{
-			ModuleName: "browser_callbacks", // This is what should come from buf.gen.yaml
+			ModuleName: "example", // This is what should come from buf.gen.yaml
 		}
 
-		if config.ModuleName != "browser_callbacks" {
-			t.Errorf("GenerationConfig.ModuleName not set correctly, got=%s, want=%s", 
-				config.ModuleName, "browser_callbacks")
+		if config.ModuleName != "example" {
+			t.Errorf("GenerationConfig.ModuleName not set correctly, got=%s, want=%s",
+				config.ModuleName, "example")
 		}
 		t.Logf("✅ GenerationConfig holds module_name correctly: %s", config.ModuleName)
 	})
@@ -43,16 +43,16 @@ func TestBundleNamingDebug(t *testing.T) {
 		}
 
 		config := &GenerationConfig{
-			ModuleName: "browser_callbacks",
+			ModuleName: "example",
 		}
 
-		// Test both packages that exist in browser-callbacks example
+		// Test both packages that exist in example
 		testCases := []struct {
 			packageName string
 			expected    string
 		}{
-			{"presenter.v1", "browser_callbacks"}, // Should use config, not package
-			{"browser.v1", "browser_callbacks"},   // Should use config, not package
+			{"presenter.v1", "example"}, // Should use config, not package
+			{"browser.v1", "example"},   // Should use config, not package
 		}
 
 		for _, tc := range testCases {
@@ -73,7 +73,7 @@ func TestBundleNamingDebug(t *testing.T) {
 		}
 
 		config := &GenerationConfig{
-			ModuleName: "browser_callbacks",
+			ModuleName: "example",
 		}
 
 		// Create minimal package info for presenter service
@@ -86,9 +86,9 @@ func TestBundleNamingDebug(t *testing.T) {
 			ModuleName: builder.getModuleName(packageInfo.Name, config),
 		}
 
-		// Expected: browser_callbacks (from config)
+		// Expected: example (from config)
 		// Current broken: presenter_v1 (from package)
-		expected := "browser_callbacks"
+		expected := "example"
 		if templateData.ModuleName != expected {
 			t.Errorf("TSTemplateData.ModuleName = %s, want %s", templateData.ModuleName, expected)
 			t.Errorf("❌ ISSUE FOUND: Template data not using configured module_name")
@@ -99,14 +99,14 @@ func TestBundleNamingDebug(t *testing.T) {
 
 	t.Run("BundleClassNameGeneration", func(t *testing.T) {
 		// Test 4: Verify bundle class name generation
-		// Expected: Browser_callbacksBundle (from browser_callbacks)
+		// Expected: ExampleBundle (from example)
 		// Current broken: Presenter_v1Bundle (from presenter_v1)
-		
-		moduleName := "browser_callbacks"
+
+		moduleName := "example"
 		// Simulate the template title function: {{ .ModuleName | title }}Bundle
 		bundleClassName := titleCase(moduleName) + "Bundle"
-		
-		expected := "Browser_callbacksBundle"
+
+		expected := "ExampleBundle"
 		if bundleClassName != expected {
 			t.Errorf("Bundle class name = %s, want %s", bundleClassName, expected)
 		} else {

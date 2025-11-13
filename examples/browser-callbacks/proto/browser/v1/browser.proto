@@ -4,7 +4,7 @@ package browser.v1;
 
 import "wasmjs/v1/annotations.proto";
 
-option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/browser/v1;browserv1";
+option go_package = "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/browser/v1;browserv1";
 
 // BrowserAPI provides access to browser functionality from WASM
 service BrowserAPI {

@@ -24,10 +24,10 @@ import (
 // TestBundleNamingIntegration reads the actual generated bundle file and checks if the bundle name is correct
 // This test verifies that bundles use the configured module_name instead of package names
 func TestBundleNamingIntegration(t *testing.T) {
-	// Path to the generated bundle file in browser-callbacks example
-	generatedFilePath := filepath.Join("..", "..", "examples", "browser-callbacks", 
+	// Path to the generated bundle file in example
+	generatedFilePath := filepath.Join("..", "..", "example",
 		"web", "src", "generated", "index.ts")
-	
+
 	// Check if the file exists
 	if _, err := os.Stat(generatedFilePath); os.IsNotExist(err) {
 		t.Skip("Generated file not found - run buf generate first")
@@ -42,12 +42,12 @@ func TestBundleNamingIntegration(t *testing.T) {
 	fileContent := string(content)
 
 	// Check for CORRECT behavior - simple base bundle with configured module_name
-	if !strings.Contains(fileContent, "export class Browser_callbacksBundle extends WASMBundle") {
-		t.Error("Expected to find 'Browser_callbacksBundle extends WASMBundle' (base bundle class), but didn't")
+	if !strings.Contains(fileContent, "export class ExampleBundle extends WASMBundle") {
+		t.Error("Expected to find 'ExampleBundle extends WASMBundle' (base bundle class), but didn't")
 	}
 
-	if !strings.Contains(fileContent, "moduleName: 'browser_callbacks'") {
-		t.Error("Expected to find moduleName: 'browser_callbacks' (using configured module_name), but didn't")
+	if !strings.Contains(fileContent, "moduleName: 'example'") {
+		t.Error("Expected to find moduleName: 'example' (using configured module_name), but didn't")
 	}
 
 	// Verify it's the simple base bundle, not the old complex bundle

@@ -502,10 +502,10 @@ pnpm run dev
 ### **Testing Runtime Package**
 ```bash
 # Test with examples
-cd examples/browser-callbacks && make dev
+cd example && make buf
 
 # Verify imports resolve
-cd examples/browser-callbacks/web && pnpm run typecheck
+cd example/web && pnpm run typecheck
 ```
 
 ### **Publishing Runtime Package** (Future)

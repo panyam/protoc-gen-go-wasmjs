@@ -6,10 +6,10 @@ import (
 	"time"
 
 	// Import the generated packages
-	browserv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/browser/v1"
-	presenterv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1"
-	browserwasmgen "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/wasm/go/browser/v1"
-	presenterwasmgen "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/wasm/go/presenter/v1"
+	browserv1 "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/browser/v1"
+	presenterv1 "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/presenter/v1"
+	browserwasmgen "github.com/panyam/protoc-gen-go-wasmjs/example/gen/wasm/go/browser/v1"
+	presenterwasmgen "github.com/panyam/protoc-gen-go-wasmjs/example/gen/wasm/go/presenter/v1"
 	"google.golang.org/grpc"
 )
 

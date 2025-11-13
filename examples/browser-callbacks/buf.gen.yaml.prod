@@ -8,7 +8,7 @@ managed:
     - module: buf.build/grpc-ecosystem/grpc-gateway
   override:
     - file_option: go_package_prefix
-      value: github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go
+      value: github.com/panyam/protoc-gen-go-wasmjs/example/gen/go
 plugins:
   # Generate standard Go protobuf types
   - remote: buf.build/protocolbuffers/go
@@ -36,8 +36,8 @@ plugins:
     opt:
       - wasm_export_path=.
       - js_structure=namespaced
-      - js_namespace=browserCallbacks
-      - module_name=browser_callbacks
+      - js_namespace=example
+      - module_name=example
       - generate_build_script=true
 
   # Generate TypeScript clients with new TS generator
@@ -46,8 +46,8 @@ plugins:
     opt:
       - ts_export_path=.
       - js_structure=namespaced
-      - js_namespace=browserCallbacks
-      - module_name=browser_callbacks
+      - js_namespace=example
+      - module_name=example
       - generate_clients=true
       - generate_types=true
       - generate_factories=true

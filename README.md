@@ -114,12 +114,12 @@ service BrowserAPI {
 
 ```typescript
 // New composition-based architecture
-import { Browser_callbacksBundle } from './generated';
+import { ExampleBundle } from './generated';
 import { PresenterServiceClient } from './generated/presenter/v1/presenterServiceClient';
 import { BrowserAPIServiceClient } from './generated/browser/v1/browserAPIClient';
 
 // Create base bundle with module configuration
-const wasmBundle = new Browser_callbacksBundle();
+const wasmBundle = new ExampleBundle();
 
 // Create service clients using composition
 const presenterService = new PresenterServiceClient(wasmBundle);
@@ -233,7 +233,7 @@ const user = await bundle.usersService.getUser({ id: "123" });
 const profile = await bundle.profileService.getProfile({ userId: "123" });
 ```
 
-### Example Service with Full Type Safety (from browser-callbacks example)
+### Example Service with Full Type Safety (from example)
 
 ```protobuf
 syntax = "proto3";
@@ -269,15 +269,15 @@ import {
   CallbackDemoResponse,
 } from './interfaces';
 
-export class Browser_callbacksBundle {
+export class ExampleBundle {
   private wasmBundle: WASMBundle;
   public readonly presenterService: PresenterServiceClient;
   
   constructor() {
     const config: WASMBundleConfig = {
-      moduleName: 'browser_callbacks',
+      moduleName: 'example',
       apiStructure: 'namespaced',
-      jsNamespace: 'browserCallbacks'
+      jsNamespace: 'example'
     };
     this.wasmBundle = new WASMBundle(config);
     this.presenterService = new PresenterServiceClient(this.wasmBundle);
@@ -532,12 +532,12 @@ func (s *LibraryService) FindBooks(ctx context.Context, req *FindBooksRequest) (
 **Frontend Code** (Fully Typed):
 ```typescript
 // Import the generated per-service bundle
-import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
+import { ExampleBundle } from './generated/presenter/v1/presenterServiceClient';
 import type { LoadUserRequest, CallbackDemoRequest } from './generated/presenter/v1/interfaces';
 
 // Create and load WASM bundle
-const bundle = new Browser_callbacksBundle();
-await bundle.loadWasm('./browser_callbacks.wasm');
+const bundle = new ExampleBundle();
+await bundle.loadWasm('./example.wasm');
 
 // Fully typed method calls with IntelliSense support
 const loadRequest: LoadUserRequest = { 
@@ -582,7 +582,7 @@ Generated TypeScript code imports shared utilities from the runtime package, red
 
 ```typescript
 // Generated per-service bundles automatically use WASMBundle and ServiceClient
-import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient';
+import { ExampleBundle } from './generated/presenter/v1/presenterServiceClient';
 
 // Manual usage (advanced scenarios)
 import { 
@@ -601,7 +601,7 @@ Generated files include a build script:
 # Generated build.sh
 #!/bin/bash
 export GOOS=js GOARCH=wasm
-go build -o browser_callbacks.wasm browser_callbacks.wasm.go
+go build -o example.wasm example.wasm.go
 cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
 ```
 
@@ -610,11 +610,11 @@ Integration in web applications:
 ```html
 <script src="wasm_exec.js"></script>
 <script type="module">
-  import { Browser_callbacksBundle } from './generated/presenter/v1/presenterServiceClient.js';
+  import { ExampleBundle } from './generated/presenter/v1/presenterServiceClient.js';
   
   // Initialize and load WASM
-  const bundle = new Browser_callbacksBundle();
-  await bundle.loadWasm('./browser_callbacks.wasm');
+  const bundle = new ExampleBundle();
+  await bundle.loadWasm('./example.wasm');
   
   // Use with full type safety (in TypeScript)
   const userData = await presenterService.loadUserData({
@@ -710,9 +710,7 @@ plugins:
 │   ├── src/browser/                 # BrowserServiceManager
 │   └── src/schema/                  # Type utilities
 ├── proto/wasmjs/v1/                 # WASM annotation definitions
-├── examples/
-│   ├── browser-callbacks/           # Complete demo with per-service clients, typed callbacks, and browser services
-│   └── streaming/                   # Server streaming example
+├── example/                         # Complete demo with per-service clients, typed callbacks, and browser services
 └── docs/                            # Architecture and development guides
 ```
 
@@ -730,7 +728,7 @@ For detailed development instructions, testing guidelines, and contribution work
 make
 
 # Test with examples
-cd examples/browser-callbacks && make buf && make wasm
+cd example && make buf && make wasm
 
 # Run framework tests
 go test ./pkg/... -v

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	browserv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/browser/v1"
-	presenterv1 "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/presenter/v1"
+	browserv1 "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/browser/v1"
+	presenterv1 "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/presenter/v1"
 )
 
 // PresenterService implements the presenter logic that runs in WASM
