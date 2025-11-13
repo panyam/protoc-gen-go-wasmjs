@@ -10,7 +10,7 @@ export class SampleRequest implements SampleRequestInterface {
   /**
    * Fully qualified message type for schema resolution
    */
-  static readonly MESSAGE_TYPE = "test_multi_packages.v1.models.SampleRequest";
+  static readonly MESSAGE_TYPE = "test_one_package.v1.SampleRequest";
 
   a: number = 0;
   b: string = "";
@@ -24,7 +24,7 @@ export class SampleResponse implements SampleResponseInterface {
   /**
    * Fully qualified message type for schema resolution
    */
-  static readonly MESSAGE_TYPE = "test_multi_packages.v1.models.SampleResponse";
+  static readonly MESSAGE_TYPE = "test_one_package.v1.SampleResponse";
 
   x: number = 0;
 

@@ -5,20 +5,20 @@ import { ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 
 // Import TypeScript types for method signatures
 import {
-    CookieRequest,
-    CookieResponse,
-    AlertResponse,
-    StorageSetRequest,
-    AlertRequest,
-    PromptRequest,
-    PromptResponse,
     LogRequest,
-    LogResponse,
     FetchRequest,
     FetchResponse,
-    StorageKeyRequest,
     StorageValueResponse,
+    CookieResponse,
+    AlertRequest,
+    LogResponse,
+    StorageKeyRequest,
+    StorageSetRequest,
     StorageSetResponse,
+    CookieRequest,
+    AlertResponse,
+    PromptRequest,
+    PromptResponse,
 } from './interfaces';
 /**
  * BrowserAPI service client interface

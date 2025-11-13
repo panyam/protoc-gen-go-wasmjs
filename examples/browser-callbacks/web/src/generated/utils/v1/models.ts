@@ -2,7 +2,8 @@ import { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
 
 
 import { ModelWithOptionalAndDefaults as ModelWithOptionalAndDefaultsInterface, HelperUtilType as HelperUtilTypeInterface, NestedUtilType as NestedUtilTypeInterface, ParentUtilMessage as ParentUtilMessageInterface, ParentUtilMessage_NestedUtilType as ParentUtilMessage_NestedUtilTypeInterface } from "./interfaces";
-import { Utils_v1Deserializer } from "./deserializer";
+
+
 
 
 
@@ -15,14 +16,7 @@ export class ModelWithOptionalAndDefaults implements ModelWithOptionalAndDefault
   neededValue: number = 0;
   optionalString?: string | undefined;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized ModelWithOptionalAndDefaults instance or null if creation failed
-   */
-  static from(data: any) {
-    return Utils_v1Deserializer.from<ModelWithOptionalAndDefaults>(ModelWithOptionalAndDefaults.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -38,14 +32,7 @@ export class HelperUtilType implements HelperUtilTypeInterface {
   updateMask?: FieldMask;
   createdAt?: Timestamp;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized HelperUtilType instance or null if creation failed
-   */
-  static from(data: any) {
-    return Utils_v1Deserializer.from<HelperUtilType>(HelperUtilType.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -61,14 +48,7 @@ export class NestedUtilType implements NestedUtilTypeInterface {
   topLevelCount: number = 0;
   topLevelValue: string = "";
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized NestedUtilType instance or null if creation failed
-   */
-  static from(data: any) {
-    return Utils_v1Deserializer.from<NestedUtilType>(NestedUtilType.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -84,14 +64,7 @@ export class ParentUtilMessage implements ParentUtilMessageInterface {
   parentValue: number = 0;
   nested?: ParentUtilMessage_NestedUtilType;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized ParentUtilMessage instance or null if creation failed
-   */
-  static from(data: any) {
-    return Utils_v1Deserializer.from<ParentUtilMessage>(ParentUtilMessage.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -107,14 +80,7 @@ export class ParentUtilMessage_NestedUtilType implements ParentUtilMessage_Neste
   nestedValue: string = "";
   nestedCount: number = 0;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized ParentUtilMessage_NestedUtilType instance or null if creation failed
-   */
-  static from(data: any) {
-    return Utils_v1Deserializer.from<ParentUtilMessage_NestedUtilType>(ParentUtilMessage_NestedUtilType.MESSAGE_TYPE, data);
-  }
+  
 }
 
 

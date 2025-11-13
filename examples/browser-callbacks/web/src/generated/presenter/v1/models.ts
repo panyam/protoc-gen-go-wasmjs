@@ -3,7 +3,8 @@ import { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
 
 
 import { LoadUserDataRequest as LoadUserDataRequestInterface, LoadUserDataResponse as LoadUserDataResponseInterface, StateUpdateRequest as StateUpdateRequestInterface, UIUpdate as UIUpdateInterface, TestRecord as TestRecordInterface, PreferencesRequest as PreferencesRequestInterface, PreferencesResponse as PreferencesResponseInterface, CallbackDemoRequest as CallbackDemoRequestInterface, CallbackDemoResponse as CallbackDemoResponseInterface } from "./interfaces";
-import { Presenter_v1Deserializer } from "./deserializer";
+
+
 
 
 /**
@@ -17,14 +18,7 @@ export class LoadUserDataRequest implements LoadUserDataRequestInterface {
 
   userId: string = "";
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized LoadUserDataRequest instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<LoadUserDataRequest>(LoadUserDataRequest.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -43,14 +37,7 @@ export class LoadUserDataResponse implements LoadUserDataResponseInterface {
   fromCache: boolean = false;
   createdAt?: Timestamp;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized LoadUserDataResponse instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<LoadUserDataResponse>(LoadUserDataResponse.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -67,14 +54,7 @@ export class StateUpdateRequest implements StateUpdateRequestInterface {
   params: Record<string, string> = {};
   updateMask?: FieldMask;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized StateUpdateRequest instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<StateUpdateRequest>(StateUpdateRequest.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -91,14 +71,7 @@ export class UIUpdate implements UIUpdateInterface {
   action: string = "";
   data: Record<string, string> = {};
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized UIUpdate instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<UIUpdate>(UIUpdate.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -112,14 +85,7 @@ export class TestRecord implements TestRecordInterface {
   helperRecord?: HelperUtilType;
   nestedHelper?: ParentUtilMessage_NestedUtilType;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized TestRecord instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<TestRecord>(TestRecord.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -134,14 +100,7 @@ export class PreferencesRequest implements PreferencesRequestInterface {
 
   preferences: Record<string, string> = {};
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized PreferencesRequest instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<PreferencesRequest>(PreferencesRequest.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -157,14 +116,7 @@ export class PreferencesResponse implements PreferencesResponseInterface {
   saved: boolean = false;
   itemsSaved: number = 0;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized PreferencesResponse instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<PreferencesResponse>(PreferencesResponse.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -179,14 +131,7 @@ export class CallbackDemoRequest implements CallbackDemoRequestInterface {
 
   demoName: string = "";
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized CallbackDemoRequest instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<CallbackDemoRequest>(CallbackDemoRequest.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -202,14 +147,7 @@ export class CallbackDemoResponse implements CallbackDemoResponseInterface {
   collectedInputs: string[] = [];
   completed: boolean = false;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized CallbackDemoResponse instance or null if creation failed
-   */
-  static from(data: any) {
-    return Presenter_v1Deserializer.from<CallbackDemoResponse>(CallbackDemoResponse.MESSAGE_TYPE, data);
-  }
+  
 }
 
 

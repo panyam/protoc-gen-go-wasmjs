@@ -440,7 +440,6 @@ func main() {
 	protogen.Options{
 		ParamFunc: flagSet.Set,
 	}.Run(func(gen *protogen.Plugin) error {
-		log.Printf("TS GENERATOR: Received parameters: js_structure=%s, js_namespace=%s", *jsStructure, *jsNamespace)
 		
 		// Create generation configuration
 		config := &builders.GenerationConfig{

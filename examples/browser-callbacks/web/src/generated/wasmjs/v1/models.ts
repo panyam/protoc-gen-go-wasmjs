@@ -1,5 +1,6 @@
 import { StatefulOptions as StatefulOptionsInterface, StatefulMethodOptions as StatefulMethodOptionsInterface, AsyncMethodOptions as AsyncMethodOptionsInterface, MessagePatch as MessagePatchInterface, PatchBatch as PatchBatchInterface, PatchResponse as PatchResponseInterface, ConflictResolution, PatchOperation, PatchSource } from "./interfaces";
-import { Wasmjs_v1Deserializer } from "./deserializer";
+
+
 
 
 /**
@@ -19,14 +20,7 @@ export class StatefulOptions implements StatefulOptionsInterface {
   /** Strategy for resolving conflicts when multiple changes occur */
   conflictResolution: ConflictResolution = ConflictResolution.CHANGE_NUMBER_BASED;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized StatefulOptions instance or null if creation failed
-   */
-  static from(data: any) {
-    return Wasmjs_v1Deserializer.from<StatefulOptions>(StatefulOptions.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -44,14 +38,7 @@ export class StatefulMethodOptions implements StatefulMethodOptionsInterface {
   /** Whether changes from this method should be broadcast to other clients */
   broadcasts: boolean = false;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized StatefulMethodOptions instance or null if creation failed
-   */
-  static from(data: any) {
-    return Wasmjs_v1Deserializer.from<StatefulMethodOptions>(StatefulMethodOptions.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -67,14 +54,7 @@ export class AsyncMethodOptions implements AsyncMethodOptionsInterface {
   /** Whether this method should be generated as async with callback parameter */
   isAsync: boolean = false;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized AsyncMethodOptions instance or null if creation failed
-   */
-  static from(data: any) {
-    return Wasmjs_v1Deserializer.from<AsyncMethodOptions>(AsyncMethodOptions.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -109,14 +89,7 @@ export class MessagePatch implements MessagePatchInterface {
   /** Optional transaction ID to group related patches */
   transactionId: string = "";
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized MessagePatch instance or null if creation failed
-   */
-  static from(data: any) {
-    return Wasmjs_v1Deserializer.from<MessagePatch>(MessagePatch.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -142,14 +115,7 @@ export class PatchBatch implements PatchBatchInterface {
   /** Optional metadata about the batch */
   metadata: Record<string, string> = {};
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized PatchBatch instance or null if creation failed
-   */
-  static from(data: any) {
-    return Wasmjs_v1Deserializer.from<PatchBatch>(PatchBatch.MESSAGE_TYPE, data);
-  }
+  
 }
 
 
@@ -171,14 +137,7 @@ export class PatchResponse implements PatchResponseInterface {
   /** The new change number after applying these patches */
   newChangeNumber: number = 0;
 
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized PatchResponse instance or null if creation failed
-   */
-  static from(data: any) {
-    return Wasmjs_v1Deserializer.from<PatchResponse>(PatchResponse.MESSAGE_TYPE, data);
-  }
+  
 }
 
 

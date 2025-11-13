@@ -200,24 +200,7 @@ func (tg *TSGenerator) planFilesFromCatalog(catalog *ArtifactCatalog, config *bu
 			},
 		})
 
-		// Factory file (optional based on config)
-		if config.GenerateFactories {
-			factoryFilename := tg.calculateFactoryFilename(packageInfo, config)
-			specs = append(specs, builders.FileSpec{
-				Name:     fmt.Sprintf("factory_%s", packageInfo.Name),
-				Filename: factoryFilename,
-				Type:     "factory",
-				Required: false,
-				ContentHints: builders.ContentHints{
-					HasMessages: true,
-				},
-				Metadata: map[string]interface{}{
-					"packageInfo": packageInfo,
-				},
-			})
-		}
-
-		// Schemas file
+		// Schemas file (keep this - it's a basic unit)
 		schemasFilename := tg.calculateSchemasFilename(packageInfo, config)
 		specs = append(specs, builders.FileSpec{
 			Name:     fmt.Sprintf("schemas_%s", packageInfo.Name),
@@ -232,20 +215,41 @@ func (tg *TSGenerator) planFilesFromCatalog(catalog *ArtifactCatalog, config *bu
 			},
 		})
 
-		// Deserializer file
-		deserializerFilename := tg.calculateDeserializerFilename(packageInfo, config)
-		specs = append(specs, builders.FileSpec{
-			Name:     fmt.Sprintf("deserializer_%s", packageInfo.Name),
-			Filename: deserializerFilename,
-			Type:     "deserializer",
-			Required: false,
-			ContentHints: builders.ContentHints{
-				HasMessages: true,
-			},
-			Metadata: map[string]interface{}{
-				"packageInfo": packageInfo,
-			},
-		})
+		// TODO: Factory and Deserializer are disabled for now since they need
+		// package-wide aggregation across multiple buf invocations
+		// We'll implement these later with a different strategy
+
+		// Factory file (DISABLED - requires package-wide aggregation)
+		// if config.GenerateFactories {
+		// 	factoryFilename := tg.calculateFactoryFilename(packageInfo, config)
+		// 	specs = append(specs, builders.FileSpec{
+		// 		Name:     fmt.Sprintf("factory_%s", packageInfo.Name),
+		// 		Filename: factoryFilename,
+		// 		Type:     "factory",
+		// 		Required: false,
+		// 		ContentHints: builders.ContentHints{
+		// 			HasMessages: true,
+		// 		},
+		// 		Metadata: map[string]interface{}{
+		// 			"packageInfo": packageInfo,
+		// 		},
+		// 	})
+		// }
+
+		// Deserializer file (DISABLED - requires package-wide aggregation)
+		// deserializerFilename := tg.calculateDeserializerFilename(packageInfo, config)
+		// specs = append(specs, builders.FileSpec{
+		// 	Name:     fmt.Sprintf("deserializer_%s", packageInfo.Name),
+		// 	Filename: deserializerFilename,
+		// 	Type:     "deserializer",
+		// 	Required: false,
+		// 	ContentHints: builders.ContentHints{
+		// 		HasMessages: true,
+		// 	},
+		// 	Metadata: map[string]interface{}{
+		// 		"packageInfo": packageInfo,
+		// 	},
+		// })
 	}
 
 	return &builders.FilePlan{
@@ -566,21 +570,7 @@ func (tg *TSGenerator) planTSFiles(
 			},
 		})
 
-		// Plan factory file (optional)
-		if config.GenerateFactories {
-			factoryFilename := tg.calculateFactoryFilename(packageInfo, config)
-			specs = append(specs, builders.FileSpec{
-				Name:     "factory",
-				Filename: factoryFilename,
-				Type:     "factory",
-				Required: false,
-				ContentHints: builders.ContentHints{
-					HasMessages: true,
-				},
-			})
-		}
-
-		// Plan schemas file
+		// Plan schemas file (keep this - it's a basic unit)
 		schemasFilename := tg.calculateSchemasFilename(packageInfo, config)
 		specs = append(specs, builders.FileSpec{
 			Name:     "schemas",
@@ -592,17 +582,32 @@ func (tg *TSGenerator) planTSFiles(
 			},
 		})
 
-		// Plan deserializer file
-		deserializerFilename := tg.calculateDeserializerFilename(packageInfo, config)
-		specs = append(specs, builders.FileSpec{
-			Name:     "deserializer",
-			Filename: deserializerFilename,
-			Type:     "deserializer",
-			Required: false,
-			ContentHints: builders.ContentHints{
-				HasMessages: true,
-			},
-		})
+		// TODO: Factory and Deserializer disabled - require package-wide aggregation
+		// Plan factory file (optional) - DISABLED
+		// if config.GenerateFactories {
+		// 	factoryFilename := tg.calculateFactoryFilename(packageInfo, config)
+		// 	specs = append(specs, builders.FileSpec{
+		// 		Name:     "factory",
+		// 		Filename: factoryFilename,
+		// 		Type:     "factory",
+		// 		Required: false,
+		// 		ContentHints: builders.ContentHints{
+		// 			HasMessages: true,
+		// 		},
+		// 	})
+		// }
+
+		// Plan deserializer file - DISABLED
+		// deserializerFilename := tg.calculateDeserializerFilename(packageInfo, config)
+		// specs = append(specs, builders.FileSpec{
+		// 	Name:     "deserializer",
+		// 	Filename: deserializerFilename,
+		// 	Type:     "deserializer",
+		// 	Required: false,
+		// 	ContentHints: builders.ContentHints{
+		// 		HasMessages: true,
+		// 	},
+		// })
 	}
 
 	return &builders.FilePlan{
@@ -720,10 +725,11 @@ func (tg *TSGenerator) hasTypesToGenerate(files []*protogen.File, criteria *filt
 
 // calculateServiceClientFilename determines the output filename for a specific service client.
 func (tg *TSGenerator) calculateServiceClientFilename(packageInfo *builders.PackageInfo, service *protogen.Service, config *builders.GenerationConfig) string {
-	// Generate file in the package directory following proto structure
-	// e.g., presenter/v1/presenterServiceClient.ts
+	// Generate file in the proto file's directory structure
+	// e.g., presenter/v1/services/presenterServiceClient.ts (if service is in services/ folder)
 	serviceFileName := tg.convertToFileName(service.GoName) + "Client.ts"
-	return filepath.Join(packageInfo.Path, serviceFileName)
+	dir := tg.getProtoFileDirectory(packageInfo)
+	return filepath.Join(dir, serviceFileName)
 }
 
 // convertToFileName converts a service name to a filename-friendly format
@@ -736,29 +742,66 @@ func (tg *TSGenerator) convertToFileName(serviceName string) string {
 	return strings.ToLower(serviceName[:1]) + serviceName[1:]
 }
 
+// getProtoFileDirectory extracts the directory path from proto files.
+// Uses the proto source file path (not the go_package path) to determine output directory.
+func (tg *TSGenerator) getProtoFileDirectory(packageInfo *builders.PackageInfo) string {
+	// Find files with Generate=true in this invocation
+	var generateFiles []*protogen.File
+	for _, file := range packageInfo.Files {
+		if file.Generate {
+			generateFiles = append(generateFiles, file)
+		}
+	}
+
+	if len(generateFiles) == 0 {
+		// Fallback: use first file
+		if len(packageInfo.Files) > 0 {
+			protoPath := string(packageInfo.Files[0].Desc.Path())
+			return filepath.Dir(protoPath)
+		}
+		// Last resort: use package path
+		return packageInfo.Path
+	}
+
+	// Use the directory of the first Generate=true file's proto source path
+	// file.Desc.Path() returns the proto file path like "test_one_package/v1/models/test_service.proto"
+	// We want the directory: "test_one_package/v1/models"
+	protoPath := string(generateFiles[0].Desc.Path())
+	dir := filepath.Dir(protoPath)
+
+	return dir
+}
+
 // calculateInterfacesFilename determines the output filename for TypeScript interfaces.
+// Uses proto file directory structure to avoid collisions when buf invokes the plugin
+// multiple times for the same package.
 func (tg *TSGenerator) calculateInterfacesFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
-	return filepath.Join(packageInfo.Path, "interfaces.ts")
+	dir := tg.getProtoFileDirectory(packageInfo)
+	return filepath.Join(dir, "interfaces.ts")
 }
 
 // calculateModelsFilename determines the output filename for TypeScript model classes.
 func (tg *TSGenerator) calculateModelsFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
-	return filepath.Join(packageInfo.Path, "models.ts")
+	dir := tg.getProtoFileDirectory(packageInfo)
+	return filepath.Join(dir, "models.ts")
 }
 
 // calculateFactoryFilename determines the output filename for TypeScript factory classes.
 func (tg *TSGenerator) calculateFactoryFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
-	return filepath.Join(packageInfo.Path, "factory.ts")
+	dir := tg.getProtoFileDirectory(packageInfo)
+	return filepath.Join(dir, "factory.ts")
 }
 
 // calculateSchemasFilename determines the output filename for TypeScript schemas.
 func (tg *TSGenerator) calculateSchemasFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
-	return filepath.Join(packageInfo.Path, "schemas.ts")
+	dir := tg.getProtoFileDirectory(packageInfo)
+	return filepath.Join(dir, "schemas.ts")
 }
 
 // calculateDeserializerFilename determines the output filename for TypeScript deserializers.
 func (tg *TSGenerator) calculateDeserializerFilename(packageInfo *builders.PackageInfo, config *builders.GenerationConfig) string {
-	return filepath.Join(packageInfo.Path, "deserializer.ts")
+	dir := tg.getProtoFileDirectory(packageInfo)
+	return filepath.Join(dir, "deserializer.ts")
 }
 
 // calculateBundleFilename determines the output filename for the TypeScript bundle.

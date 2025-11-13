@@ -2,7 +2,8 @@
 {{end}}
 
 {{end}}import { {{range $i, $msg := .Messages}}{{if $i}}, {{end}}{{$msg.TSName}} as {{$msg.TSName}}Interface{{end}}{{if and .HasMessages .HasEnums}}, {{end}}{{range $i, $enum := .Enums}}{{if $i}}, {{end}}{{$enum.TSName}}{{end}} } from "./interfaces";
-import { {{.DeserializerName}} } from "./deserializer";
+
+{{/*import { {{.DeserializerName}} } from "./deserializer";*/}}
 
 {{range .Messages}}
 {{if .Comment}}/**
@@ -17,14 +18,14 @@ export class {{.TSName}} implements {{.TSName}}Interface {
 {{range .Fields}}  {{if .Comment}}/** {{.Comment}} */
   {{end}}{{if .IsOneof}}{{.TSName}}?: {{.TSType}};{{else if eq .DefaultValue "undefined"}}{{.TSName}}?: {{.TSType}};{{else}}{{.TSName}}: {{.TSType}} = {{.DefaultValue}};{{end}}
 {{end}}
-  /**
-   * Create and deserialize an instance from raw data
-   * @param data Raw data to deserialize
-   * @returns Deserialized {{.TSName}} instance or null if creation failed
-   */
+  {{/*
+  // Create and deserialize an instance from raw data
+  // @param data Raw data to deserialize
+  // @returns Deserialized {{.TSName}} instance or null if creation failed
   static from(data: any) {
     return {{$.DeserializerName}}.from<{{.TSName}}>({{.TSName}}.MESSAGE_TYPE, data);
   }
+  */}}
 }
 
 {{end}}
