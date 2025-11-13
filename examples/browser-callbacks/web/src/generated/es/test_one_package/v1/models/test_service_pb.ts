@@ -4,13 +4,15 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Any, FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_any, file_google_protobuf_field_mask, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file test_one_package/v1/models/test_service.proto.
  */
 export const file_test_one_package_v1_models_test_service: GenFile = /*@__PURE__*/
-  fileDesc("Ci10ZXN0X29uZV9wYWNrYWdlL3YxL21vZGVscy90ZXN0X3NlcnZpY2UucHJvdG8SE3Rlc3Rfb25lX3BhY2thZ2UudjEiJQoNU2FtcGxlUmVxdWVzdBIJCgFhGAEgASgFEgkKAWIYAiABKAkiGwoOU2FtcGxlUmVzcG9uc2USCQoBeBgBIAEoAUKIAgoXY29tLnRlc3Rfb25lX3BhY2thZ2UudjFCEFRlc3RTZXJ2aWNlUHJvdG9QAVp2Z2l0aHViLmNvbS9wYW55YW0vcHJvdG9jLWdlbi1nby13YXNtanMvZXhhbXBsZXMvYnJvd3Nlci1jYWxsYmFja3MvZ2VuL2dvL3Rlc3Rfb25lX3BhY2thZ2UvdjEvbW9kZWxzO3Rlc3Rfb25lX3BhY2thZ2V2MaICA1RYWKoCEVRlc3RPbmVQYWNrYWdlLlYxygIRVGVzdE9uZVBhY2thZ2VcVjHiAh1UZXN0T25lUGFja2FnZVxWMVxHUEJNZXRhZGF0YeoCElRlc3RPbmVQYWNrYWdlOjpWMWIGcHJvdG8z");
+  fileDesc("Ci10ZXN0X29uZV9wYWNrYWdlL3YxL21vZGVscy90ZXN0X3NlcnZpY2UucHJvdG8SE3Rlc3Rfb25lX3BhY2thZ2UudjEigQEKDVNhbXBsZVJlcXVlc3QSCQoBYRgBIAEoBRIJCgFiGAIgASgJEikKC2VudGl0eV9kYXRhGAMgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIvCgt1cGRhdGVfbWFzaxgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE1hc2siewoOU2FtcGxlUmVzcG9uc2USCQoBeBgBIAEoARIuCgpjcmVhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEKIAgoXY29tLnRlc3Rfb25lX3BhY2thZ2UudjFCEFRlc3RTZXJ2aWNlUHJvdG9QAVp2Z2l0aHViLmNvbS9wYW55YW0vcHJvdG9jLWdlbi1nby13YXNtanMvZXhhbXBsZXMvYnJvd3Nlci1jYWxsYmFja3MvZ2VuL2dvL3Rlc3Rfb25lX3BhY2thZ2UvdjEvbW9kZWxzO3Rlc3Rfb25lX3BhY2thZ2V2MaICA1RYWKoCEVRlc3RPbmVQYWNrYWdlLlYxygIRVGVzdE9uZVBhY2thZ2VcVjHiAh1UZXN0T25lUGFja2FnZVxWMVxHUEJNZXRhZGF0YeoCElRlc3RPbmVQYWNrYWdlOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_google_protobuf_any, file_google_protobuf_field_mask]);
 
 /**
  * Request messages
@@ -27,6 +29,16 @@ export type SampleRequest = Message<"test_one_package.v1.SampleRequest"> & {
    * @generated from field: string b = 2;
    */
   b: string;
+
+  /**
+   * @generated from field: google.protobuf.Any entity_data = 3;
+   */
+  entityData?: Any;
+
+  /**
+   * @generated from field: google.protobuf.FieldMask update_mask = 4;
+   */
+  updateMask?: FieldMask;
 };
 
 /**
@@ -44,6 +56,16 @@ export type SampleResponse = Message<"test_one_package.v1.SampleResponse"> & {
    * @generated from field: double x = 1;
    */
   x: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 2;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 3;
+   */
+  updatedAt?: Timestamp;
 };
 
 /**

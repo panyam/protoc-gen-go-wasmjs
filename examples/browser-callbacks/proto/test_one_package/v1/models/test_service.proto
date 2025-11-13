@@ -3,14 +3,22 @@ syntax = "proto3";
 
 package test_one_package.v1;
 
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/field_mask.proto";
+
 option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/test_one_package/v1/models";
 
 // Request messages
 message SampleRequest {
   int32 a = 1;
   string b = 2;
+  google.protobuf.Any entity_data = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message SampleResponse {
   double x = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
 }

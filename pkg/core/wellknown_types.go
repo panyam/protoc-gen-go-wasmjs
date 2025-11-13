@@ -54,7 +54,7 @@ func (m *WellKnownTypesMapper) initializeDefaults() {
 	m.addMapping("google.protobuf.Duration", "Duration", "@bufbuild/protobuf")
 
 	// Structural types
-	m.addMapping("google.protobuf.Any", "Any", "@bufbuild/protobuf")
+	m.addMapping("google.protobuf.Any", "Any", "@bufbuild/protobuf/wkt")
 	m.addMapping("google.protobuf.Empty", "Empty", "@bufbuild/protobuf")
 	m.addMapping("google.protobuf.Struct", "Struct", "@bufbuild/protobuf")
 	m.addMapping("google.protobuf.Value", "Value", "@bufbuild/protobuf")

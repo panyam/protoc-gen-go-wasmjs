@@ -17,6 +17,7 @@ package builders
 import (
 	"fmt"
 	"log"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -29,6 +30,12 @@ import (
 
 // TSTemplateData represents all data needed for TypeScript template generation.
 // This includes client interfaces, message types, enums, and factory data.
+// TSImportGroup represents a group of types imported from a single file
+type TSImportGroup struct {
+	ImportPath string   // Relative import path (e.g., "./interfaces" or "../models/interfaces")
+	Types      []string // Types to import from this path
+}
+
 type TSTemplateData struct {
 	// Package metadata
 	PackageName string // Proto package name (e.g., "library.v1")
@@ -40,9 +47,10 @@ type TSTemplateData struct {
 	Services []ServiceData    // Services for client generation
 	Messages []TSMessageInfo // Messages for interface generation (enriched)
 	Enums    []TSEnumInfo    // Enums for type generation (enriched)
-	
+
 	// TypeScript type imports for client generation
-	TypeImports []string // TypeScript types to import for method signatures
+	TypeImports      []string        // DEPRECATED: Use ImportGroups instead
+	ImportGroups     []TSImportGroup // Grouped imports by file path
 
 	// TypeScript-specific configuration
 	ImportBasePath string // Base path for imports (e.g., "./library/v1")
@@ -209,43 +217,143 @@ func (tb *TSDataBuilder) BuildServiceClientData(
 	}
 	
 	services := []ServiceData{*serviceData}
-	
+
 	log.Printf("TS BuildServiceClientData: Service %s has %d methods", service.GoName, len(serviceData.Methods))
 	for _, m := range serviceData.Methods {
 		log.Printf("  - Method %s (JSName=%s, ShouldGenerate=%v)", m.Name, m.JSName, m.ShouldGenerate)
 	}
 	log.Printf("TS BuildServiceClientData: APIStructure=%s, JSNamespace=%s", config.JSStructure, tb.getJSNamespace(packageInfo.Name, config))
-	
-	// Collect TypeScript imports needed for typed method signatures
-	requiredImports := tb.collectServiceTypeImports(services)
-	
+
+	// Collect TypeScript imports grouped by file path
+	importGroups := tb.collectServiceTypeImportGroups(service, serviceFile, criteria)
+
 	return &TSTemplateData{
-		PackageName:     packageInfo.Name,
-		PackagePath:     packageInfo.Path,
-		SourcePath:      serviceFile.Desc.Path(),
-		ModuleName:      tb.getModuleName(packageInfo.Name, config),
-		Services:        services,
-		TypeImports:     requiredImports,
-		APIStructure:    config.JSStructure,
-		JSNamespace:     tb.getJSNamespace(packageInfo.Name, config),
+		PackageName:  packageInfo.Name,
+		PackagePath:  packageInfo.Path,
+		SourcePath:   string(serviceFile.Desc.Path()),
+		ModuleName:   tb.getModuleName(packageInfo.Name, config),
+		Services:     services,
+		ImportGroups: importGroups,
+		APIStructure: config.JSStructure,
+		JSNamespace:  tb.getJSNamespace(packageInfo.Name, config),
 	}, nil
+}
+
+// collectServiceTypeImportGroups groups imports by their source file paths
+// This handles the case where types are defined in different proto files/directories
+func (tb *TSDataBuilder) collectServiceTypeImportGroups(
+	service *protogen.Service,
+	serviceFile *protogen.File,
+	criteria *filters.FilterCriteria,
+) []TSImportGroup {
+	// Map from import path to set of types
+	importMap := make(map[string]map[string]bool)
+
+	// Get the service file's output directory
+	serviceDir := filepath.Dir(string(serviceFile.Desc.Path()))
+
+	for _, method := range service.Methods {
+		// Check if method should be generated
+		methodResult := tb.methodFilter.ShouldIncludeMethod(method, criteria)
+		if !methodResult.Include {
+			continue
+		}
+
+		// Process input message
+		if method.Input != nil {
+			tb.addMessageToImportMap(method.Input, serviceDir, importMap)
+		}
+
+		// Process output message
+		if method.Output != nil {
+			tb.addMessageToImportMap(method.Output, serviceDir, importMap)
+		}
+	}
+
+	// Convert map to slice of TSImportGroup
+	var groups []TSImportGroup
+	for importPath, types := range importMap {
+		var typeList []string
+		for typeName := range types {
+			typeList = append(typeList, typeName)
+		}
+		// Sort for deterministic output
+		sort.Strings(typeList)
+		groups = append(groups, TSImportGroup{
+			ImportPath: importPath,
+			Types:      typeList,
+		})
+	}
+
+	// Sort groups by import path for deterministic output
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].ImportPath < groups[j].ImportPath
+	})
+
+	return groups
+}
+
+// addMessageToImportMap adds a message and its import path to the import map
+func (tb *TSDataBuilder) addMessageToImportMap(
+	message *protogen.Message,
+	serviceDir string,
+	importMap map[string]map[string]bool,
+) {
+	// Get the file that defines this message
+	messageFile := message.Desc.ParentFile()
+	if messageFile == nil {
+		log.Printf("Warning: Could not find parent file for message %s", message.GoIdent.GoName)
+		return
+	}
+
+	// Get the message file's output directory
+	messageFilePath := string(messageFile.Path())
+	messageDir := filepath.Dir(messageFilePath)
+
+	// Calculate relative path from service directory to message directory
+	relativePath, err := filepath.Rel(serviceDir, messageDir)
+	if err != nil {
+		log.Printf("Warning: Could not calculate relative path from %s to %s: %v", serviceDir, messageDir, err)
+		relativePath = messageDir
+	}
+
+	// Convert to forward slashes and ensure it starts with ./
+	relativePath = filepath.ToSlash(relativePath)
+	if !strings.HasPrefix(relativePath, "../") && !strings.HasPrefix(relativePath, "./") {
+		if relativePath == "." {
+			relativePath = "./interfaces"
+		} else {
+			relativePath = "./" + relativePath + "/interfaces"
+		}
+	} else {
+		relativePath = relativePath + "/interfaces"
+	}
+
+	// Get the TypeScript type name (interface name)
+	tsTypeName := message.GoIdent.GoName
+
+	// Add to import map
+	if importMap[relativePath] == nil {
+		importMap[relativePath] = make(map[string]bool)
+	}
+	importMap[relativePath][tsTypeName] = true
 }
 
 // collectServiceTypeImports collects unique TypeScript types needed for method signatures
 func (tb *TSDataBuilder) collectServiceTypeImports(services []ServiceData) []string {
 	importSet := make(map[string]bool)
-	
+
 	for _, service := range services {
 		for _, method := range service.Methods {
 			if !method.ShouldGenerate {
 				continue
 			}
-			
+
 			// Add request type
 			if method.RequestTSType != "" {
 				importSet[method.RequestTSType] = true
 			}
-			
+
 			// Add response type
 			if method.ResponseTSType != "" {
 				importSet[method.ResponseTSType] = true

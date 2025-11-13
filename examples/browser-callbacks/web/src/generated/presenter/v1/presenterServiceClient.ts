@@ -9,10 +9,10 @@ import {
     CallbackDemoResponse,
     LoadUserDataRequest,
     LoadUserDataResponse,
-    StateUpdateRequest,
-    UIUpdate,
     PreferencesRequest,
     PreferencesResponse,
+    StateUpdateRequest,
+    UIUpdate,
 } from './interfaces';
 /**
  * PresenterService service client interface

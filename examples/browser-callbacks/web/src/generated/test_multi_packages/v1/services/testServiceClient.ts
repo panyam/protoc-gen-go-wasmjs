@@ -7,7 +7,7 @@ import { ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
 import {
     SampleRequest,
     SampleResponse,
-} from './interfaces';
+} from '../models/interfaces';
 /**
  * TestService service client interface
  * Fully typed method signatures with TypeScript interfaces

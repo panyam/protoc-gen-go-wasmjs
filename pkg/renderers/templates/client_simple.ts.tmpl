@@ -2,14 +2,16 @@
 // source: {{ .SourcePath }}
 
 import { ServiceClient } from '@protoc-gen-go-wasmjs/runtime';
-{{- if .TypeImports }}
+{{- if .ImportGroups }}
 
 // Import TypeScript types for method signatures
+{{- range .ImportGroups }}
 import {
-{{- range .TypeImports }}
+{{- range .Types }}
     {{ . }},
 {{- end }}
-} from './interfaces';
+} from '{{ .ImportPath }}';
+{{- end }}
 {{- end }}
 
 {{- range .Services }}

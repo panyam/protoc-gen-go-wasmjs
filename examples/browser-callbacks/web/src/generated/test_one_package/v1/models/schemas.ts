@@ -21,6 +21,18 @@ export const SampleRequestSchema: MessageSchema = {
       type: FieldType.STRING,
       id: 2,
     },
+    {
+      name: "entityData",
+      type: FieldType.MESSAGE,
+      id: 3,
+      messageType: "google.protobuf.Any",
+    },
+    {
+      name: "updateMask",
+      type: FieldType.MESSAGE,
+      id: 4,
+      messageType: "google.protobuf.FieldMask",
+    },
   ],
 };
 
@@ -35,6 +47,18 @@ export const SampleResponseSchema: MessageSchema = {
       name: "x",
       type: FieldType.NUMBER,
       id: 1,
+    },
+    {
+      name: "createdAt",
+      type: FieldType.MESSAGE,
+      id: 2,
+      messageType: "google.protobuf.Timestamp",
+    },
+    {
+      name: "updatedAt",
+      type: FieldType.MESSAGE,
+      id: 3,
+      messageType: "google.protobuf.Timestamp",
     },
   ],
 };

@@ -4,6 +4,7 @@ syntax = "proto3";
 package test_one_package.v1;
 
 import "test_one_package/v1/models/test_service.proto";
+import "test_one_package/v1/models2/second_models.proto";
 
 option go_package = "github.com/panyam/protoc-gen-go-wasmjs/examples/browser-callbacks/gen/go/test_one_package/v1/services";
 
@@ -13,6 +14,12 @@ service TestService {
    * Create a new game
    */
   rpc Sample(SampleRequest) returns (SampleResponse) {
+  }
+
+  /**
+   * Create a new game
+   */
+  rpc Second(SecondRequest) returns (SecondResponse) {
   }
 }
 

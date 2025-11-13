@@ -12,7 +12,8 @@
       "Bash(echo \"Updated: $file\")",
       "Bash(done)",
       "WebSearch",
-      "WebFetch(domain:protobuf.dev)"
+      "WebFetch(domain:protobuf.dev)",
+      "Bash(go doc:*)"
     ],
     "deny": []
   }

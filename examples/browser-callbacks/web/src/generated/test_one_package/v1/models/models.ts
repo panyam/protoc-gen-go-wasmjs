@@ -1,3 +1,6 @@
+import { Any, FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
+
+
 import { SampleRequest as SampleRequestInterface, SampleResponse as SampleResponseInterface } from "./interfaces";
 
 
@@ -14,6 +17,8 @@ export class SampleRequest implements SampleRequestInterface {
 
   a: number = 0;
   b: string = "";
+  entityData?: Any;
+  updateMask?: FieldMask;
 
   
 }
@@ -27,6 +32,8 @@ export class SampleResponse implements SampleResponseInterface {
   static readonly MESSAGE_TYPE = "test_one_package.v1.SampleResponse";
 
   x: number = 0;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 
   
 }

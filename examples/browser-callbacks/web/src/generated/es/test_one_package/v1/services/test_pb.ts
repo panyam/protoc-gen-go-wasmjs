@@ -6,12 +6,14 @@ import type { GenFile, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { SampleRequestSchema, SampleResponseSchema } from "../models/test_service_pb";
 import { file_test_one_package_v1_models_test_service } from "../models/test_service_pb";
+import type { SecondRequestSchema, SecondResponseSchema } from "../models2/second_models_pb";
+import { file_test_one_package_v1_models2_second_models } from "../models2/second_models_pb";
 
 /**
  * Describes the file test_one_package/v1/services/test.proto.
  */
 export const file_test_one_package_v1_services_test: GenFile = /*@__PURE__*/
-  fileDesc("Cid0ZXN0X29uZV9wYWNrYWdlL3YxL3NlcnZpY2VzL3Rlc3QucHJvdG8SE3Rlc3Rfb25lX3BhY2thZ2UudjEyYgoLVGVzdFNlcnZpY2USUwoGU2FtcGxlEiIudGVzdF9vbmVfcGFja2FnZS52MS5TYW1wbGVSZXF1ZXN0GiMudGVzdF9vbmVfcGFja2FnZS52MS5TYW1wbGVSZXNwb25zZSIAQoMCChdjb20udGVzdF9vbmVfcGFja2FnZS52MUIJVGVzdFByb3RvUAFaeGdpdGh1Yi5jb20vcGFueWFtL3Byb3RvYy1nZW4tZ28td2FzbWpzL2V4YW1wbGVzL2Jyb3dzZXItY2FsbGJhY2tzL2dlbi9nby90ZXN0X29uZV9wYWNrYWdlL3YxL3NlcnZpY2VzO3Rlc3Rfb25lX3BhY2thZ2V2MaICA1RYWKoCEVRlc3RPbmVQYWNrYWdlLlYxygIRVGVzdE9uZVBhY2thZ2VcVjHiAh1UZXN0T25lUGFja2FnZVxWMVxHUEJNZXRhZGF0YeoCElRlc3RPbmVQYWNrYWdlOjpWMWIGcHJvdG8z", [file_test_one_package_v1_models_test_service]);
+  fileDesc("Cid0ZXN0X29uZV9wYWNrYWdlL3YxL3NlcnZpY2VzL3Rlc3QucHJvdG8SE3Rlc3Rfb25lX3BhY2thZ2UudjEytwEKC1Rlc3RTZXJ2aWNlElMKBlNhbXBsZRIiLnRlc3Rfb25lX3BhY2thZ2UudjEuU2FtcGxlUmVxdWVzdBojLnRlc3Rfb25lX3BhY2thZ2UudjEuU2FtcGxlUmVzcG9uc2UiABJTCgZTZWNvbmQSIi50ZXN0X29uZV9wYWNrYWdlLnYxLlNlY29uZFJlcXVlc3QaIy50ZXN0X29uZV9wYWNrYWdlLnYxLlNlY29uZFJlc3BvbnNlIgBCgwIKF2NvbS50ZXN0X29uZV9wYWNrYWdlLnYxQglUZXN0UHJvdG9QAVp4Z2l0aHViLmNvbS9wYW55YW0vcHJvdG9jLWdlbi1nby13YXNtanMvZXhhbXBsZXMvYnJvd3Nlci1jYWxsYmFja3MvZ2VuL2dvL3Rlc3Rfb25lX3BhY2thZ2UvdjEvc2VydmljZXM7dGVzdF9vbmVfcGFja2FnZXYxogIDVFhYqgIRVGVzdE9uZVBhY2thZ2UuVjHKAhFUZXN0T25lUGFja2FnZVxWMeICHVRlc3RPbmVQYWNrYWdlXFYxXEdQQk1ldGFkYXRh6gISVGVzdE9uZVBhY2thZ2U6OlYxYgZwcm90bzM", [file_test_one_package_v1_models_test_service, file_test_one_package_v1_models2_second_models]);
 
 /**
  * A test service with model and services divided in different package
@@ -29,6 +31,17 @@ export const TestService: GenService<{
     methodKind: "unary";
     input: typeof SampleRequestSchema;
     output: typeof SampleResponseSchema;
+  },
+  /**
+   * *
+   * Create a new game
+   *
+   * @generated from rpc test_one_package.v1.TestService.Second
+   */
+  second: {
+    methodKind: "unary";
+    input: typeof SecondRequestSchema;
+    output: typeof SecondResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_test_one_package_v1_services_test, 0);

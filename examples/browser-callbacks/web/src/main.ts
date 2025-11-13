@@ -182,7 +182,7 @@ async function init() {
 
     // Create service clients using composition
     const presenterService = new PresenterServiceClient(wasmBundle);
-    const browserAPI = new BrowserAPIServiceClient(wasmBundle);
+    const browserAPI = new BrowserAPIClient(wasmBundle);
 
     // Register browser API implementation
     wasmBundle.registerBrowserService('BrowserAPI', new BrowserAPIImpl());
