@@ -178,7 +178,7 @@ func TestCalculateCrossPackageImportPath(t *testing.T) {
 			name:               "parent to child",
 			currentPackagePath: "common",
 			targetPackageName:  "common.types.v1",
-			expectedImportPath: "../common/types/v1/interfaces",
+			expectedImportPath: "./types/v1/interfaces",
 		},
 		{
 			name:               "different top-level packages",
