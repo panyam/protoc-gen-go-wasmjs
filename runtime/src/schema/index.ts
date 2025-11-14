@@ -18,5 +18,5 @@ export {
   type MessageSchema,
 } from './types.js';
 
-export { BaseDeserializer } from './base-deserializer.js';
+export { type MessageTypeProvider, type MessageTypeConstructor, BaseDeserializer } from './base-deserializer.js';
 export { BaseSchemaRegistry } from './base-registry.js';

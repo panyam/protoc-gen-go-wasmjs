@@ -22,6 +22,7 @@ export {
   type MessageSchema,
   BaseDeserializer,
   BaseSchemaRegistry,
+  type MessageTypeProvider, type MessageTypeConstructor, 
 } from './schema/index.js';
 
 // Client types

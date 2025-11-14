@@ -318,10 +318,7 @@ export function testFactoryAndDeserializer(): void {
 
   // Test static deserializer utility
   const testData = { name: 'test', value: 42 };
-  const deserialized = Test_one_package_v1Deserializer.from<TestOneSampleRequest>(
-    'test_one_package.v1.SampleRequest',
-    testData
-  );
+  const deserialized = Test_one_package_v1Deserializer.from(ConcreteTestOneSampleRequest, testData);
 
   console.log('✅ Factory and deserializer working correctly');
 }
