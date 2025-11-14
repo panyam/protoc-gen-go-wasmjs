@@ -2,7 +2,7 @@
 // DO NOT EDIT - This file is auto-generated
 
 {{/* Import runtime dependencies for deserializer */}}
-import { BaseDeserializer, FactoryInterface } from "@protoc-gen-go-wasmjs/runtime";
+import { MessageTypeConstructor, BaseDeserializer, FactoryInterface } from "@protoc-gen-go-wasmjs/runtime";
 
 {{/* Import schema registry from local aggregated schemas file */}}
 import { {{.SchemaRegistryName}} } from "./schemas";
@@ -231,8 +231,27 @@ export class {{.DeserializerName}} extends BaseDeserializer {
    * @param data Raw data to deserialize
    * @returns Deserialized instance or null if creation failed
    */
-  static from<T>(messageType: string, data: any) {
+  static fromMsgType<T>(messageType: string, data: any) {
     const deserializer = new {{.DeserializerName}}(); // Uses default factory and schema registry
     return deserializer.createAndDeserialize<T>(messageType, data);
+  }
+
+
+  /**
+   * Static utility method - infers messageType from type parameter
+   * Type-safe convenience method
+   */
+  static from<T>(
+    typeConstructor: MessageTypeConstructor<T>,
+    data: any
+  ): T | null {
+    const deserializer = new {{.DeserializerName}}();
+    return deserializer.createAndDeserialize<T>(typeConstructor.MESSAGE_TYPE, data);
+  }
+
+  // Deserialize if data is already a partial instance
+  static fromPartial<T extends { __MESSAGE_TYPE: string }>(data: T): T {
+    const messageType = data.__MESSAGE_TYPE;
+    return this.fromMsgType<T>(messageType, data);
   }
 }

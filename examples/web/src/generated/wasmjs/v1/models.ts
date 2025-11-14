@@ -11,6 +11,7 @@ export class StatefulOptions implements StatefulOptionsInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "wasmjs.v1.StatefulOptions";
+  readonly __MESSAGE_TYPE = StatefulOptions.MESSAGE_TYPE;
 
   /** Whether stateful proxy generation is enabled */
   enabled: boolean = false;
@@ -32,6 +33,7 @@ export class StatefulMethodOptions implements StatefulMethodOptionsInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "wasmjs.v1.StatefulMethodOptions";
+  readonly __MESSAGE_TYPE = StatefulMethodOptions.MESSAGE_TYPE;
 
   /** Whether this method returns patch operations instead of full objects */
   returnsPatches: boolean = false;
@@ -50,6 +52,7 @@ export class AsyncMethodOptions implements AsyncMethodOptionsInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "wasmjs.v1.AsyncMethodOptions";
+  readonly __MESSAGE_TYPE = AsyncMethodOptions.MESSAGE_TYPE;
 
   /** Whether this method should be generated as async with callback parameter */
   isAsync: boolean = false;
@@ -66,6 +69,7 @@ export class MessagePatch implements MessagePatchInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "wasmjs.v1.MessagePatch";
+  readonly __MESSAGE_TYPE = MessagePatch.MESSAGE_TYPE;
 
   /** The type of operation to perform */
   operation: PatchOperation = PatchOperation.SET;
@@ -101,6 +105,7 @@ export class PatchBatch implements PatchBatchInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "wasmjs.v1.PatchBatch";
+  readonly __MESSAGE_TYPE = PatchBatch.MESSAGE_TYPE;
 
   /** The fully qualified protobuf message type (e.g., "example.Game") */
   messageType: string = "";
@@ -127,6 +132,7 @@ export class PatchResponse implements PatchResponseInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "wasmjs.v1.PatchResponse";
+  readonly __MESSAGE_TYPE = PatchResponse.MESSAGE_TYPE;
 
   /** The patches to apply */
   patchBatches: PatchBatch[] = [];

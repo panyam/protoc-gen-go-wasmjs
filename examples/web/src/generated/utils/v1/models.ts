@@ -12,6 +12,7 @@ export class ModelWithOptionalAndDefaults implements ModelWithOptionalAndDefault
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "utils.v1.ModelWithOptionalAndDefaults";
+  readonly __MESSAGE_TYPE = ModelWithOptionalAndDefaults.MESSAGE_TYPE;
 
   neededValue: number = 0;
   optionalString?: string | undefined;
@@ -26,6 +27,7 @@ export class HelperUtilType implements HelperUtilTypeInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "utils.v1.HelperUtilType";
+  readonly __MESSAGE_TYPE = HelperUtilType.MESSAGE_TYPE;
 
   /** Just a test me */
   value1: number = 0;
@@ -44,6 +46,7 @@ export class NestedUtilType implements NestedUtilTypeInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "utils.v1.NestedUtilType";
+  readonly __MESSAGE_TYPE = NestedUtilType.MESSAGE_TYPE;
 
   topLevelCount: number = 0;
   topLevelValue: string = "";
@@ -60,6 +63,7 @@ export class ParentUtilMessage implements ParentUtilMessageInterface {
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "utils.v1.ParentUtilMessage";
+  readonly __MESSAGE_TYPE = ParentUtilMessage.MESSAGE_TYPE;
 
   parentValue: number = 0;
   nested?: ParentUtilMessage_NestedUtilType;
@@ -76,6 +80,7 @@ export class ParentUtilMessage_NestedUtilType implements ParentUtilMessage_Neste
    * Fully qualified message type for schema resolution
    */
   static readonly MESSAGE_TYPE = "utils.v1.ParentUtilMessage.NestedUtilType";
+  readonly __MESSAGE_TYPE = ParentUtilMessage_NestedUtilType.MESSAGE_TYPE;
 
   nestedValue: string = "";
   nestedCount: number = 0;

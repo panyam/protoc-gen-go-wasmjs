@@ -16,6 +16,24 @@ import { FieldType, FieldSchema, MessageSchema } from './types.js';
 import { FactoryInterface, FactoryResult } from '../types/factory.js';
 
 /**
+ * Interface for types that have a static MESSAGE_TYPE field
+ * This allows us to infer the message type from the class itself
+ */
+export interface MessageTypeProvider {
+  readonly MESSAGE_TYPE: string;
+}
+
+/**
+ * Constructor type that provides MESSAGE_TYPE
+ * Used as a constraint for generic deserialization
+ */
+export type MessageTypeConstructor<T> = {
+  new(...args: any[]): T;
+  readonly MESSAGE_TYPE: string;
+};
+
+
+/**
  * Base deserializer class containing all non-template-dependent logic
  */
 export abstract class BaseDeserializer {
@@ -213,6 +231,26 @@ export abstract class BaseDeserializer {
 
     return instance;
   }
+
+
+  /**
+   * Static utility method - infers messageType from type parameter
+   * @param typeConstructor Class with static MESSAGE_TYPE field
+   * @param data Raw data to deserialize
+   * @returns Deserialized instance or null if creation failed
+   *
+   * @example
+   * const user = Deserializer.from(User, rawData);
+   * // Instead of: Deserializer.from<User>(User.MESSAGE_TYPE, rawData)
+   */
+  fromType<T>(
+    typeConstructor: MessageTypeConstructor<T>,
+    data: any
+  ): T | null {
+    const messageType = typeConstructor.MESSAGE_TYPE;
+    return this.createAndDeserialize<T>(messageType, data);
+  }
+
 
   /**
    * Create and deserialize a new instance of a message type
