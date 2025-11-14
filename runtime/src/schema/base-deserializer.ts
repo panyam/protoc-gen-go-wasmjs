@@ -243,10 +243,7 @@ export abstract class BaseDeserializer {
    * const user = Deserializer.from(User, rawData);
    * // Instead of: Deserializer.from<User>(User.MESSAGE_TYPE, rawData)
    */
-  fromType<T>(
-    typeConstructor: MessageTypeConstructor<T>,
-    data: any
-  ): T | null {
+  fromType<T>(typeConstructor: MessageTypeConstructor<T>, data: any): T {
     const messageType = typeConstructor.MESSAGE_TYPE;
     return this.createAndDeserialize<T>(messageType, data);
   }
