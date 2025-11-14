@@ -283,7 +283,7 @@ export class Test_one_package_v1Deserializer extends BaseDeserializer {
    * @param data Raw data to deserialize
    * @returns Deserialized instance or null if creation failed
    */
-  static fromMsgType<T>(messageType: string, data: any) {
+  static fromMsgType<T>(messageType: string, data: any): T {
     const deserializer = new Test_one_package_v1Deserializer(); // Uses default factory and schema registry
     return deserializer.createAndDeserialize<T>(messageType, data);
   }
@@ -293,10 +293,7 @@ export class Test_one_package_v1Deserializer extends BaseDeserializer {
    * Static utility method - infers messageType from type parameter
    * Type-safe convenience method
    */
-  static from<T>(
-    typeConstructor: MessageTypeConstructor<T>,
-    data: any
-  ): T | null {
+  static from<T>(typeConstructor: MessageTypeConstructor<T>, data: any): T {
     const deserializer = new Test_one_package_v1Deserializer();
     return deserializer.createAndDeserialize<T>(typeConstructor.MESSAGE_TYPE, data);
   }
