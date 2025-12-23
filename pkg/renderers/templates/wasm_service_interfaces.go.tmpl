@@ -32,8 +32,26 @@ type {{ .Name }}Server interface {
 {{- if .Comment }}
 	/** {{ .Comment }} */
 {{- end }}
+{{- if .IsServerStreaming }}
+	{{ .Name }}(*{{ .RequestType }}, {{ .Name }}_ServerStream) error
+{{- else }}
 	{{ .Name }}(context.Context, *{{ .RequestType }}) (*{{ .ResponseType }}, error)
+{{- end }}
 	{{- end }}
 {{- end }}
 }
+{{- end }}
+
+// Server stream interfaces for streaming methods
+{{- range .Services }}
+{{- range .Methods }}
+{{- if and .ShouldGenerate .IsServerStreaming }}
+
+// {{ .Name }}_ServerStream is the server stream interface for {{ .Name }}
+type {{ .Name }}_ServerStream interface {
+	Send(*{{ .ResponseType }}) error
+	Context() context.Context
+}
+{{- end }}
+{{- end }}
 {{- end }}

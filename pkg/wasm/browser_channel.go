@@ -455,13 +455,13 @@ func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx
 	}
 
 	// Call browser service through the channel
-	fmt.Println("DEBUG: ABOUT TO QUEUE BROWSER CALL: ", serviceName, methodName, time.Now())
+	// fmt.Println("DEBUG: ABOUT TO QUEUE BROWSER CALL: ", serviceName, methodName, time.Now())
 	responseData, err := channel.QueueCall(ctx, serviceName, methodName, requestData, 30*time.Second)
 	if err != nil {
-		fmt.Println("DEBUG: QueueCall FAILED: ", err, time.Now())
+		// fmt.Println("DEBUG: QueueCall FAILED: ", err, time.Now())
 		return resp, err
 	}
-	fmt.Printf("DEBUG: QueueCall succeeded, got response data (len=%d): %s\n", len(responseData), string(responseData))
+	// fmt.Printf("DEBUG: QueueCall succeeded, got response data (len=%d): %s\n", len(responseData), string(responseData))
 
 	// Unmarshal the response
 	// Check if resp is already a proto.Message (if it's a pointer type)
@@ -476,8 +476,8 @@ func CallBrowserService[TReq any, TResp any](channel *BrowserServiceChannel, ctx
 	}
 
 	if !isProtoMsg {
-		fmt.Printf("DEBUG: respType=%T, resp=%+v\n", resp, resp)
-		fmt.Printf("DEBUG: responseData=%s\n", string(responseData))
+		// fmt.Printf("DEBUG: respType=%T, resp=%+v\n", resp, resp)
+		// fmt.Printf("DEBUG: responseData=%s\n", string(responseData))
 		return resp, fmt.Errorf("response is not a proto message (type: %T)", resp)
 	}
 

@@ -109,23 +109,23 @@ func (exports *{{ .PackageName | replaceAll "." "_" | title }}ServicesExports) R
 // {{ .GoFuncName }} handles the {{ .Name }} method for {{ $serviceName }}
 func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) {{ .GoFuncName }}(this js.Value, args []js.Value) any {
 	if exports.{{ $serviceName }} == nil {
-		return createJSResponse(false, "{{ $serviceName }} not initialized", nil)
+		return wasm.CreateJSResponse(false, "{{ $serviceName }} not initialized", nil)
 	}
 
 	{{- if .IsServerStreaming }}
 	// Server streaming method: expect request JSON and callback function
 	if len(args) < 2 {
-		return createJSResponse(false, "Request JSON and callback function required for streaming method", nil)
+		return wasm.CreateJSResponse(false, "Request JSON and callback function required for streaming method", nil)
 	}
 
 	requestJSON := args[0].String()
 	if requestJSON == "" {
-		return createJSResponse(false, "Request JSON is empty", nil)
+		return wasm.CreateJSResponse(false, "Request JSON is empty", nil)
 	}
 
 	callback := args[1]
 	if callback.Type() != js.TypeFunction {
-		return createJSResponse(false, "Second argument must be a callback function", nil)
+		return wasm.CreateJSResponse(false, "Second argument must be a callback function", nil)
 	}
 
 	// Parse request
@@ -135,7 +135,7 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 		DiscardUnknown: true,
 		AllowPartial:   true,
 	}); err != nil {
-		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
+		return wasm.CreateJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
 
 	// Start streaming in goroutine to avoid blocking
@@ -143,13 +143,13 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		// Create a stream wrapper for server-side streaming
+		// Create a stream wrapper that implements {{ .Name }}_ServerStream
 		streamWrapper := &serverStreamWrapper{{ .Name }}{
 			ctx: ctx,
 			callback: callback,
 		}
 
-		// Call the server streaming method
+		// Call the server streaming method with the correct signature
 		err := exports.{{ $serviceName }}.{{ .Name }}(req, streamWrapper)
 		if err != nil {
 			// Call callback with error and done=true
@@ -162,21 +162,21 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 	}()
 
 	// Return immediately for streaming methods
-	return createJSResponse(true, "Server streaming started", nil)
+	return wasm.CreateJSResponse(true, "Server streaming started", nil)
 	{{- else if .IsAsync }}
 	// Async method: expect request JSON and callback function
 	if len(args) < 2 {
-		return createJSResponse(false, "Request JSON and callback function required", nil)
+		return wasm.CreateJSResponse(false, "Request JSON and callback function required", nil)
 	}
 
 	requestJSON := args[0].String()
 	if requestJSON == "" {
-		return createJSResponse(false, "Request JSON is empty", nil)
+		return wasm.CreateJSResponse(false, "Request JSON is empty", nil)
 	}
 
 	callback := args[1]
 	if callback.Type() != js.TypeFunction {
-		return createJSResponse(false, "Second argument must be a callback function", nil)
+		return wasm.CreateJSResponse(false, "Second argument must be a callback function", nil)
 	}
 
 	// Parse request
@@ -186,7 +186,7 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 		DiscardUnknown: true,
 		AllowPartial:   true,
 	}); err != nil {
-		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
+		return wasm.CreateJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
 
 	// Call service method in goroutine to avoid blocking
@@ -224,16 +224,16 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 	}()
 
 	// Return immediately for async methods
-	return createJSResponse(true, "Async operation started", nil)
+	return wasm.CreateJSResponse(true, "Async operation started", nil)
 	{{- else }}
 	// Synchronous method
 	if len(args) < 1 {
-		return createJSResponse(false, "Request JSON required", nil)
+		return wasm.CreateJSResponse(false, "Request JSON required", nil)
 	}
 
 	requestJSON := args[0].String()
 	if requestJSON == "" {
-		return createJSResponse(false, "Request JSON is empty", nil)
+		return wasm.CreateJSResponse(false, "Request JSON is empty", nil)
 	}
 
 	// Parse request
@@ -243,7 +243,7 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 		DiscardUnknown: true,
 		AllowPartial:   true, // Allow partial messages for better compatibility
 	}); err != nil {
-		return createJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
+		return wasm.CreateJSResponse(false, fmt.Sprintf("Failed to parse request: %v", err), nil)
 	}
 
 	// Create context with timeout
@@ -253,7 +253,7 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 	// Call service method
 	resp, err := exports.{{ $serviceName }}.{{ .Name }}(ctx, req)
 	if err != nil {
-		return createJSResponse(false, fmt.Sprintf("Service call failed: %v", err), nil)
+		return wasm.CreateJSResponse(false, fmt.Sprintf("Service call failed: %v", err), nil)
 	}
 
 	// Marshal response with options for better TypeScript compatibility
@@ -263,10 +263,10 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 		UseEnumNumbers:  false, // Use enum string values
 	})
 	if err != nil {
-		return createJSResponse(false, fmt.Sprintf("Failed to marshal response: %v", err), nil)
+		return wasm.CreateJSResponse(false, fmt.Sprintf("Failed to marshal response: %v", err), nil)
 	}
 
-	return createJSResponse(true, "Success", json.RawMessage(responseJSON))
+	return wasm.CreateJSResponse(true, "Success", json.RawMessage(responseJSON))
 	{{- end }}
 }
 		{{- end }}
