@@ -286,10 +286,9 @@ export class WASMBundle {
         // Run the WASM module
         go.run(wasmModule.instance);
 
-        // Start browser service manager
+        // Initialize browser service manager (sets up __browserServices and __wasmCallBrowserMethodAsync)
         if (this.browserServiceManager) {
-            this.browserServiceManager.setWasmModule(window);
-            this.browserServiceManager.startProcessing();
+            this.browserServiceManager.initialize();
         }
 
         // Verify WASM APIs are available

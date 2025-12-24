@@ -386,21 +386,26 @@ func New{{ $service.Name }}Client() *{{ $service.Name }}Client {
 }
 
 {{- range .Methods }}
-
-// {{ .Name }} calls the browser-provided {{ .Name }} method
-func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) (*{{ .ResponseType }}, error) {
 {{- if .IsAsync }}
+
+// {{ .Name }} calls the browser-provided {{ .Name }} method asynchronously.
+// Returns a Future that can be used to retrieve the result when ready.
+func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) *wasm.Future[*{{ .ResponseType }}] {
 	// This is an async browser method (returns a Promise in JavaScript)
 	return wasm.CallBrowserServiceAsync[*{{ .RequestType }}, *{{ .ResponseType }}](
 		c.channel, ctx, "{{ $service.Name }}", "{{ .JSName }}", req,
 	)
+}
 {{- else }}
+
+// {{ .Name }} calls the browser-provided {{ .Name }} method synchronously.
+func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) (*{{ .ResponseType }}, error) {
 	// This is a synchronous browser method
 	return wasm.CallBrowserService[*{{ .RequestType }}, *{{ .ResponseType }}](
 		c.channel, ctx, "{{ $service.Name }}", "{{ .JSName }}", req,
 	)
-{{- end }}
 }
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
