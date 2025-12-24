@@ -23,11 +23,11 @@ export interface {{ .Name }}Methods {
 	{{- range .Methods }}
 		{{- if .ShouldGenerate }}
 			{{- if .IsServerStreaming }}
-	{{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }} | null, error: string | null, done: boolean) => boolean): void;
+	      {{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }} | null, error: string | null, done: boolean) => boolean): void;
 			{{- else if .IsAsync }}
-	{{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }}, error?: string) => void): Promise<void>;
+	      {{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }}, error?: string) => void): Promise<void>;
 			{{- else }}
-	{{ .JSName }}(request: {{ .RequestTSType }}): Promise<{{ .ResponseTSType }}>;
+	      {{ .JSName }}(request: {{ .RequestTSType }}): Promise<{{ .ResponseTSType }}>;
 			{{- end }}
 		{{- end }}
 	{{- end }}
@@ -66,38 +66,38 @@ export class {{ .Name }}Client extends ServiceClient implements {{ .Name }}Metho
 	{{- range .Methods }}
 		{{- if .ShouldGenerate }}
 			{{- if .IsServerStreaming }}
-    {{ .JSName }}(
-        request: {{ .RequestTSType }},
-        callback: (response: {{ .ResponseTSType }} | null, error: string | null, done: boolean) => boolean
-    ): void {
-				{{- if eq $.APIStructure "namespaced" }}
-        return this.callStreamingMethod('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
-				{{- else if eq $.APIStructure "flat" }}
-        return this.callStreamingMethod('{{ $.JSNamespace }}{{ .Name }}', request, callback);
-				{{- else if eq $.APIStructure "service_based" }}
-        return this.callStreamingMethod('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
-				{{- end }}
-    }
+        {{ .JSName }}(
+            request: {{ .RequestTSType }},
+            callback: (response: {{ .ResponseTSType }} | null, error: string | null, done: boolean) => boolean
+        ): void {
+            {{- if eq $.APIStructure "namespaced" }}
+            return this.callStreamingMethod('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
+            {{- else if eq $.APIStructure "flat" }}
+            return this.callStreamingMethod('{{ $.JSNamespace }}{{ .Name }}', request, callback);
+            {{- else if eq $.APIStructure "service_based" }}
+            return this.callStreamingMethod('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
+            {{- end }}
+        }
 			{{- else if .IsAsync }}
-    async {{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }}, error?: string) => void): Promise<void> {
-				{{- if eq $.APIStructure "namespaced" }}
-        return this.callMethodWithCallback('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
-				{{- else if eq $.APIStructure "flat" }}
-        return this.callMethodWithCallback('{{ $.JSNamespace }}{{ .Name }}', request, callback);
-				{{- else if eq $.APIStructure "service_based" }}
-        return this.callMethodWithCallback('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
-				{{- end }}
-    }
+        async {{ .JSName }}(request: {{ .RequestTSType }}, callback: (response: {{ .ResponseTSType }}, error?: string) => void): Promise<void> {
+            {{- if eq $.APIStructure "namespaced" }}
+            return this.callMethodWithCallback('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
+            {{- else if eq $.APIStructure "flat" }}
+            return this.callMethodWithCallback('{{ $.JSNamespace }}{{ .Name }}', request, callback);
+            {{- else if eq $.APIStructure "service_based" }}
+            return this.callMethodWithCallback('{{ $serviceJSName }}.{{ .JSName }}', request, callback);
+            {{- end }}
+        }
 			{{- else }}
-    async {{ .JSName }}(request: {{ .RequestTSType }}): Promise<{{ .ResponseTSType }}> {
-				{{- if eq $.APIStructure "namespaced" }}
-        return this.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
-				{{- else if eq $.APIStructure "flat" }}
-        return this.callMethod('{{ $.JSNamespace }}{{ .Name }}', request);
-				{{- else if eq $.APIStructure "service_based" }}
-        return this.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
-				{{- end }}
-    }
+        async {{ .JSName }}(request: {{ .RequestTSType }}): Promise<{{ .ResponseTSType }}> {
+            {{- if eq $.APIStructure "namespaced" }}
+            return this.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
+            {{- else if eq $.APIStructure "flat" }}
+            return this.callMethod('{{ $.JSNamespace }}{{ .Name }}', request);
+            {{- else if eq $.APIStructure "service_based" }}
+            return this.callMethod('{{ $serviceJSName }}.{{ .JSName }}', request);
+            {{- end }}
+        }
 			{{- end }}
 		{{- end }}
 	{{- end }}
