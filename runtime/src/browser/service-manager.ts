@@ -14,115 +14,177 @@
 
 /**
  * Browser Service Manager
- * Handles FIFO processing of browser service calls from WASM
- * This is a shared component used by all WASM clients that interact with browser services
+ *
+ * Manages browser service implementations that can be called from WASM.
+ *
+ * There are two calling patterns:
+ *
+ * 1. Synchronous: WASM calls __browserServices.ServiceName.methodName(request)
+ *    and receives the result directly. The JS function must return a value (not a Promise).
+ *
+ * 2. Asynchronous: WASM calls __wasmCallBrowserMethodAsync(service, method, request, callbackId)
+ *    and JS calls __wasmDeliverBrowserResponse(callbackId, response, error) when done.
+ *    This is for browser APIs that return Promises (fetch, IndexedDB, etc.)
  */
 export class BrowserServiceManager {
-    private processing = false;
     private serviceImplementations = new Map<string, any>();
-    private wasmModule: any;
+    private initialized = false;
 
-    constructor() {
-        // WASM will set up the global functions __wasmGetNextBrowserCall and __wasmDeliverBrowserResponse
-        // We'll just use them when they're available
-    }
+    constructor() {}
 
     /**
-     * Register a browser service implementation
+     * Register a browser service implementation.
+     * The service object should have methods matching the proto service definition.
+     *
+     * Methods can be either:
+     * - Synchronous: Return a value directly (for sync browser APIs)
+     * - Asynchronous: Return a Promise (for async browser APIs like fetch)
      */
     registerService(name: string, implementation: any): void {
         this.serviceImplementations.set(name, implementation);
+        this.updateBrowserServices();
     }
 
     /**
-     * Set the WASM module reference
+     * Initialize the browser service bridge.
+     * This sets up the global functions that WASM uses to call browser services.
      */
-    setWasmModule(wasmModule: any): void {
-        this.wasmModule = wasmModule;
+    initialize(): void {
+        if (this.initialized) return;
+        this.initialized = true;
+
+        // Set up the async method handler
+        // WASM calls this for async browser methods (ones that return Promises)
+        (window as any).__wasmCallBrowserMethodAsync = async (
+            service: string,
+            method: string,
+            request: string,
+            callbackId: string
+        ) => {
+            try {
+                const impl = this.serviceImplementations.get(service);
+                if (!impl) {
+                    this.deliverResponse(callbackId, null, `Service '${service}' not registered`);
+                    return;
+                }
+
+                // Convert method name to camelCase (e.g., "getLocalStorage" -> "getLocalStorage")
+                const methodName = method.charAt(0).toLowerCase() + method.slice(1);
+                const methodFunc = impl[methodName];
+                if (!methodFunc) {
+                    this.deliverResponse(callbackId, null, `Method '${methodName}' not found on service '${service}'`);
+                    return;
+                }
+
+                // Parse request and call the method
+                const requestObj = JSON.parse(request);
+                const response = await Promise.resolve(methodFunc.call(impl, requestObj));
+
+                // Deliver the response back to WASM
+                this.deliverResponse(callbackId, JSON.stringify(response), null);
+            } catch (error: any) {
+                this.deliverResponse(callbackId, null, error.message || String(error));
+            }
+        };
+
+        // Update the browser services object
+        this.updateBrowserServices();
     }
 
     /**
-     * Start processing browser service calls
+     * Update the __browserServices global object with current registrations.
+     * This is called automatically when services are registered.
      */
-    async startProcessing(): Promise<void> {
-        if (this.processing) return;
-        this.processing = true;
+    private updateBrowserServices(): void {
+        const browserServices: Record<string, any> = {};
 
-        // Process calls in a loop
-        while (this.processing) {
-            const call = this.getNextBrowserCall();
-            if (!call) {
-                // No pending calls, wait a bit
-                await new Promise(resolve => setTimeout(resolve, 10));
-                continue;
+        for (const [name, impl] of this.serviceImplementations) {
+            const serviceProxy: Record<string, any> = {};
+
+            // Get all methods from the implementation
+            // Check both own properties and prototype chain
+            const methodNames = this.getAllMethodNames(impl);
+
+            for (const methodName of methodNames) {
+                // Create a wrapper that handles sync calls
+                serviceProxy[methodName] = (request: string): string => {
+                    try {
+                        const requestObj = JSON.parse(request);
+                        const result = impl[methodName](requestObj);
+
+                        // For sync methods, result should not be a Promise
+                        // If it is, this is a programming error - async methods should use
+                        // __wasmCallBrowserMethodAsync instead
+                        if (result instanceof Promise) {
+                            console.warn(
+                                `Method ${name}.${methodName} returned a Promise but was called synchronously. ` +
+                                `Mark this method as async in the proto definition.`
+                            );
+                            return JSON.stringify({ error: 'Method is async but called synchronously' });
+                        }
+
+                        return JSON.stringify(result);
+                    } catch (error: any) {
+                        return JSON.stringify({ error: error.message || String(error) });
+                    }
+                };
             }
 
-            // Process each call asynchronously without blocking the loop
-            this.processCall(call);
+            browserServices[name] = serviceProxy;
         }
+
+        (window as any).__browserServices = browserServices;
     }
 
     /**
-     * Process a single browser service call asynchronously
+     * Get all method names from an object, including prototype chain.
      */
-    private async processCall(call: any): Promise<void> {
-        try {
-            // Get the service implementation
-            const service = this.serviceImplementations.get(call.service);
-            if (!service) {
-                throw new Error(`No implementation registered for service: ${call.service}`);
+    private getAllMethodNames(obj: any): string[] {
+        const methods = new Set<string>();
+
+        // Get own property names (for plain objects)
+        for (const name of Object.keys(obj)) {
+            if (typeof obj[name] === 'function') {
+                methods.add(name);
             }
+        }
 
-            // Get the method
-            const methodName = call.method.charAt(0).toLowerCase() + call.method.slice(1);
-            const method = service[methodName];
-            if (!method) {
-                throw new Error(`Method ${methodName} not found on service ${call.service}`);
+        // Also check prototype chain (for class instances)
+        let proto = Object.getPrototypeOf(obj);
+        while (proto && proto !== Object.prototype) {
+            for (const name of Object.getOwnPropertyNames(proto)) {
+                if (name !== 'constructor' && typeof obj[name] === 'function') {
+                    methods.add(name);
+                }
             }
+            proto = Object.getPrototypeOf(proto);
+        }
 
-            // Parse request
-            const request = JSON.parse(call.request);
+        return Array.from(methods);
+    }
 
-            // Call the method (auto-await if async)
-            const response = await Promise.resolve(method.call(service, request));
-            
-            // console.log(`DEBUG: Browser service response for ${call.service}.${call.method}:`, response);
-            const jsonResponse = JSON.stringify(response);
-            // console.log(`DEBUG: JSON stringified response:`, jsonResponse);
-
-            // Deliver response
-            this.deliverBrowserResponse(call.id, jsonResponse, null);
-        } catch (error: any) {
-            // Deliver error
-            this.deliverBrowserResponse(call.id, null, error.message || String(error));
+    /**
+     * Deliver an async response back to WASM.
+     */
+    private deliverResponse(callbackId: string, response: string | null, error: string | null): void {
+        if (typeof (window as any).__wasmDeliverBrowserResponse === 'function') {
+            (window as any).__wasmDeliverBrowserResponse(callbackId, response, error);
+        } else {
+            console.error('__wasmDeliverBrowserResponse not available - WASM not initialized?');
         }
     }
 
     /**
-     * Stop processing browser service calls
+     * Check if a service is registered.
      */
-    stopProcessing(): void {
-        this.processing = false;
+    hasService(name: string): boolean {
+        return this.serviceImplementations.has(name);
     }
 
     /**
-     * Get the next browser call from WASM
+     * Get the number of registered services.
      */
-    private getNextBrowserCall(): any {
-        // The __wasmGetNextBrowserCall function should be provided by WASM
-        if (typeof (window as any).__wasmGetNextBrowserCall === 'function') {
-            return (window as any).__wasmGetNextBrowserCall();
-        }
-        return null;
-    }
-
-    /**
-     * Deliver a response back to WASM (called internally)
-     */
-    private deliverBrowserResponse(callId: string, response: string | null, error: string | null): boolean {
-        if (!(window as any).__wasmDeliverBrowserResponse) {
-            return false;
-        }
-        return (window as any).__wasmDeliverBrowserResponse(callId, response, error);
+    getServiceCount(): number {
+        return this.serviceImplementations.size;
     }
 }
