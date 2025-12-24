@@ -145,7 +145,7 @@ func TestBrowserServiceChannel_PendingCallManagement(t *testing.T) {
 
 // TestFuture_BasicGet tests the basic Get functionality of Future
 func TestFuture_BasicGet(t *testing.T) {
-	marshaller := &ProtoJSONMarshaller{}
+	marshaller := &ProtojsonMarshaller{}
 	responseCh := make(chan *CallResponse, 1)
 
 	future := &Future[*emptypb.Empty]{
@@ -176,7 +176,7 @@ func TestFuture_BasicGet(t *testing.T) {
 
 // TestFuture_CachedResult tests that subsequent Get calls return cached result
 func TestFuture_CachedResult(t *testing.T) {
-	marshaller := &ProtoJSONMarshaller{}
+	marshaller := &ProtojsonMarshaller{}
 	responseCh := make(chan *CallResponse, 1)
 
 	future := &Future[*emptypb.Empty]{
@@ -209,7 +209,7 @@ func TestFuture_CachedResult(t *testing.T) {
 
 // TestFuture_ErrorCaching tests that errors are also cached
 func TestFuture_ErrorCaching(t *testing.T) {
-	marshaller := &ProtoJSONMarshaller{}
+	marshaller := &ProtojsonMarshaller{}
 	responseCh := make(chan *CallResponse, 1)
 
 	future := &Future[*emptypb.Empty]{
@@ -241,7 +241,7 @@ func TestFuture_ErrorCaching(t *testing.T) {
 
 // TestFuture_GetWithTimeout tests the timeout functionality
 func TestFuture_GetWithTimeout(t *testing.T) {
-	marshaller := &ProtoJSONMarshaller{}
+	marshaller := &ProtojsonMarshaller{}
 	responseCh := make(chan *CallResponse, 1)
 
 	future := &Future[*emptypb.Empty]{
@@ -274,7 +274,7 @@ func TestFuture_GetWithTimeout(t *testing.T) {
 
 // TestFuture_ConcurrentGet tests that concurrent Get calls are safe
 func TestFuture_ConcurrentGet(t *testing.T) {
-	marshaller := &ProtoJSONMarshaller{}
+	marshaller := &ProtojsonMarshaller{}
 	responseCh := make(chan *CallResponse, 1)
 
 	future := &Future[*emptypb.Empty]{

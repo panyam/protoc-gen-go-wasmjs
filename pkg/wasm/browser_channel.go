@@ -43,7 +43,7 @@ type CallResponse struct {
 // and returns cached result on subsequent calls.
 type Future[TResp proto.Message] struct {
 	responseCh chan *CallResponse
-	marshaller *ProtoJSONMarshaller
+	marshaller ProtoMarshaller
 
 	// Cached result after first Get()
 	result TResp
