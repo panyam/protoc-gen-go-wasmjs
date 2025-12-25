@@ -25,38 +25,38 @@ import {
  * Fully typed method signatures with TypeScript interfaces
  */
 export interface BrowserAPIMethods {
-	fetch(request: FetchRequest): Promise<FetchResponse>;
-	getLocalStorage(request: StorageKeyRequest): Promise<StorageValueResponse>;
-	setLocalStorage(request: StorageSetRequest): Promise<StorageSetResponse>;
-	getCookie(request: CookieRequest): Promise<CookieResponse>;
-	alert(request: AlertRequest): Promise<AlertResponse>;
-	promptUser(request: PromptRequest): Promise<PromptResponse>;
-	logToWindow(request: LogRequest): Promise<LogResponse>;
+    fetch(request: FetchRequest): Promise<FetchResponse>;
+    getLocalStorage(request: StorageKeyRequest): StorageValueResponse;
+    setLocalStorage(request: StorageSetRequest): StorageSetResponse;
+    getCookie(request: CookieRequest): CookieResponse;
+    alert(request: AlertRequest): AlertResponse;
+    promptUser(request: PromptRequest): PromptResponse;
+    logToWindow(request: LogRequest): LogResponse;
 }
 /**
  * BrowserAPI service client implementation
  * Lightweight facade that uses shared WASM bundle
  */
 export class BrowserAPIClient extends ServiceClient implements BrowserAPIMethods {
-    async fetch(request: FetchRequest): Promise<FetchResponse> {
-        return this.callMethod('browserAPI.fetch', request);
-    }
-    async getLocalStorage(request: StorageKeyRequest): Promise<StorageValueResponse> {
-        return this.callMethod('browserAPI.getLocalStorage', request);
-    }
-    async setLocalStorage(request: StorageSetRequest): Promise<StorageSetResponse> {
-        return this.callMethod('browserAPI.setLocalStorage', request);
-    }
-    async getCookie(request: CookieRequest): Promise<CookieResponse> {
-        return this.callMethod('browserAPI.getCookie', request);
-    }
-    async alert(request: AlertRequest): Promise<AlertResponse> {
-        return this.callMethod('browserAPI.alert', request);
-    }
-    async promptUser(request: PromptRequest): Promise<PromptResponse> {
-        return this.callMethod('browserAPI.promptUser', request);
-    }
-    async logToWindow(request: LogRequest): Promise<LogResponse> {
-        return this.callMethod('browserAPI.logToWindow', request);
-    }
+        fetch(request: FetchRequest): Promise<FetchResponse> {
+            return this.callMethodAsync('browserAPI.fetch', request);
+        }
+        getLocalStorage(request: StorageKeyRequest): StorageValueResponse {
+            return this.callMethodSync('browserAPI.getLocalStorage', request);
+        }
+        setLocalStorage(request: StorageSetRequest): StorageSetResponse {
+            return this.callMethodSync('browserAPI.setLocalStorage', request);
+        }
+        getCookie(request: CookieRequest): CookieResponse {
+            return this.callMethodSync('browserAPI.getCookie', request);
+        }
+        alert(request: AlertRequest): AlertResponse {
+            return this.callMethodSync('browserAPI.alert', request);
+        }
+        promptUser(request: PromptRequest): PromptResponse {
+            return this.callMethodSync('browserAPI.promptUser', request);
+        }
+        logToWindow(request: LogRequest): LogResponse {
+            return this.callMethodSync('browserAPI.logToWindow', request);
+        }
 }

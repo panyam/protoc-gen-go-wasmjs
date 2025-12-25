@@ -409,7 +409,7 @@ func (gb *GoDataBuilder) buildMethodData(
 		ResponseType:      responseType,
 		RequestTSType:     string(method.Input.GoIdent.GoName),
 		ResponseTSType:    string(method.Output.GoIdent.GoName),
-		IsAsync:           methodResult.IsAsync,
+		InvocationStyle:   methodResult.InvocationStyle,
 		IsServerStreaming: methodResult.IsServerStreaming,
 	}
 }

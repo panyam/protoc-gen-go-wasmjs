@@ -52,21 +52,6 @@ func (gr *GoRenderer) RenderToString(templateContent string, data interface{}) (
 	return buf.String(), nil
 }
 
-// RenderWasmWrapper generates the Go WASM wrapper and returns it as a string.
-// This is a convenience method that uses the embedded WASM template.
-func (gr *GoRenderer) RenderWasmWrapper(data *builders.GoTemplateData) (string, error) {
-	if data == nil {
-		return "", nil // No data to render
-	}
-
-	// Validate Go template data before rendering
-	if err := gr.ValidateGoTemplateData(data); err != nil {
-		return "", fmt.Errorf("invalid WASM wrapper data: %w", err)
-	}
-
-	return gr.RenderToString(GoWasmTemplate, data)
-}
-
 // RenderConvertersDirect renders converters directly to GeneratedFile using old generator pattern.
 func (gr *GoRenderer) RenderConvertersDirect(file *protogen.GeneratedFile, data *builders.GoTemplateData) error {
 	if file == nil {

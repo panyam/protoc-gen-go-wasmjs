@@ -22,6 +22,38 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// InvocationStyle represents how a method is invoked across the JS/WASM boundary.
+type InvocationStyle int
+
+// InvocationStyle constants for method invocation patterns.
+const (
+	// InvocationStyleSync - Method returns value directly, executes on JS thread.
+	// WARNING: Will deadlock if method calls browser APIs returning Promises!
+	InvocationStyleSync InvocationStyle = iota
+
+	// InvocationStylePromise - Method returns JS Promise, executes in goroutine.
+	// Safe for methods that call browser APIs. JS can use async/await.
+	InvocationStylePromise
+
+	// InvocationStyleCallback - Method takes callback parameter, executes in goroutine.
+	// Safe for methods that call browser APIs. Legacy pattern - prefer Promise.
+	InvocationStyleCallback
+)
+
+// String returns the string representation of the invocation style.
+func (s InvocationStyle) String() string {
+	switch s {
+	case InvocationStyleSync:
+		return "sync"
+	case InvocationStylePromise:
+		return "promise"
+	case InvocationStyleCallback:
+		return "callback"
+	default:
+		return "sync"
+	}
+}
+
 // ProtoAnalyzer provides pure functions for analyzing protobuf definitions.
 // These functions extract metadata and properties from proto files, services,
 // methods, messages, and fields without any side effects or external dependencies.
@@ -180,17 +212,34 @@ func (pa *ProtoAnalyzer) GetCustomMethodName(method *protogen.Method) string {
 	return ""
 }
 
-// IsAsyncMethod checks if a method is marked as async using wasmjs annotations.
-// Async methods require callback parameters to prevent WASM deadlocks when calling browser APIs.
-func (pa *ProtoAnalyzer) IsAsyncMethod(method *protogen.Method) bool {
+// GetInvocationStyle returns the invocation style for a method.
+// Returns InvocationStyleSync, InvocationStylePromise, or InvocationStyleCallback
+// based on the invocation_style annotation.
+// Falls back to checking deprecated async_method annotation for backward compatibility.
+func (pa *ProtoAnalyzer) GetInvocationStyle(method *protogen.Method) InvocationStyle {
 	if method.Desc.Options() != nil {
+		// Check new invocation_style annotation first
+		if styleOpt := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_InvocationStyle); styleOpt != nil {
+			if style, ok := styleOpt.(wasmjsv1.InvocationStyle); ok {
+				switch style {
+				case wasmjsv1.InvocationStyle_INVOCATION_STYLE_PROMISE:
+					return InvocationStylePromise
+				case wasmjsv1.InvocationStyle_INVOCATION_STYLE_CALLBACK:
+					return InvocationStyleCallback
+				case wasmjsv1.InvocationStyle_INVOCATION_STYLE_SYNC:
+					return InvocationStyleSync
+				}
+			}
+		}
+
+		// Backward compatibility: check deprecated async_method annotation
 		if asyncOpts := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_AsyncMethod); asyncOpts != nil {
-			if opts, ok := asyncOpts.(*wasmjsv1.AsyncMethodOptions); ok && opts != nil {
-				return opts.GetIsAsync()
+			if opts, ok := asyncOpts.(*wasmjsv1.AsyncMethodOptions); ok && opts != nil && opts.GetIsAsync() {
+				return InvocationStyleCallback // Old async_method maps to callback style
 			}
 		}
 	}
-	return false
+	return InvocationStyleSync // Default to sync
 }
 
 // IsMethodExcluded checks if a method is marked for exclusion from WASM generation.

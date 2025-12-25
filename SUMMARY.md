@@ -223,7 +223,36 @@ The project has completed a comprehensive refactoring and achieved **production-
 - ✅ **Factory/Deserializer Generation**: Completed wiring for models, factory, schemas, and deserializer file generation in new catalog-based architecture (October 2025)
 - ✅ **pkg.go.dev Documentation**: Comprehensive godoc documentation added to all packages with examples, architecture diagrams, and complete API reference (October 2025)
 
-### Latest Updates (January 2025)
+### Latest Updates (December 2025)
+
+#### InvocationStyle System (December 2025)
+Replaced ambiguous `async_method` annotation with explicit `invocation_style` system:
+
+**Three Invocation Styles:**
+1. **SYNC** (`INVOCATION_STYLE_SYNC`): Returns value directly, executes on JS thread
+   - TypeScript: `method(request): Response`
+   - Use for simple methods that don't call browser APIs
+
+2. **PROMISE** (`INVOCATION_STYLE_PROMISE`): Returns JavaScript Promise, executes in goroutine
+   - TypeScript: `method(request): Promise<Response>`
+   - Safe for methods that call browser APIs (prevents deadlock)
+   - JS can use async/await syntax
+
+3. **CALLBACK** (`INVOCATION_STYLE_CALLBACK`): Takes callback parameter, executes in goroutine
+   - TypeScript: `method(request, callback: (response, error?) => void): void`
+   - Legacy pattern, prefer PROMISE for new code
+
+**Key Implementation:**
+- `pkg/wasm/promise.go` - Go helpers for creating JavaScript Promises
+- `proto/wasmjs/v1/annotations.proto` - InvocationStyle enum
+- Runtime methods: `callMethodSync()`, `callMethodAsync()`, `callMethodWithCallback()`
+
+**Example Usage:**
+```protobuf
+rpc SavePreferences(Request) returns (Response) {
+    option (wasmjs.v1.invocation_style) = INVOCATION_STYLE_PROMISE;
+};
+```
 
 #### Go WASM File Splitting (January 2025)
 - **Modular Go Generation**: Split monolithic WASM file into 3 focused files

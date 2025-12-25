@@ -14,6 +14,27 @@ export enum ConflictResolution {
 }
 
 /**
+ * InvocationStyle specifies how a method should be invoked across the JS/WASM boundary.
+ This determines the method signature and execution model.
+ */
+export enum InvocationStyle {
+  /** SYNC: Method returns value directly. Executes on the JS thread.
+ Use for simple methods that don't call browser APIs returning Promises.
+ JS signature: method(request): Response
+ WARNING: Will deadlock if the method calls browser APIs that return Promises! */
+  INVOCATION_STYLE_SYNC = 0,
+  /** PROMISE: Method returns a JavaScript Promise. Executes in a goroutine.
+ Safe for methods that call browser APIs (fetch, IndexedDB, etc.).
+ JS signature: method(request): Promise<Response>
+ JS can use async/await: const resp = await service.method(req); */
+  INVOCATION_STYLE_PROMISE = 1,
+  /** CALLBACK: Method takes a callback parameter. Executes in a goroutine.
+ Safe for methods that call browser APIs. Legacy pattern - prefer PROMISE.
+ JS signature: method(request, callback: (response, error?) => void): void */
+  INVOCATION_STYLE_CALLBACK = 2,
+}
+
+/**
  * Patch operations for modifying protobuf message fields
  */
 export enum PatchOperation {
@@ -77,9 +98,11 @@ export interface StatefulMethodOptions {
 
 /**
  * Configuration for async methods
+ DEPRECATED: Use invocation_style instead.
  */
 export interface AsyncMethodOptions {
-  /** Whether this method should be generated as async with callback parameter */
+  /** Whether this method should be generated as async with callback parameter
+ Maps to INVOCATION_STYLE_CALLBACK when true. */
   isAsync: boolean;
 }
 

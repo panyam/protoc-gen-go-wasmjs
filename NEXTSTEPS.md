@@ -181,26 +181,39 @@ Split monolithic Go WASM generation into 3 modular files:
   - **Schema consolidation**: Aggregates directory-level schemas with unique aliases
   - **Single file**: Combined factory + deserializer reduces import complexity
 
-## 🚀 **NEXT PHASE: Enhanced Developer Experience**
+### ✅ **11. InvocationStyle System (December 2025) - COMPLETED**
+- **✅ Issue**: Ambiguous `async_method` annotation didn't clearly distinguish between different async patterns
+- **✅ Solution**: Explicit `invocation_style` annotation with SYNC, PROMISE, and CALLBACK options
+- **✅ Files created/modified**:
+  - `pkg/wasm/promise.go` (NEW) - Go helpers for creating JavaScript Promises
+  - `proto/wasmjs/v1/annotations.proto` - InvocationStyle enum
+  - `pkg/core/proto_analyzer.go` - InvocationStyle type and GetInvocationStyle method
+  - `pkg/builders/shared_types.go` - MethodData with InvocationStyle field
+  - `pkg/renderers/templates/wasm_exports.go.tmpl` - PROMISE branch using CreateJSPromise
+  - `pkg/renderers/templates/client_simple.ts.tmpl` - Updated method signatures
+  - `runtime/src/client/service-client.ts` - callMethodSync/callMethodAsync
+  - `runtime/src/client/wasm-bundle.ts` - callMethodSync/callMethodAsync
+- **✅ Dead code removed**:
+  - `pkg/generator/generator.go`, `templates.go`, `tsgenerator.go`, `types.go` - Deleted
+  - `pkg/renderers/templates/wasm.go.tmpl` - Deleted
+- **✅ Benefits**:
+  - Clear semantics for each invocation style
+  - PROMISE style allows async/await in TypeScript
+  - Prevents deadlocks when calling browser APIs from Go WASM
+  - Fully typed method signatures in generated TypeScript
 
-### **Phase 2: Typed Callback Generation (Priority: MEDIUM)**
-Generate fully typed callback signatures instead of `any`:
-```typescript
-// Current:
-runCallbackDemo(request: any, callback: (response: any, error?: string) => void)
+## 🚀 **NEXT PHASE: Production Polish**
 
-// Target:
-runCallbackDemo(
-  request: CallbackDemoRequest,
-  callback: (response: CallbackDemoResponse, error?: string) => void
-): Promise<void>
-```
+### **Phase 2: Streaming Improvements (Priority: MEDIUM)**
+Enhance streaming support with better error handling:
+- Typed streaming callbacks with proper response types
+- Better cancellation support
+- Progress reporting for long-running streams
 
-**Benefits:**
-- **Full IntelliSense support** in VS Code
-- **Compile-time type checking** for callback parameters
-- **Better developer experience** with autocomplete
-- **Reduced runtime errors** through type safety
+### **Phase 3: Performance Optimization (Priority: LOW)**
+- Consider SharedArrayBuffer for better WASM/JS data transfer
+- Template caching for faster regeneration
+- Parallel generation for large projects
 
 ## 📋 Medium-Term Goals
 

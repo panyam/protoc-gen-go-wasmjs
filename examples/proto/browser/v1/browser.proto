@@ -11,7 +11,10 @@ service BrowserAPI {
     option (wasmjs.v1.browser_provided) = true;
 
     // Fetch makes an HTTP request from the browser
-    rpc Fetch(FetchRequest) returns (FetchResponse);
+    // Uses PROMISE invocation style since fetch() is async in JavaScript
+    rpc Fetch(FetchRequest) returns (FetchResponse) {
+        option (wasmjs.v1.invocation_style) = INVOCATION_STYLE_PROMISE;
+    };
 
     // GetLocalStorage retrieves a value from localStorage
     rpc GetLocalStorage(StorageKeyRequest) returns (StorageValueResponse);

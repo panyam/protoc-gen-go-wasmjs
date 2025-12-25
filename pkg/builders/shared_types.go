@@ -15,6 +15,7 @@
 package builders
 
 import (
+	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -107,8 +108,32 @@ type MethodData struct {
 	ResponseTSType string // TypeScript response type name (e.g., "FindBooksResponse")
 
 	// Method behavior
-	IsAsync           bool // Whether method requires async/callback handling
-	IsServerStreaming bool // Whether method uses server-side streaming
+	InvocationStyle   core.InvocationStyle // Determines JS/WASM boundary behavior
+	IsServerStreaming bool                 // Whether method uses server-side streaming
+}
+
+// IsSync returns true if the method uses synchronous invocation style.
+// Sync methods execute on the JS thread and return values directly.
+func (m *MethodData) IsSync() bool {
+	return m.InvocationStyle == core.InvocationStyleSync
+}
+
+// IsPromise returns true if the method returns a JavaScript Promise.
+// Promise methods spawn a goroutine and are safe for browser API calls.
+func (m *MethodData) IsPromise() bool {
+	return m.InvocationStyle == core.InvocationStylePromise
+}
+
+// IsCallback returns true if the method uses callback-based invocation.
+// Callback methods spawn a goroutine and invoke a JS callback when done.
+func (m *MethodData) IsCallback() bool {
+	return m.InvocationStyle == core.InvocationStyleCallback
+}
+
+// NeedsGoroutine returns true if the method should spawn a goroutine.
+// This is true for Promise, Callback, and ServerStreaming methods.
+func (m *MethodData) NeedsGoroutine() bool {
+	return m.IsPromise() || m.IsCallback() || m.IsServerStreaming
 }
 
 // PackageInfo represents metadata about a protobuf package for generation.

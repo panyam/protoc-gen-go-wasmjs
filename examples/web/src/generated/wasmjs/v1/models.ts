@@ -1,4 +1,4 @@
-import { StatefulOptions as StatefulOptionsInterface, StatefulMethodOptions as StatefulMethodOptionsInterface, AsyncMethodOptions as AsyncMethodOptionsInterface, MessagePatch as MessagePatchInterface, PatchBatch as PatchBatchInterface, PatchResponse as PatchResponseInterface, ConflictResolution, PatchOperation, PatchSource } from "./interfaces";
+import { StatefulOptions as StatefulOptionsInterface, StatefulMethodOptions as StatefulMethodOptionsInterface, AsyncMethodOptions as AsyncMethodOptionsInterface, MessagePatch as MessagePatchInterface, PatchBatch as PatchBatchInterface, PatchResponse as PatchResponseInterface, ConflictResolution, InvocationStyle, PatchOperation, PatchSource } from "./interfaces";
 
 
 
@@ -46,6 +46,7 @@ export class StatefulMethodOptions implements StatefulMethodOptionsInterface {
 
 /**
  * Configuration for async methods
+ DEPRECATED: Use invocation_style instead.
  */
 export class AsyncMethodOptions implements AsyncMethodOptionsInterface {
   /**
@@ -54,7 +55,8 @@ export class AsyncMethodOptions implements AsyncMethodOptionsInterface {
   static readonly MESSAGE_TYPE = "wasmjs.v1.AsyncMethodOptions";
   readonly __MESSAGE_TYPE = AsyncMethodOptions.MESSAGE_TYPE;
 
-  /** Whether this method should be generated as async with callback parameter */
+  /** Whether this method should be generated as async with callback parameter
+ Maps to INVOCATION_STYLE_CALLBACK when true. */
   isAsync: boolean = false;
 
   

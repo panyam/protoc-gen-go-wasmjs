@@ -65,7 +65,7 @@ func (mf *MethodFilter) ShouldIncludeMethod(method *protogen.Method, criteria *F
 
 	// Get method metadata from annotations
 	customJSName := mf.analyzer.GetCustomMethodName(method)
-	isAsync := mf.analyzer.IsAsyncMethod(method)
+	invocationStyle := mf.analyzer.GetInvocationStyle(method)
 	isServerStreaming := method.Desc.IsStreamingServer()
 
 	// Apply exclude patterns
@@ -86,7 +86,7 @@ func (mf *MethodFilter) ShouldIncludeMethod(method *protogen.Method, criteria *F
 				return MethodFilterResult{
 					FilterResult:      Included("method matches include pattern: " + pattern),
 					CustomJSName:      customJSName,
-					IsAsync:           isAsync,
+					InvocationStyle:   invocationStyle,
 					IsServerStreaming: isServerStreaming,
 				}
 			}
@@ -101,7 +101,7 @@ func (mf *MethodFilter) ShouldIncludeMethod(method *protogen.Method, criteria *F
 	return MethodFilterResult{
 		FilterResult:      Included("method included by default (no exclusion rules matched)"),
 		CustomJSName:      customJSName,
-		IsAsync:           isAsync,
+		InvocationStyle:   invocationStyle,
 		IsServerStreaming: isServerStreaming,
 	}
 }

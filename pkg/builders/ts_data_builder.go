@@ -656,7 +656,7 @@ func (tb *TSDataBuilder) buildMethodDataForTS(
 		Comment:           strings.TrimSpace(string(method.Comments.Leading)),
 		RequestTSType:     string(method.Input.GoIdent.GoName),
 		ResponseTSType:    string(method.Output.GoIdent.GoName),
-		IsAsync:           methodResult.IsAsync,
+		InvocationStyle:   methodResult.InvocationStyle,
 		IsServerStreaming: methodResult.IsServerStreaming,
 	}
 }

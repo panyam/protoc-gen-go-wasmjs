@@ -16,6 +16,8 @@ package builders
 
 import (
 	"testing"
+
+	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 )
 
 // TestTypedCallbacks_ImportCollection tests that TypeScript type imports
@@ -28,28 +30,36 @@ func TestTypedCallbacks_ImportCollection(t *testing.T) {
 			JSName: "testService",
 			Methods: []MethodData{
 				{
-					Name:           "SyncMethod",
-					JSName:         "syncMethod",
-					RequestTSType:  "SyncRequest",
-					ResponseTSType: "SyncResponse",
-					IsAsync:        false,
-					ShouldGenerate: true,
+					Name:            "SyncMethod",
+					JSName:          "syncMethod",
+					RequestTSType:   "SyncRequest",
+					ResponseTSType:  "SyncResponse",
+					InvocationStyle: core.InvocationStyleSync,
+					ShouldGenerate:  true,
 				},
 				{
-					Name:           "AsyncMethod",
-					JSName:         "asyncMethod",
-					RequestTSType:  "AsyncRequest",
-					ResponseTSType: "AsyncResponse",
-					IsAsync:        true,
-					ShouldGenerate: true,
+					Name:            "PromiseMethod",
+					JSName:          "promiseMethod",
+					RequestTSType:   "PromiseRequest",
+					ResponseTSType:  "PromiseResponse",
+					InvocationStyle: core.InvocationStylePromise,
+					ShouldGenerate:  true,
 				},
 				{
-					Name:           "StreamingMethod",
-					JSName:         "streamingMethod",
-					RequestTSType:  "StreamRequest",
-					ResponseTSType: "StreamResponse",
+					Name:            "CallbackMethod",
+					JSName:          "callbackMethod",
+					RequestTSType:   "CallbackRequest",
+					ResponseTSType:  "CallbackResponse",
+					InvocationStyle: core.InvocationStyleCallback,
+					ShouldGenerate:  true,
+				},
+				{
+					Name:              "StreamingMethod",
+					JSName:            "streamingMethod",
+					RequestTSType:     "StreamRequest",
+					ResponseTSType:    "StreamResponse",
 					IsServerStreaming: true,
-					ShouldGenerate: true,
+					ShouldGenerate:    true,
 				},
 				{
 					Name:           "FilteredMethod",
@@ -67,12 +77,14 @@ func TestTypedCallbacks_ImportCollection(t *testing.T) {
 
 	// Should collect only types from methods that ShouldGenerate=true
 	expectedImports := map[string]bool{
-		"SyncRequest":     true,
-		"SyncResponse":    true,
-		"AsyncRequest":    true,
-		"AsyncResponse":   true,
-		"StreamRequest":   true,
-		"StreamResponse":  true,
+		"SyncRequest":      true,
+		"SyncResponse":     true,
+		"PromiseRequest":   true,
+		"PromiseResponse":  true,
+		"CallbackRequest":  true,
+		"CallbackResponse": true,
+		"StreamRequest":    true,
+		"StreamResponse":   true,
 		// FilteredRequest/FilteredResponse should be excluded
 	}
 

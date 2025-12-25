@@ -137,25 +137,72 @@ enum ConflictResolution {
   LAST_WRITER_WINS = 2;
 }
 
-// async_method marks a method as asynchronous, requiring a callback parameter.
-// This is used for methods that need to call browser APIs from WASM to avoid deadlocks.
+// InvocationStyle specifies how a method should be invoked across the JS/WASM boundary.
+// This determines the method signature and execution model.
+enum InvocationStyle {
+  // SYNC: Method returns value directly. Executes on the JS thread.
+  // Use for simple methods that don't call browser APIs returning Promises.
+  // JS signature: method(request): Response
+  // WARNING: Will deadlock if the method calls browser APIs that return Promises!
+  INVOCATION_STYLE_SYNC = 0;
+
+  // PROMISE: Method returns a JavaScript Promise. Executes in a goroutine.
+  // Safe for methods that call browser APIs (fetch, IndexedDB, etc.).
+  // JS signature: method(request): Promise<Response>
+  // JS can use async/await: const resp = await service.method(req);
+  INVOCATION_STYLE_PROMISE = 1;
+
+  // CALLBACK: Method takes a callback parameter. Executes in a goroutine.
+  // Safe for methods that call browser APIs. Legacy pattern - prefer PROMISE.
+  // JS signature: method(request, callback: (response, error?) => void): void
+  INVOCATION_STYLE_CALLBACK = 2;
+}
+
+// invocation_style specifies how a method should be invoked across the JS/WASM boundary.
+// This annotation replaces the deprecated async_method annotation.
 //
 // Example usage:
+//   rpc LoadGame(LoadGameRequest) returns (LoadGameResponse) {
+//     option (wasmjs.v1.invocation_style) = INVOCATION_STYLE_PROMISE;
+//   }
+//
+// For browser_provided services (WASM -> JS direction):
+//   - SYNC: JS method returns value directly, Go blocks briefly
+//   - PROMISE: JS method returns Promise, Go gets a Future
+//   - CALLBACK: Not applicable (ignored)
+//
+// For regular services (JS -> WASM direction):
+//   - SYNC: Go executes on JS thread, returns value (risk of deadlock!)
+//   - PROMISE: Go spawns goroutine, returns JS Promise
+//   - CALLBACK: Go spawns goroutine, invokes JS callback when done
+extend google.protobuf.MethodOptions {
+  InvocationStyle invocation_style = 50010;
+}
+
+// async_method marks a method as asynchronous, requiring a callback parameter.
+// DEPRECATED: Use invocation_style = INVOCATION_STYLE_PROMISE or INVOCATION_STYLE_CALLBACK instead.
+// This annotation is kept for backward compatibility and maps to INVOCATION_STYLE_CALLBACK.
+//
+// Example usage (deprecated):
 //   rpc GetGame(GetGameRequest) returns (GameState) {
 //     option (wasmjs.v1.async_method) = {
 //       is_async: true
 //     };
 //   }
 //
-// Generated TypeScript signature becomes:
-//   getGame(request: GetGameRequest, callback: (response: GameState, error?: string) => void): Promise<void>
+// Recommended new usage:
+//   rpc GetGame(GetGameRequest) returns (GameState) {
+//     option (wasmjs.v1.invocation_style) = INVOCATION_STYLE_PROMISE;
+//   }
 extend google.protobuf.MethodOptions {
   AsyncMethodOptions async_method = 50007;
 }
 
 // Configuration for async methods
+// DEPRECATED: Use invocation_style instead.
 message AsyncMethodOptions {
   // Whether this method should be generated as async with callback parameter
+  // Maps to INVOCATION_STYLE_CALLBACK when true.
   bool is_async = 1;
 }
 

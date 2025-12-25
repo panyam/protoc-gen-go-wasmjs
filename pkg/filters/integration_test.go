@@ -249,7 +249,7 @@ func TestFilterResult_Types(t *testing.T) {
 	methodResult := MethodFilterResult{
 		FilterResult:      Included("method test"),
 		CustomJSName:      "customMethod",
-		IsAsync:           true,
+		InvocationStyle:   core.InvocationStylePromise,
 		IsServerStreaming: false,
 	}
 
@@ -261,8 +261,8 @@ func TestFilterResult_Types(t *testing.T) {
 		t.Error("MethodFilterResult should preserve CustomJSName metadata")
 	}
 
-	if !methodResult.IsAsync {
-		t.Error("MethodFilterResult should preserve IsAsync metadata")
+	if methodResult.InvocationStyle != core.InvocationStylePromise {
+		t.Error("MethodFilterResult should preserve InvocationStyle metadata")
 	}
 
 	// Test PackageFilterResult

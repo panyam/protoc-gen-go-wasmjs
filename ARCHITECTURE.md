@@ -461,7 +461,108 @@ export class MyDeserializer extends BaseDeserializer {
 4. **Modern TypeScript support**: Full ESM/CJS builds with type definitions
 5. **Inheritance-based**: Generated classes focus only on template-specific logic
 
-### 6. JavaScript API Structure Options
+### 6. Invocation Style System
+
+The generator supports three invocation styles that control how WASM methods interact with JavaScript:
+
+#### **The Threading Problem**
+Go WASM runs on the same thread as JavaScript's event loop. When Go blocks (e.g., waiting for a browser API that returns a Promise), it deadlocks because JavaScript can't resolve the Promise while Go is blocking.
+
+#### **Solution: Invocation Styles**
+
+```protobuf
+enum InvocationStyle {
+  INVOCATION_STYLE_SYNC = 0;     // Returns directly
+  INVOCATION_STYLE_PROMISE = 1;  // Returns JS Promise
+  INVOCATION_STYLE_CALLBACK = 2; // Uses callback parameter
+}
+```
+
+| Style | TypeScript Signature | Go Behavior | Use Case |
+|-------|---------------------|-------------|----------|
+| **SYNC** | `method(req): Response` | Execute on JS thread | Simple methods, no browser calls |
+| **PROMISE** | `method(req): Promise<Response>` | Return Promise, goroutine | Methods that call browser APIs |
+| **CALLBACK** | `method(req, cb): void` | Return void, goroutine | Legacy pattern, streaming-like |
+
+#### **SYNC Style** (Default)
+```protobuf
+rpc GetData(Request) returns (Response);  // No annotation = SYNC
+```
+```typescript
+// Generated TypeScript
+getData(request: Request): Response {
+    return this.callMethodSync('service.getData', request);
+}
+```
+```go
+// Generated Go WASM - executes directly on JS thread
+func (exports *Exports) getData(this js.Value, args []js.Value) any {
+    resp, err := exports.Service.GetData(ctx, req)
+    return wasm.CreateJSResponse(true, "Success", responseJSON)
+}
+```
+
+#### **PROMISE Style** (Recommended for browser API calls)
+```protobuf
+rpc SavePreferences(Request) returns (Response) {
+    option (wasmjs.v1.invocation_style) = INVOCATION_STYLE_PROMISE;
+};
+```
+```typescript
+// Generated TypeScript
+savePreferences(request: Request): Promise<Response> {
+    return this.callMethodAsync('service.savePreferences', request);
+}
+```
+```go
+// Generated Go WASM - returns Promise, executes in goroutine
+func (exports *Exports) savePreferences(this js.Value, args []js.Value) any {
+    return wasm.CreateJSPromise(func(resolve, reject func(any)) {
+        go func() {
+            resp, err := exports.Service.SavePreferences(ctx, req)
+            if err != nil {
+                reject(err.Error())
+                return
+            }
+            resolve(js.ValueOf(jsObject))
+        }()
+    })
+}
+```
+
+#### **CALLBACK Style** (Legacy pattern)
+```protobuf
+rpc RunDemo(Request) returns (Response) {
+    option (wasmjs.v1.invocation_style) = INVOCATION_STYLE_CALLBACK;
+};
+```
+```typescript
+// Generated TypeScript
+runDemo(request: Request, callback: (response: Response, error?: string) => void): void {
+    this.callMethodWithCallback('service.runDemo', request, callback);
+}
+```
+
+#### **Promise Helpers (pkg/wasm/promise.go)**
+```go
+// CreateJSPromise creates a JavaScript Promise from Go
+func CreateJSPromise(executor func(resolve, reject func(any))) js.Value {
+    promiseConstructor := js.Global().Get("Promise")
+    return promiseConstructor.New(js.FuncOf(func(this js.Value, args []js.Value) any {
+        resolveJS, rejectJS := args[0], args[1]
+        executor(
+            func(value any) { resolveJS.Invoke(js.ValueOf(value)) },
+            func(err any) {
+                jsError := js.Global().Get("Error").New(fmt.Sprintf("%v", err))
+                rejectJS.Invoke(jsError)
+            },
+        )
+        return nil
+    }))
+}
+```
+
+### 7. JavaScript API Structure Options
 
 The generator supports three different API structures for how WASM methods are exposed to JavaScript:
 

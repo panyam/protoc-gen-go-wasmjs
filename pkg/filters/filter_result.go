@@ -17,6 +17,7 @@ package filters
 import (
 	"fmt"
 
+	"github.com/panyam/protoc-gen-go-wasmjs/pkg/core"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -50,9 +51,9 @@ type ServiceFilterResult struct {
 // This provides information about method transformations and special handling.
 type MethodFilterResult struct {
 	FilterResult
-	CustomJSName      string // Custom JavaScript method name (if any)
-	IsAsync           bool   // Whether method requires async/callback handling
-	IsServerStreaming bool   // Whether method uses server-side streaming
+	CustomJSName      string               // Custom JavaScript method name (if any)
+	InvocationStyle   core.InvocationStyle // How the method is invoked (sync, promise, callback)
+	IsServerStreaming bool                 // Whether method uses server-side streaming
 }
 
 // PackageFilterResult contains the result of package filtering.

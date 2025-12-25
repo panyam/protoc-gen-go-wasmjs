@@ -20,4 +20,4 @@ require (
 )
 
 // Use local module during development
-replace github.com/panyam/protoc-gen-go-wasmjs => ../..
+replace github.com/panyam/protoc-gen-go-wasmjs => ../

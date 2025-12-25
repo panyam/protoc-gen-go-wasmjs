@@ -135,12 +135,13 @@ export class WASMBundle {
     }
 
     /**
-     * Internal method to call WASM functions with JSON conversion
+     * Call a synchronous WASM method that returns immediately.
+     * Used for SYNC invocation style methods.
      */
-    public callMethod<TRequest, TResponse>(
+    public callMethodSync<TRequest, TResponse>(
         methodPath: string,
         request: TRequest
-    ): Promise<TResponse> {
+    ): TResponse {
         try {
             // Convert request to JSON
             const jsonReq = JSON.parse(JSON.stringify(request));
@@ -151,7 +152,7 @@ export class WASMBundle {
                 throw new WasmError(wasmResponse.message, methodPath);
             }
 
-            // Return response data directly
+            // Return response data directly (synchronously)
             return wasmResponse.data;
         } catch (error) {
             if (error instanceof WasmError) {
@@ -165,18 +166,58 @@ export class WASMBundle {
     }
 
     /**
-     * Internal method to call async WASM functions with callback
+     * Call a WASM method that returns a Promise.
+     * Used for PROMISE invocation style methods where Go returns a JS Promise.
+     */
+    public callMethodAsync<TRequest, TResponse>(
+        methodPath: string,
+        request: TRequest
+    ): Promise<TResponse> {
+        try {
+            // Convert request to JSON
+            const jsonReq = JSON.parse(JSON.stringify(request));
+            const wasmMethod = this.getWasmMethod(methodPath);
+            const wasmResponse = wasmMethod(JSON.stringify(jsonReq));
+
+            // If the WASM method returns a Promise directly (PROMISE invocation style),
+            // return it as-is. Otherwise, it's the legacy wrapped format.
+            if (wasmResponse instanceof Promise) {
+                return wasmResponse;
+            }
+
+            // Legacy format: {success, message, data}
+            if (!wasmResponse.success) {
+                return Promise.reject(new WasmError(wasmResponse.message, methodPath));
+            }
+
+            // Return response data wrapped in a resolved Promise
+            return Promise.resolve(wasmResponse.data);
+        } catch (error) {
+            if (error instanceof WasmError) {
+                return Promise.reject(error);
+            }
+            return Promise.reject(new WasmError(
+                `Call error: ${error instanceof Error ? error.message : String(error)}`,
+                methodPath
+            ));
+        }
+    }
+
+    /**
+     * Call a WASM method with callback for async operations.
+     * Used for CALLBACK invocation style methods.
+     * The callback is invoked by WASM when the operation completes.
      */
     public callMethodWithCallback<TRequest>(
         methodPath: string,
         request: TRequest,
         callback: (response: any, error?: string) => void
-    ): Promise<void> {
+    ): void {
         try {
             // Convert request to JSON
             const jsonReq = JSON.parse(JSON.stringify(request));
             const wasmMethod = this.getWasmMethod(methodPath);
-            
+
             // Call WASM method with callback function
             const wasmResponse = wasmMethod(JSON.stringify(jsonReq), callback);
 
@@ -184,8 +225,7 @@ export class WASMBundle {
                 throw new WasmError(wasmResponse.message, methodPath);
             }
 
-            // Async methods return immediately
-            return Promise.resolve();
+            // Callback methods return immediately - WASM will invoke callback later
         } catch (error) {
             if (error instanceof WasmError) {
                 throw error;

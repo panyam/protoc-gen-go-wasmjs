@@ -40,24 +40,37 @@ export abstract class ServiceClient {
     }
 
     /**
-     * Call a synchronous WASM method
+     * Call a synchronous WASM method that returns immediately.
+     * Used for SYNC invocation style methods.
      */
-    protected callMethod<TRequest, TResponse>(
+    protected callMethodSync<TRequest, TResponse>(
         methodPath: string,
         request: TRequest
-    ): Promise<TResponse> {
-        return this.bundle.callMethod(methodPath, request);
+    ): TResponse {
+        return this.bundle.callMethodSync(methodPath, request);
     }
 
     /**
-     * Call an asynchronous WASM method with callback
+     * Call an async WASM method that returns a Promise.
+     * Used for PROMISE invocation style methods.
+     */
+    protected callMethodAsync<TRequest, TResponse>(
+        methodPath: string,
+        request: TRequest
+    ): Promise<TResponse> {
+        return this.bundle.callMethodAsync(methodPath, request);
+    }
+
+    /**
+     * Call a WASM method with callback for async operations.
+     * Used for CALLBACK invocation style methods.
      */
     protected callMethodWithCallback<TRequest>(
         methodPath: string,
         request: TRequest,
         callback: (response: any, error?: string) => void
-    ): Promise<void> {
-        return this.bundle.callMethodWithCallback(methodPath, request, callback);
+    ): void {
+        this.bundle.callMethodWithCallback(methodPath, request, callback);
     }
 
     /**

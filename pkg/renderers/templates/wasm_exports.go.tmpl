@@ -170,8 +170,62 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 
 	// Return immediately for streaming methods
 	return wasm.CreateJSResponse(true, "Server streaming started", nil)
-	{{- else if .IsAsync }}
-	// Async method: expect request JSON and callback function
+	{{- else if .IsPromise }}
+	// Promise method: returns JS Promise, executes in goroutine
+	if len(args) < 1 {
+		return wasm.CreateRejectedPromise("Request JSON required")
+	}
+
+	requestJSON := args[0].String()
+	if requestJSON == "" {
+		return wasm.CreateRejectedPromise("Request JSON is empty")
+	}
+
+	// Parse request
+	req := &{{ .RequestType }}{}
+	marshaller := wasm.GetGlobalMarshaller()
+	if err := marshaller.Unmarshal([]byte(requestJSON), req, wasm.UnmarshalOptions{
+		DiscardUnknown: true,
+		AllowPartial:   true,
+	}); err != nil {
+		return wasm.CreateRejectedPromise(fmt.Sprintf("Failed to parse request: %v", err))
+	}
+
+	// Return Promise immediately, work happens in goroutine
+	return wasm.CreateJSPromise(func(resolve, reject func(any)) {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			// Call service method
+			resp, err := exports.{{ $serviceName }}.{{ .Name }}(ctx, req)
+			if err != nil {
+				reject(err.Error())
+				return
+			}
+
+			// Marshal response
+			responseJSON, err := marshaller.Marshal(resp, wasm.MarshalOptions{
+				UseProtoNames:   false,
+				EmitUnpopulated: true,
+				UseEnumNumbers:  false,
+			})
+			if err != nil {
+				reject(fmt.Sprintf("Failed to marshal response: %v", err))
+				return
+			}
+
+			// Convert JSON to JavaScript object and resolve
+			var jsObject interface{}
+			if err := json.Unmarshal(responseJSON, &jsObject); err != nil {
+				reject(fmt.Sprintf("Failed to convert response to JS object: %v", err))
+				return
+			}
+			resolve(js.ValueOf(jsObject))
+		}()
+	})
+	{{- else if .IsCallback }}
+	// Callback method: expect request JSON and callback function
 	if len(args) < 2 {
 		return wasm.CreateJSResponse(false, "Request JSON and callback function required", nil)
 	}
@@ -223,15 +277,15 @@ func (exports *{{ $.PackageName | replaceAll "." "_" | title }}ServicesExports) 
 
 		// Convert JSON to JavaScript object and call callback
 		var jsObject interface{}
-            if err := json.Unmarshal(responseJSON, &jsObject); err != nil {
-                callback.Invoke(js.Null(), fmt.Sprintf("Failed to convert response to JS object: %v", err))
-                return
-            }
-            callback.Invoke(js.ValueOf(jsObject), js.Null())
+		if err := json.Unmarshal(responseJSON, &jsObject); err != nil {
+			callback.Invoke(js.Null(), fmt.Sprintf("Failed to convert response to JS object: %v", err))
+			return
+		}
+		callback.Invoke(js.ValueOf(jsObject), js.Null())
 	}()
 
-	// Return immediately for async methods
-	return wasm.CreateJSResponse(true, "Async operation started", nil)
+	// Return immediately for callback methods
+	return wasm.CreateJSResponse(true, "Callback operation started", nil)
 	{{- else }}
 	// Synchronous method
 	if len(args) < 1 {

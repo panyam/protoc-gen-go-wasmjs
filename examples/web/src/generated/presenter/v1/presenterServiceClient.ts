@@ -19,29 +19,29 @@ import {
  * Fully typed method signatures with TypeScript interfaces
  */
 export interface PresenterServiceMethods {
-	loadUserData(request: LoadUserDataRequest): Promise<LoadUserDataResponse>;
-	updateUIState(request: StateUpdateRequest, callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean): void;
-	savePreferences(request: PreferencesRequest): Promise<PreferencesResponse>;
-	runCallbackDemo(request: CallbackDemoRequest, callback: (response: CallbackDemoResponse, error?: string) => void): Promise<void>;
+    loadUserData(request: LoadUserDataRequest): LoadUserDataResponse;
+    updateUIState(request: StateUpdateRequest, callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean): void;
+    savePreferences(request: PreferencesRequest): Promise<PreferencesResponse>;
+    runCallbackDemo(request: CallbackDemoRequest, callback: (response: CallbackDemoResponse, error?: string) => void): void;
 }
 /**
  * PresenterService service client implementation
  * Lightweight facade that uses shared WASM bundle
  */
 export class PresenterServiceClient extends ServiceClient implements PresenterServiceMethods {
-    async loadUserData(request: LoadUserDataRequest): Promise<LoadUserDataResponse> {
-        return this.callMethod('presenterService.loadUserData', request);
-    }
-    updateUIState(
-        request: StateUpdateRequest,
-        callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean
-    ): void {
-        return this.callStreamingMethod('presenterService.updateUIState', request, callback);
-    }
-    async savePreferences(request: PreferencesRequest): Promise<PreferencesResponse> {
-        return this.callMethod('presenterService.savePreferences', request);
-    }
-    async runCallbackDemo(request: CallbackDemoRequest, callback: (response: CallbackDemoResponse, error?: string) => void): Promise<void> {
-        return this.callMethodWithCallback('presenterService.runCallbackDemo', request, callback);
-    }
+        loadUserData(request: LoadUserDataRequest): LoadUserDataResponse {
+            return this.callMethodSync('presenterService.loadUserData', request);
+        }
+        updateUIState(
+            request: StateUpdateRequest,
+            callback: (response: UIUpdate | null, error: string | null, done: boolean) => boolean
+        ): void {
+            return this.callStreamingMethod('presenterService.updateUIState', request, callback);
+        }
+        savePreferences(request: PreferencesRequest): Promise<PreferencesResponse> {
+            return this.callMethodAsync('presenterService.savePreferences', request);
+        }
+        runCallbackDemo(request: CallbackDemoRequest, callback: (response: CallbackDemoResponse, error?: string) => void): void {
+            this.callMethodWithCallback('presenterService.runCallbackDemo', request, callback);
+        }
 }

@@ -33,12 +33,13 @@ func New{{ $service.Name }}Client() *{{ $service.Name }}Client {
 }
 
 {{- range .Methods }}
-{{- if .IsAsync }}
+{{- if .IsPromise }}
 
 // {{ .Name }} calls the browser-provided {{ .Name }} method asynchronously.
 // Returns a Future that can be used to retrieve the result when ready.
+// The JavaScript implementation returns a Promise, which is handled via the Future pattern.
 func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) *wasm.Future[*{{ .ResponseType }}] {
-	// This is an async browser method (returns a Promise in JavaScript)
+	// PROMISE invocation style: browser method returns a Promise
 	return wasm.CallBrowserServiceAsync[*{{ .RequestType }}, *{{ .ResponseType }}](
 		c.channel, ctx, "{{ $service.Name }}", "{{ .JSName }}", req,
 	)
@@ -46,8 +47,9 @@ func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .Re
 {{- else }}
 
 // {{ .Name }} calls the browser-provided {{ .Name }} method synchronously.
+// The JavaScript implementation returns the result directly (SYNC invocation style).
 func (c *{{ $service.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .RequestType }}) (*{{ .ResponseType }}, error) {
-	// This is a synchronous browser method
+	// SYNC invocation style: browser method returns immediately
 	return wasm.CallBrowserService[*{{ .RequestType }}, *{{ .ResponseType }}](
 		c.channel, ctx, "{{ $service.Name }}", "{{ .JSName }}", req,
 	)

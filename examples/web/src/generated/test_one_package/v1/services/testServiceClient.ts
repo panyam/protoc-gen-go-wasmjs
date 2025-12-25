@@ -17,18 +17,18 @@ import {
  * Fully typed method signatures with TypeScript interfaces
  */
 export interface TestServiceMethods {
-	sample(request: SampleRequest): Promise<SampleResponse>;
-	second(request: SecondRequest): Promise<SecondResponse>;
+    sample(request: SampleRequest): SampleResponse;
+    second(request: SecondRequest): SecondResponse;
 }
 /**
  * TestService service client implementation
  * Lightweight facade that uses shared WASM bundle
  */
 export class TestServiceClient extends ServiceClient implements TestServiceMethods {
-    async sample(request: SampleRequest): Promise<SampleResponse> {
-        return this.callMethod('testService.sample', request);
-    }
-    async second(request: SecondRequest): Promise<SecondResponse> {
-        return this.callMethod('testService.second', request);
-    }
+        sample(request: SampleRequest): SampleResponse {
+            return this.callMethodSync('testService.sample', request);
+        }
+        second(request: SecondRequest): SecondResponse {
+            return this.callMethodSync('testService.second', request);
+        }
 }
