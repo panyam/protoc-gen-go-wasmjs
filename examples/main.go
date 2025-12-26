@@ -10,12 +10,10 @@ import (
 	presenterv1 "github.com/panyam/protoc-gen-go-wasmjs/example/gen/go/presenter/v1"
 	browserwasmgen "github.com/panyam/protoc-gen-go-wasmjs/example/gen/wasm/go/browser/v1"
 	presenterwasmgen "github.com/panyam/protoc-gen-go-wasmjs/example/gen/wasm/go/presenter/v1"
-	"google.golang.org/grpc"
 )
 
-// PresenterServiceImpl implements the PresenterService
+// PresenterServiceImpl implements the PresenterService for WASM
 type PresenterServiceImpl struct {
-	presenterv1.UnimplementedPresenterServiceServer
 	browserClient *browserwasmgen.BrowserAPIClient
 }
 
@@ -34,7 +32,7 @@ func (s *PresenterServiceImpl) LoadUserData(ctx context.Context, req *presenterv
 }
 
 // UpdateUIState processes state changes and returns UI updates
-func (s *PresenterServiceImpl) UpdateUIState(req *presenterv1.StateUpdateRequest, stream grpc.ServerStreamingServer[presenterv1.UIUpdate]) error {
+func (s *PresenterServiceImpl) UpdateUIState(req *presenterv1.StateUpdateRequest, stream presenterwasmgen.UpdateUIState_ServerStream) error {
 	fmt.Printf("UpdateUIState called with action: %s\n", req.Action)
 
 	// Use component from params if provided, otherwise default

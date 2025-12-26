@@ -20,16 +20,7 @@ import (
 
 {{- end }}
 {{- range .Imports }}
-{{- $importPath := .Path }}
-{{- $isServicePackage := false }}
-{{- range $.Services }}
-{{- if eq $importPath .PackagePath }}
-{{- $isServicePackage = true }}
-{{- end }}
-{{- end }}
-{{- if not $isServicePackage }}
 	{{ .Alias }} {{ .Path | printf "%q" }}
-{{- end }}
 {{- end }}
 )
 
