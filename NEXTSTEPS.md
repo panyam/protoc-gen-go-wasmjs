@@ -204,13 +204,28 @@ Split monolithic Go WASM generation into 3 modular files:
 
 ## 🚀 **NEXT PHASE: Production Polish**
 
-### **Phase 2: Streaming Improvements (Priority: MEDIUM)**
+### **Phase 1: Eliminate JSON Serialization Overhead (Priority: HIGH)**
+See [GitHub Issue #4](https://github.com/panyam/protoc-gen-go-wasmjs/issues/4).
+- Phase 1: Pass JS objects via `js.ValueOf()` instead of JSON strings (eliminates JS-side JSON.parse/stringify)
+- Phase 2: Proto reflection → `js.Value` directly (eliminates all 4 JSON ops per call)
+- Phase 3: Proto binary wire format with runtime decoder (optional, best raw performance)
+
+### **Phase 2: Migrate to protokit (Priority: HIGH)**
+Extract shared proto utilities to `github.com/panyam/protokit` (already created at `~/newstack/protokit/main/`).
+See plan at `~/.claude/plans/deep-stirring-deer.md`.
+- Replace `pkg/core/NameConverter` → `protokit/names.*`
+- Replace `pkg/core/ProtoAnalyzer` field/message methods → `protokit/fields.*` / `protokit/messages.*`
+- Replace `pkg/core/PathCalculator` → `protokit/packages.*`
+- Replace `pkg/core/WellKnownTypesMapper` → `protokit/wellknown.Registry` with TS mappings
+- Keep wasmjs-specific annotation methods in `ProtoAnalyzer`
+
+### **Phase 3: Streaming Improvements (Priority: MEDIUM)**
 Enhance streaming support with better error handling:
 - Typed streaming callbacks with proper response types
 - Better cancellation support
 - Progress reporting for long-running streams
 
-### **Phase 3: Performance Optimization (Priority: LOW)**
+### **Phase 4: Performance Optimization (Priority: LOW)**
 - Consider SharedArrayBuffer for better WASM/JS data transfer
 - Template caching for faster regeneration
 - Parallel generation for large projects
@@ -278,6 +293,10 @@ Enhance streaming support with better error handling:
    - Consider parallel generation for large projects
    - Template caching for repeated use
    - Memory usage optimization
+
+5. **Marshaller docs consolidated** (April 2025): `VTPROTO_MARSHALLER_README.md`, `MARSHALLER_GUIDE.md`, and `pkg/wasm/README_MARSHALLER.md` were deleted — all content is now in [GitHub Issue #4](https://github.com/panyam/protoc-gen-go-wasmjs/issues/4)
+
+6. **Browser channel polling removed** (December 2025): Commit `d058469` replaced the 10ms polling queue with direct `js.Global().Call()` invocation. Sync calls are now truly synchronous, async calls return `Future[T]`. No setTimeout overhead.
 
 ## ✅ Success Criteria for Production Release
 
