@@ -27,7 +27,7 @@ github.com/panyam/protoc-gen-go-wasmjs
 newstack/protoc-gen-go-wasmjs/main
 
 ## Stack Dependencies
-- None
+- protokit (github.com/panyam/protokit)
 
 ## Integration
 
