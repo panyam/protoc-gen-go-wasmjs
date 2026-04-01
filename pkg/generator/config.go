@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/panyam/protokit/packages"
 )
 
 // ExternalTypeMapping represents a mapping from a protobuf type to TypeScript type
@@ -250,28 +252,9 @@ func (c *Config) calculateRelativePath(fromPath, toPath string) string {
 }
 
 // CalculateRelativePath is a public helper function that calculates the relative path
-// from fromPath to toPath. Both paths should be relative to the protoc working directory.
+// from fromPath to toPath. Delegates to protokit/packages.CalculateRelativePath.
 func CalculateRelativePath(fromPath, toPath string) string {
-	// Clean the paths to handle . and .. properly
-	fromPath = filepath.Clean(fromPath)
-	toPath = filepath.Clean(toPath)
-
-	// Calculate relative path
-	relPath, err := filepath.Rel(fromPath, toPath)
-	if err != nil {
-		// Fallback to absolute path if relative calculation fails
-		return toPath
-	}
-
-	// Convert to forward slashes for TypeScript imports
-	relPath = filepath.ToSlash(relPath)
-
-	// Ensure path starts with ./ for relative imports
-	if !strings.HasPrefix(relPath, "./") && !strings.HasPrefix(relPath, "../") {
-		relPath = "./" + relPath
-	}
-
-	return relPath
+	return packages.CalculateRelativePath(fromPath, toPath)
 }
 
 // parseExternalTypes parses external type mappings configuration
