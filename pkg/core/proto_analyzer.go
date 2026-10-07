@@ -15,7 +15,8 @@
 package core
 
 import (
-	"strings"
+	"github.com/panyam/protokit/fields"
+	"github.com/panyam/protokit/messages"
 
 	wasmjsv1 "github.com/panyam/protoc-gen-go-wasmjs/proto/gen/go/wasmjs/v1"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -27,17 +28,9 @@ type InvocationStyle int
 
 // InvocationStyle constants for method invocation patterns.
 const (
-	// InvocationStyleSync - Method returns value directly, executes on JS thread.
-	// WARNING: Will deadlock if method calls browser APIs returning Promises!
-	InvocationStyleSync InvocationStyle = iota
-
-	// InvocationStylePromise - Method returns JS Promise, executes in goroutine.
-	// Safe for methods that call browser APIs. JS can use async/await.
-	InvocationStylePromise
-
-	// InvocationStyleCallback - Method takes callback parameter, executes in goroutine.
-	// Safe for methods that call browser APIs. Legacy pattern - prefer Promise.
-	InvocationStyleCallback
+	InvocationStyleSync     InvocationStyle = iota // Returns value directly, executes on JS thread
+	InvocationStylePromise                         // Returns JS Promise, executes in goroutine
+	InvocationStyleCallback                        // Takes callback parameter, executes in goroutine
 )
 
 // String returns the string representation of the invocation style.
@@ -54,9 +47,8 @@ func (s InvocationStyle) String() string {
 	}
 }
 
-// ProtoAnalyzer provides pure functions for analyzing protobuf definitions.
-// These functions extract metadata and properties from proto files, services,
-// methods, messages, and fields without any side effects or external dependencies.
+// ProtoAnalyzer provides functions for analyzing protobuf definitions.
+// Generic methods delegate to protokit. WASM-specific annotation methods are defined here.
 type ProtoAnalyzer struct{}
 
 // NewProtoAnalyzer creates a new ProtoAnalyzer instance.
@@ -64,115 +56,78 @@ func NewProtoAnalyzer() *ProtoAnalyzer {
 	return &ProtoAnalyzer{}
 }
 
+// --- Generic methods (delegated to protokit) ---
+
 // ExtractPackageName extracts the package name from a fully qualified message type.
-// For example, "library.v1.Book" returns "library.v1".
-// This is used when analyzing message dependencies across packages.
+// Delegates to protokit/messages.ExtractPackageName.
 func (pa *ProtoAnalyzer) ExtractPackageName(fullMessageType string) string {
-	parts := strings.Split(fullMessageType, ".")
-	if len(parts) <= 1 {
-		return ""
-	}
-	// Take all parts except the last one (which is the message name)
-	return strings.Join(parts[:len(parts)-1], ".")
+	return messages.ExtractPackageName(fullMessageType)
 }
 
 // ExtractMessageName extracts the message name from a fully qualified message type.
-// For example, "library.v1.Book" returns "Book".
-// This is used when generating TypeScript interfaces and class names.
+// Delegates to protokit/messages.ExtractMessageName.
 func (pa *ProtoAnalyzer) ExtractMessageName(fullMessageType string) string {
-	parts := strings.Split(fullMessageType, ".")
-	if len(parts) == 0 {
-		return ""
-	}
-	// Return the last part (which is the message name)
-	return parts[len(parts)-1]
+	return messages.ExtractMessageName(fullMessageType)
 }
 
-// GetProtoFieldType returns the proto field type as a string representation.
-// This analyzes the field's protobuf kind and returns a standardized string
-// that can be used for type conversion and template generation.
+// GetProtoFieldType returns the proto field type as a string.
+// For scalars returns the kind ("string", "int32", etc.).
+// For messages returns the message name. For enums returns the enum name.
 func (pa *ProtoAnalyzer) GetProtoFieldType(field *protogen.Field) string {
-	kind := field.Desc.Kind()
-	switch kind.String() {
-	case "double", "float", "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "sfixed32", "sfixed64":
-		return kind.String()
-	case "bool":
-		return "bool"
-	case "string":
-		return "string"
-	case "bytes":
-		return "bytes"
+	kind := fields.GetFieldKind(field)
+	switch kind {
 	case "message":
 		return string(field.Message.Desc.Name())
 	case "enum":
 		return string(field.Enum.Desc.Name())
 	default:
-		return kind.String()
+		return kind
 	}
 }
 
 // GetFullyQualifiedMessageType returns the fully qualified type name for a message field.
-// This includes the package name and message name, used for cross-package references.
-// For example, a field of type Book in package library.v1 returns "library.v1.Book".
+// Delegates to protokit/messages.GetFullyQualifiedType.
 func (pa *ProtoAnalyzer) GetFullyQualifiedMessageType(field *protogen.Field) string {
-	if field.Message == nil {
-		return ""
-	}
-
-	// Get the full package name + message name
-	packageName := string(field.Message.Desc.ParentFile().Package())
-	messageName := string(field.Message.Desc.Name())
-
-	if packageName != "" {
-		return packageName + "." + messageName
-	}
-	return messageName
+	return messages.GetFullyQualifiedType(field)
 }
 
 // IsMapField checks if a protobuf field represents a map type.
-// Map fields are implemented as repeated message fields with special map entry messages.
+// Delegates to protokit/fields.IsMapField.
 func (pa *ProtoAnalyzer) IsMapField(field *protogen.Field) bool {
-	if field.Message != nil {
-		// For map fields, protogen might not set IsList but the message will be a map entry
-		return field.Message.Desc.IsMapEntry()
-	}
-	return false
+	return fields.IsMapField(field)
 }
 
 // GetMapKeyValueTypes extracts the key and value types from a map field.
-// Map entry messages have exactly 2 fields: key (field 1) and value (field 2).
 // Returns ("any", "any") if the field is not a valid map field.
 func (pa *ProtoAnalyzer) GetMapKeyValueTypes(field *protogen.Field) (keyType, valueType string) {
-	if !pa.IsMapField(field) {
-		return "any", "any"
-	}
-
-	mapEntry := field.Message
-
-	// Map entry messages have exactly 2 fields: key (field 1) and value (field 2)
-	var keyField, valueField *protogen.Field
-	for _, f := range mapEntry.Fields {
-		if f.Desc.Number() == 1 {
-			keyField = f
-		} else if f.Desc.Number() == 2 {
-			valueField = f
-		}
-	}
-
+	keyField, valueField := fields.GetMapKeyValueFields(field)
 	if keyField == nil || valueField == nil {
 		return "any", "any"
 	}
-
-	// Get the proto types for key and value
-	keyType = pa.GetProtoFieldType(keyField)
-	valueType = pa.GetProtoFieldType(valueField)
-
-	return keyType, valueType
+	return pa.GetProtoFieldType(keyField), pa.GetProtoFieldType(valueField)
 }
 
-// IsBrowserProvidedService checks if a service is marked as browser-provided using annotations.
-// Browser-provided services are implemented by JavaScript code rather than Go WASM,
-// allowing access to browser APIs like fetch, localStorage, etc.
+// IsNestedMessage checks if a message is nested within another message.
+// Delegates to protokit/messages.IsNestedMessage.
+func (pa *ProtoAnalyzer) IsNestedMessage(message *protogen.Message) bool {
+	return messages.IsNestedMessage(message)
+}
+
+// GetOneofGroups extracts all oneof group names from a message.
+// Delegates to protokit/messages.GetOneofGroups.
+func (pa *ProtoAnalyzer) GetOneofGroups(message *protogen.Message) []string {
+	return messages.GetOneofGroups(message)
+}
+
+// GetBaseFileName extracts the filename without extension from a proto file path.
+// Delegates to protokit/messages.GetBaseFileName.
+func (pa *ProtoAnalyzer) GetBaseFileName(protoFile string) string {
+	return messages.GetBaseFileName(protoFile)
+}
+
+// --- WASM-specific annotation methods (stay in this package) ---
+
+// IsBrowserProvidedService checks if a service is marked as browser-provided.
 func (pa *ProtoAnalyzer) IsBrowserProvidedService(service *protogen.Service) bool {
 	if service.Desc.Options() != nil {
 		if browserOpts := proto.GetExtension(service.Desc.Options(), wasmjsv1.E_BrowserProvided); browserOpts != nil {
@@ -184,9 +139,7 @@ func (pa *ProtoAnalyzer) IsBrowserProvidedService(service *protogen.Service) boo
 	return false
 }
 
-// IsTypeScriptFactoryFile checks if a proto file is marked as a TypeScript factory definition file.
-// Factory files generate combined factory + deserializer TypeScript code for all messages
-// imported from the same package.
+// IsTypeScriptFactoryFile checks if a proto file is marked as a TypeScript factory definition.
 func (pa *ProtoAnalyzer) IsTypeScriptFactoryFile(file *protogen.File) bool {
 	if file.Desc.Options() != nil {
 		if factoryOpt := proto.GetExtension(file.Desc.Options(), wasmjsv1.E_TsFactory); factoryOpt != nil {
@@ -199,8 +152,6 @@ func (pa *ProtoAnalyzer) IsTypeScriptFactoryFile(file *protogen.File) bool {
 }
 
 // GetCustomMethodName retrieves the custom JavaScript method name from wasmjs annotations.
-// Returns empty string if no custom name is specified.
-// This allows proto methods to have different names in the generated JavaScript API.
 func (pa *ProtoAnalyzer) GetCustomMethodName(method *protogen.Method) string {
 	if method.Desc.Options() != nil {
 		if nameOpt := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_WasmMethodName); nameOpt != nil {
@@ -213,12 +164,8 @@ func (pa *ProtoAnalyzer) GetCustomMethodName(method *protogen.Method) string {
 }
 
 // GetInvocationStyle returns the invocation style for a method.
-// Returns InvocationStyleSync, InvocationStylePromise, or InvocationStyleCallback
-// based on the invocation_style annotation.
-// Falls back to checking deprecated async_method annotation for backward compatibility.
 func (pa *ProtoAnalyzer) GetInvocationStyle(method *protogen.Method) InvocationStyle {
 	if method.Desc.Options() != nil {
-		// Check new invocation_style annotation first
 		if styleOpt := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_InvocationStyle); styleOpt != nil {
 			if style, ok := styleOpt.(wasmjsv1.InvocationStyle); ok {
 				switch style {
@@ -231,19 +178,17 @@ func (pa *ProtoAnalyzer) GetInvocationStyle(method *protogen.Method) InvocationS
 				}
 			}
 		}
-
 		// Backward compatibility: check deprecated async_method annotation
 		if asyncOpts := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_AsyncMethod); asyncOpts != nil {
 			if opts, ok := asyncOpts.(*wasmjsv1.AsyncMethodOptions); ok && opts != nil && opts.GetIsAsync() {
-				return InvocationStyleCallback // Old async_method maps to callback style
+				return InvocationStyleCallback
 			}
 		}
 	}
-	return InvocationStyleSync // Default to sync
+	return InvocationStyleSync
 }
 
 // IsMethodExcluded checks if a method is marked for exclusion from WASM generation.
-// Excluded methods won't appear in the generated JavaScript API.
 func (pa *ProtoAnalyzer) IsMethodExcluded(method *protogen.Method) bool {
 	if method.Desc.Options() != nil {
 		if excludeOpt := proto.GetExtension(method.Desc.Options(), wasmjsv1.E_WasmMethodExclude); excludeOpt != nil {
@@ -256,7 +201,6 @@ func (pa *ProtoAnalyzer) IsMethodExcluded(method *protogen.Method) bool {
 }
 
 // IsServiceExcluded checks if a service is marked for exclusion from WASM generation.
-// Excluded services won't appear in the generated JavaScript API.
 func (pa *ProtoAnalyzer) IsServiceExcluded(service *protogen.Service) bool {
 	if service.Desc.Options() != nil {
 		if excludeOpt := proto.GetExtension(service.Desc.Options(), wasmjsv1.E_WasmServiceExclude); excludeOpt != nil {
@@ -269,8 +213,6 @@ func (pa *ProtoAnalyzer) IsServiceExcluded(service *protogen.Service) bool {
 }
 
 // GetCustomServiceName retrieves the custom JavaScript service name from wasmjs annotations.
-// Returns empty string if no custom name is specified.
-// This affects the namespaced API structure (e.g., namespace.customName.method).
 func (pa *ProtoAnalyzer) GetCustomServiceName(service *protogen.Service) string {
 	if service.Desc.Options() != nil {
 		if nameOpt := proto.GetExtension(service.Desc.Options(), wasmjsv1.E_WasmServiceName); nameOpt != nil {
@@ -280,55 +222,4 @@ func (pa *ProtoAnalyzer) GetCustomServiceName(service *protogen.Service) string 
 		}
 	}
 	return ""
-}
-
-// GetBaseFileName extracts the filename without extension from a proto file path.
-// For example, "proto/library/v1/library.proto" returns "library".
-// This is used for generating TypeScript file names and import paths.
-func (pa *ProtoAnalyzer) GetBaseFileName(protoFile string) string {
-	// Extract filename from path
-	parts := strings.Split(protoFile, "/")
-	filename := parts[len(parts)-1]
-
-	// Remove .proto extension
-	if strings.HasSuffix(filename, ".proto") {
-		filename = filename[:len(filename)-6]
-	}
-
-	return filename
-}
-
-// GetOneofGroups extracts all oneof group names from a message.
-// Returns a slice of unique oneof group names present in the message.
-// This is used for TypeScript interface generation with proper oneof handling.
-func (pa *ProtoAnalyzer) GetOneofGroups(message *protogen.Message) []string {
-	var oneofGroups []string
-	oneofMap := make(map[string]bool)
-
-	for _, oneof := range message.Oneofs {
-		oneofName := string(oneof.Desc.Name())
-		if !oneofMap[oneofName] {
-			oneofGroups = append(oneofGroups, oneofName)
-			oneofMap[oneofName] = true
-		}
-	}
-
-	return oneofGroups
-}
-
-// IsNestedMessage checks if a message is nested within another message.
-// This is determined by checking if the message's parent is another message
-// rather than a file descriptor.
-func (pa *ProtoAnalyzer) IsNestedMessage(message *protogen.Message) bool {
-	// In protogen, nested messages have a parent message
-	// We can check this by looking at the parent descriptor
-	parent := message.Desc.Parent()
-
-	// If parent is not a file descriptor, it's nested
-	switch parent.(type) {
-	case interface{ IsFile() bool }:
-		return false // Parent is a file, so not nested
-	default:
-		return true // Parent is something else (likely a message), so nested
-	}
 }

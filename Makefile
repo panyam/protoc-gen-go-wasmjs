@@ -1,4 +1,7 @@
 
+# Worktree-safe: disable VCS stamping (go build fails with bare-repo worktrees)
+export GOFLAGS ?= -buildvcs=false
+
 all: default test wasm install
 
 # Default generators (split by language) - using layered architecture
