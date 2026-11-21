@@ -1,0 +1,7 @@
+# dagbump release config. Fields: https://github.com/panyam/devloop/tree/main/cmd/dagbump#per-repo-config
+# A dagbump release tags the Go module and makes a GitHub release.
+# It leaves runtime/ and examples/web alone and publishes nothing to npm.
+versioning: lockstep
+modules: [.]
+npm: []
+publish: {npm: none}
